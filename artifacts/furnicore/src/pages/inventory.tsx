@@ -1,0 +1,223 @@
+import { useState } from "react";
+import { useListInventory, useGetLowStockItems, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertTriangle, Plus, Package, Search, Pencil, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useForm, Controller } from "react-hook-form";
+
+interface InventoryFormData {
+  name: string;
+  type: string;
+  unit: string;
+  quantity: number;
+  reorderLevel: number;
+  unitCost: number;
+}
+
+export default function InventoryPage() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [showDialog, setShowDialog] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+
+  const { data: inventory, isLoading } = useListInventory();
+  const { data: lowStock } = useGetLowStockItems();
+  const createItem = useCreateInventoryItem();
+  const updateItem = useUpdateInventoryItem();
+  const deleteItem = useDeleteInventoryItem();
+
+  const { register, handleSubmit, control, reset, setValue } = useForm<InventoryFormData>();
+
+  const filtered = (inventory ?? []).filter((i: any) =>
+    i.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const openCreate = () => {
+    setEditItem(null);
+    reset({ name: "", type: "raw_material", unit: "", quantity: 0, reorderLevel: 0, unitCost: 0 });
+    setShowDialog(true);
+  };
+
+  const openEdit = (item: any) => {
+    setEditItem(item);
+    setValue("name", item.name);
+    setValue("type", item.type);
+    setValue("unit", item.unit);
+    setValue("quantity", Number(item.quantity));
+    setValue("reorderLevel", Number(item.reorderLevel));
+    setValue("unitCost", Number(item.unitCost));
+    setShowDialog(true);
+  };
+
+  const onSubmit = async (data: InventoryFormData) => {
+    try {
+      if (editItem) {
+        await updateItem.mutateAsync({ id: editItem.id, data });
+        toast({ title: "Item updated successfully" });
+      } else {
+        await createItem.mutateAsync({ data });
+        toast({ title: "Item created successfully" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["listInventory"] });
+      setShowDialog(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Delete this inventory item?")) return;
+    try {
+      await deleteItem.mutateAsync({ id });
+      toast({ title: "Item deleted" });
+      queryClient.invalidateQueries({ queryKey: ["listInventory"] });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
+          <p className="text-muted-foreground">Manage raw materials and stock levels</p>
+        </div>
+        <Button onClick={openCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Item
+        </Button>
+      </div>
+
+      {lowStock && lowStock.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+          <p className="text-sm font-medium">{lowStock.length} item(s) below reorder level: {lowStock.map((i: any) => i.name).join(", ")}</p>
+        </div>
+      )}
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input className="pl-9" placeholder="Search inventory..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-3">
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Package className="h-10 w-10 mb-3" />
+              <p>No inventory items found</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="border-b">
+                <tr className="text-left text-muted-foreground">
+                  <th className="px-6 py-3 font-medium">Name</th>
+                  <th className="px-6 py-3 font-medium">Type</th>
+                  <th className="px-6 py-3 font-medium">Unit</th>
+                  <th className="px-6 py-3 font-medium">Quantity</th>
+                  <th className="px-6 py-3 font-medium">Reorder At</th>
+                  <th className="px-6 py-3 font-medium">Unit Cost</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {filtered.map((item: any) => {
+                  const qty = Number(item.quantity);
+                  const reorder = Number(item.reorderLevel);
+                  const low = qty <= reorder;
+                  return (
+                    <tr key={item.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="px-6 py-4 font-medium">{item.name}</td>
+                      <td className="px-6 py-4 capitalize text-muted-foreground">{item.type.replace("_", " ")}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{item.unit}</td>
+                      <td className="px-6 py-4 font-mono">{qty.toLocaleString()}</td>
+                      <td className="px-6 py-4 font-mono">{reorder.toLocaleString()}</td>
+                      <td className="px-6 py-4 font-mono">${Number(item.unitCost).toFixed(2)}</td>
+                      <td className="px-6 py-4">
+                        <Badge variant={low ? "destructive" : "secondary"}>{low ? "Low Stock" : "OK"}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(item)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editItem ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-1">
+                <Label>Name</Label>
+                <Input {...register("name", { required: true })} placeholder="Item name" />
+              </div>
+              <div className="space-y-1">
+                <Label>Type</Label>
+                <Controller name="type" control={control} render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="raw_material">Raw Material</SelectItem>
+                      <SelectItem value="finished_goods">Finished Goods</SelectItem>
+                      <SelectItem value="work_in_progress">Work In Progress</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )} />
+              </div>
+              <div className="space-y-1">
+                <Label>Unit</Label>
+                <Input {...register("unit", { required: true })} placeholder="e.g. kg, units" />
+              </div>
+              <div className="space-y-1">
+                <Label>Quantity</Label>
+                <Input type="number" step="0.01" {...register("quantity", { valueAsNumber: true })} />
+              </div>
+              <div className="space-y-1">
+                <Label>Reorder Level</Label>
+                <Input type="number" step="0.01" {...register("reorderLevel", { valueAsNumber: true })} />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <Label>Unit Cost ($)</Label>
+                <Input type="number" step="0.01" {...register("unitCost", { valueAsNumber: true })} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>Save</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -1,0 +1,203 @@
+Build a full-stack, production-ready ERP web application called "FurniCore Management System" using a modular monorepo architecture.
+
+Tech Stack:
+Frontend:
+- React.js (latest with Vite)
+- Tailwind CSS
+- React Router
+- Axios
+- Zustand or Redux Toolkit
+
+Backend:
+- Node.js (latest LTS)
+- Express.js
+- PostgreSQL (Prisma ORM preferred)
+- JWT Authentication + Refresh Tokens
+- Role-Based Access Control (RBAC)
+
+Package Manager:
+- Yarn only
+
+Project Structure:
+/furnicore-erp
+  /frontend
+  /backend
+
+Backend:
+/backend
+  /src
+    /config (env, DB config)
+    /modules
+      /auth
+      /inventory
+      /suppliers
+      /manufacturing
+      /accounting
+      /hr
+      /payroll
+      /admin
+    /middlewares (auth, RBAC, error handling)
+    /routes
+    /controllers
+    /services
+    /models
+    /utils
+  /prisma (schema + migrations)
+  .env
+  server.js
+
+Frontend:
+/frontend
+  /src
+    /components
+    /pages
+    /modules (aligned with backend)
+    /layouts (dashboard/sidebar)
+    /services (API)
+    /store
+    /hooks
+    /utils
+  index.html
+
+Core Features:
+
+1. Authentication & Security:
+- JWT login/signup with refresh tokens
+- Roles: Admin (Boss), Manager, Employee, Supplier
+- Protected routes + RBAC middleware
+
+2. Admin Dashboard:
+- System overview (inventory, finance, HR)
+- Activity logs (who did what, when, before/after)
+- Notifications panel (real-time)
+- Approval center (supplier quotes, purchases, payroll)
+- Financial summary + pending payments
+- Low stock alerts
+
+3. Activity Logging System:
+- Track all CRUD & workflow actions
+- Store old/new data (JSON)
+- Filter by user, module, date
+
+4. Real-Time Notification System:
+- Notify Admin on:
+  - Supplier price updates
+  - New quotes/bids
+  - Low inventory alerts
+  - Approval requests
+- Use Socket.io (preferred) or polling
+
+5. Inventory Management:
+- Raw materials + finished goods tracking
+- Auto stock updates
+- Low stock alerts
+- Auto-reorder suggestions
+- Preferred supplier mapping
+
+6. Supplier Management + Bidding:
+- Supplier CRUD
+- Rate comparison system
+- Quotation/bidding workflow
+- Maintain supplier history
+
+7. Supplier Price Lock Workflow (Critical):
+- Supplier submits price
+- Company negotiates
+- Supplier locks price (immutable)
+- Status flow:
+  PENDING → LOCKED → ADMIN_APPROVED → PAID
+
+8. Multi-Level Approval System:
+- Supplier → Lock price
+- Admin → Approves
+- Accounts → Processes payment
+- Trigger notifications at each step
+
+9. Smart Costing System:
+- Per-product cost calculation:
+  - Material usage
+  - Labor cost
+- Store historical costing
+- Profit margin analysis
+
+10. Manufacturing Module:
+- Real-time production tracking
+- Task assignment
+- Progress & completion monitoring
+- Performance-based bonus logic
+
+11. Accounting Module:
+- Supplier ledger
+- Expense & income tracking
+- Payment processing (after approval)
+- Automatic reconciliation
+
+12. HR Module:
+- Employee management
+- Attendance tracking
+- Role assignment
+
+13. Payroll System:
+- Salary calculation
+- Performance bonuses
+- Payslip generation
+
+14. Product Management:
+- CRUD products
+- Categories
+- Pricing & stock linkage
+
+Database Design (PostgreSQL):
+- Normalized relational schema
+- Foreign key relationships
+- Audit fields (createdAt, updatedAt)
+- Logs/history tables
+
+Key Tables:
+- users (roles)
+- products
+- inventory
+- suppliers
+- supplier_quotes (price locking workflow)
+- activity_logs
+- notifications
+- transactions
+- payroll
+- manufacturing_tasks
+
+Important Architecture:
+- RESTful APIs
+- Modular feature-based structure
+- Service layer pattern
+- Centralized error handling
+- Input validation (Joi/Zod)
+- Environment-based configs
+
+UI/UX:
+- Clean modern dashboard
+- Sidebar navigation
+- Data tables (search, filter, sort)
+- Form validation
+- Notification bell + activity feed
+
+Dev Tools:
+- ESLint + Prettier
+- Husky (optional)
+- Postman collection
+
+Extras:
+- Docker support
+- Basic analytics dashboard
+- Export reports (PDF/CSV)
+
+Deliverables:
+- Fully working system
+- Seed data
+- README (setup + architecture)
+- Sample APIs
+
+Ensure:
+- Scalability
+- Clean, maintainable code
+- Real-world ERP workflows
+- Fully connected modules (inventory ↔ suppliers ↔ accounting ↔ manufacturing ↔ HR)
