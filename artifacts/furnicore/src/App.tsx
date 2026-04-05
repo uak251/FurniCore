@@ -37,7 +37,7 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       
-      <Route path="/">
+      <Route>
         <ProtectedRoute>
           <Layout>
             <Switch>
