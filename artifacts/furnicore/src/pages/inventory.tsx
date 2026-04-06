@@ -1,7 +1,13 @@
-import { useState } from "react";
-import { useListInventory, useGetLowStockItems, useCreateInventoryItem, useUpdateInventoryItem, useDeleteInventoryItem } from "@workspace/api-client-react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  useListInventory,
+  useGetLowStockItems,
+  useCreateInventoryItem,
+  useUpdateInventoryItem,
+  useDeleteInventoryItem,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,9 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Plus, Package, Search, Pencil, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertTriangle, Plus, Package, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
+import { TableToolbar } from "@/components/data-table/TableToolbar";
+import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
+import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 
 interface InventoryFormData {
   name: string;
@@ -22,10 +32,17 @@ interface InventoryFormData {
   unitCost: number;
 }
 
+const TABLE_ID = "inventory";
+
 export default function InventoryPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showDialog, setShowDialog] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
@@ -37,9 +54,76 @@ export default function InventoryPage() {
 
   const { register, handleSubmit, control, reset, setValue } = useForm<InventoryFormData>();
 
-  const filtered = (inventory ?? []).filter((i: any) =>
-    i.name.toLowerCase().includes(search.toLowerCase())
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, sortKey, sortDir, pageSize]);
+
+  const rows = inventory ?? [];
+
+  const sorted = useMemo(() => {
+    return filterAndSortRows(rows, {
+      search,
+      match: (row: any, q: string) => {
+        const qn = q.toLowerCase();
+        const textMatch =
+          row.name.toLowerCase().includes(qn) ||
+          String(row.type ?? "").toLowerCase().includes(qn) ||
+          String(row.unit ?? "").toLowerCase().includes(qn);
+        if (!textMatch) return false;
+        const qty = Number(row.quantity);
+        const reorder = Number(row.reorderLevel);
+        const low = qty <= reorder;
+        if (statusFilter === "low") return low;
+        if (statusFilter === "ok") return !low;
+        return true;
+      },
+      sortKey,
+      sortDir,
+      getSortValue: (row: any, key: string) => {
+        switch (key) {
+          case "quantity":
+            return Number(row.quantity);
+          case "reorderLevel":
+            return Number(row.reorderLevel);
+          case "unitCost":
+            return Number(row.unitCost);
+          case "type":
+            return String(row.type ?? "");
+          default:
+            return String(row.name ?? "");
+        }
+      },
+    });
+  }, [rows, search, statusFilter, sortKey, sortDir]);
+
+  const { pageRows, total, totalPages, page: safePage } = useMemo(
+    () => paginateRows(sorted, page, pageSize),
+    [sorted, page, pageSize],
   );
+
+  useEffect(() => {
+    if (safePage !== page) setPage(safePage);
+  }, [safePage, page]);
+
+  const exportCsv = () => {
+    const headers = ["name", "type", "unit", "quantity", "reorderLevel", "unitCost", "status"];
+    const data = sorted.map((item: any) => {
+      const qty = Number(item.quantity);
+      const reorder = Number(item.reorderLevel);
+      const low = qty <= reorder;
+      return {
+        name: item.name,
+        type: item.type,
+        unit: item.unit,
+        quantity: qty,
+        reorderLevel: reorder,
+        unitCost: Number(item.unitCost),
+        status: low ? "Low stock" : "OK",
+      };
+    });
+    exportRowsToCsv(`furnicore-inventory-${new Date().toISOString().slice(0, 10)}`, headers, data);
+    toast({ title: "Export started", description: `${data.length} rows exported.` });
+  };
 
   const openCreate = () => {
     setEditItem(null);
@@ -85,87 +169,168 @@ export default function InventoryPage() {
     }
   };
 
+  const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const to = Math.min(safePage * pageSize, total);
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Manage raw materials and stock levels</p>
         </div>
         <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Item
+          <Plus className="mr-2 h-4 w-4" aria-hidden />
+          Add item
         </Button>
       </div>
 
       {lowStock && lowStock.length > 0 && (
-        <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 flex-shrink-0" />
-          <p className="text-sm font-medium">{lowStock.length} item(s) below reorder level: {lowStock.map((i: any) => i.name).join(", ")}</p>
+        <div
+          className="flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive"
+          role="status"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden />
+          <p className="text-sm font-medium">
+            {lowStock.length} item(s) below reorder level:{" "}
+            <span className="break-words">{lowStock.map((i: any) => i.name).join(", ")}</span>
+          </p>
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Search inventory..." value={search} onChange={(e) => setSearch(e.target.value)} />
-      </div>
+      <TableToolbar
+        id={TABLE_ID}
+        entityLabel="inventory"
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by name, type, or unit…"
+        filterLabel="Stock status"
+        filterValue={statusFilter}
+        onFilterChange={setStatusFilter}
+        filterOptions={[
+          { value: "all", label: "All items" },
+          { value: "low", label: "Low stock" },
+          { value: "ok", label: "OK" },
+        ]}
+        sortKey={sortKey}
+        onSortKeyChange={setSortKey}
+        sortOptions={[
+          { value: "name", label: "Name" },
+          { value: "type", label: "Type" },
+          { value: "quantity", label: "Quantity" },
+          { value: "reorderLevel", label: "Reorder at" },
+          { value: "unitCost", label: "Unit cost" },
+        ]}
+        sortDir={sortDir}
+        onSortDirChange={setSortDir}
+        pageSize={pageSize}
+        onPageSizeChange={setPageSize}
+        onExportCsv={exportCsv}
+        exportDisabled={sorted.length === 0}
+        resultsText={
+          total === 0
+            ? "No matching items"
+            : `Showing ${from}–${to} of ${total} matching items`
+        }
+      />
 
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            <div className="p-6 space-y-3">
-              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+            <div className="space-y-3 p-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-14 w-full" />
+              ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : pageRows.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Package className="h-10 w-10 mb-3" />
-              <p>No inventory items found</p>
+              <Package className="mb-3 h-10 w-10" aria-hidden />
+              <p>No inventory items match your filters</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b">
-                <tr className="text-left text-muted-foreground">
-                  <th className="px-6 py-3 font-medium">Name</th>
-                  <th className="px-6 py-3 font-medium">Type</th>
-                  <th className="px-6 py-3 font-medium">Unit</th>
-                  <th className="px-6 py-3 font-medium">Quantity</th>
-                  <th className="px-6 py-3 font-medium">Reorder At</th>
-                  <th className="px-6 py-3 font-medium">Unit Cost</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {filtered.map((item: any) => {
-                  const qty = Number(item.quantity);
-                  const reorder = Number(item.reorderLevel);
-                  const low = qty <= reorder;
-                  return (
-                    <tr key={item.id} className="hover:bg-muted/40 transition-colors">
-                      <td className="px-6 py-4 font-medium">{item.name}</td>
-                      <td className="px-6 py-4 capitalize text-muted-foreground">{item.type.replace("_", " ")}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{item.unit}</td>
-                      <td className="px-6 py-4 font-mono">{qty.toLocaleString()}</td>
-                      <td className="px-6 py-4 font-mono">{reorder.toLocaleString()}</td>
-                      <td className="px-6 py-4 font-mono">${Number(item.unitCost).toFixed(2)}</td>
-                      <td className="px-6 py-4">
-                        <Badge variant={low ? "destructive" : "secondary"}>{low ? "Low Stock" : "OK"}</Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(item)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="text-destructive" onClick={() => handleDelete(item.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <>
+              <div className="overflow-x-auto" id={`${TABLE_ID}-table`}>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead scope="col">Name</TableHead>
+                      <TableHead scope="col">Type</TableHead>
+                      <TableHead scope="col">Unit</TableHead>
+                      <TableHead scope="col" className="text-right">
+                        Quantity
+                      </TableHead>
+                      <TableHead scope="col" className="text-right">
+                        Reorder at
+                      </TableHead>
+                      <TableHead scope="col" className="text-right">
+                        Unit cost
+                      </TableHead>
+                      <TableHead scope="col">Status</TableHead>
+                      <TableHead scope="col" className="w-[100px] text-right">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageRows.map((item: any) => {
+                      const qty = Number(item.quantity);
+                      const reorder = Number(item.reorderLevel);
+                      const low = qty <= reorder;
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="capitalize text-muted-foreground">
+                            {String(item.type ?? "").replace(/_/g, " ")}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{item.unit}</TableCell>
+                          <TableCell className="text-right font-mono tabular-nums">
+                            {qty.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums">
+                            {reorder.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-mono tabular-nums">
+                            ${Number(item.unitCost).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={low ? "destructive" : "secondary"}>
+                              {low ? "Low stock" : "OK"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={`Edit ${item.name}`}
+                                onClick={() => openEdit(item)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="text-destructive"
+                                aria-label={`Delete ${item.name}`}
+                                onClick={() => handleDelete(item.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <TablePaginationBar
+                id={TABLE_ID}
+                page={safePage}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -173,47 +338,72 @@ export default function InventoryPage() {
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editItem ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
+            <DialogTitle>{editItem ? "Edit inventory item" : "Add inventory item"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1">
-                <Label>Name</Label>
-                <Input {...register("name", { required: true })} placeholder="Item name" />
+                <Label htmlFor="inv-name">Name</Label>
+                <Input id="inv-name" {...register("name", { required: true })} placeholder="Item name" />
               </div>
               <div className="space-y-1">
                 <Label>Type</Label>
-                <Controller name="type" control={control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="raw_material">Raw Material</SelectItem>
-                      <SelectItem value="finished_goods">Finished Goods</SelectItem>
-                      <SelectItem value="work_in_progress">Work In Progress</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )} />
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="raw_material">Raw material</SelectItem>
+                        <SelectItem value="finished_goods">Finished goods</SelectItem>
+                        <SelectItem value="work_in_progress">Work in progress</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div className="space-y-1">
-                <Label>Unit</Label>
-                <Input {...register("unit", { required: true })} placeholder="e.g. kg, units" />
+                <Label htmlFor="inv-unit">Unit</Label>
+                <Input id="inv-unit" {...register("unit", { required: true })} placeholder="e.g. kg, units" />
               </div>
               <div className="space-y-1">
-                <Label>Quantity</Label>
-                <Input type="number" step="0.01" {...register("quantity", { valueAsNumber: true })} />
+                <Label htmlFor="inv-qty">Quantity</Label>
+                <Input
+                  id="inv-qty"
+                  type="number"
+                  step="0.01"
+                  {...register("quantity", { valueAsNumber: true })}
+                />
               </div>
               <div className="space-y-1">
-                <Label>Reorder Level</Label>
-                <Input type="number" step="0.01" {...register("reorderLevel", { valueAsNumber: true })} />
+                <Label htmlFor="inv-reorder">Reorder level</Label>
+                <Input
+                  id="inv-reorder"
+                  type="number"
+                  step="0.01"
+                  {...register("reorderLevel", { valueAsNumber: true })}
+                />
               </div>
               <div className="col-span-2 space-y-1">
-                <Label>Unit Cost ($)</Label>
-                <Input type="number" step="0.01" {...register("unitCost", { valueAsNumber: true })} />
+                <Label htmlFor="inv-cost">Unit cost ($)</Label>
+                <Input
+                  id="inv-cost"
+                  type="number"
+                  step="0.01"
+                  {...register("unitCost", { valueAsNumber: true })}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>Save</Button>
+              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
+                Save
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -20,6 +20,7 @@ import AccountingPage from "@/pages/accounting";
 import NotificationsPage from "@/pages/notifications";
 import ActivityPage from "@/pages/activity";
 import UsersPage from "@/pages/users";
+import SettingsPage from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -53,6 +54,7 @@ function Router() {
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/activity" component={ActivityPage} />
               <Route path="/users" component={UsersPage} />
+              <Route path="/settings" component={SettingsPage} />
               <Route component={NotFound} />
             </Switch>
           </Layout>
