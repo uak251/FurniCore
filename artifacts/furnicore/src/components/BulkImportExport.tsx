@@ -44,6 +44,31 @@ interface ImportResult {
   errors: RowError[];
 }
 
+function normalizeImportResult(raw: unknown): ImportResult {
+  if (!raw || typeof raw !== "object") {
+    return { imported: 0, errors: [{ row: 0, message: "Unexpected server response." }] };
+  }
+  const o = raw as Record<string, unknown>;
+  const imported = typeof o.imported === "number" ? o.imported : Number(o.imported) || 0;
+  const updated = typeof o.updated === "number" ? o.updated : undefined;
+  const skipped = typeof o.skipped === "number" ? o.skipped : undefined;
+  let errors: RowError[] = [];
+  if (Array.isArray(o.errors)) {
+    errors = o.errors.map((e: unknown, idx: number) => {
+      if (e && typeof e === "object" && "message" in e) {
+        const er = e as { row?: number; column?: string; message?: string };
+        return {
+          row: typeof er.row === "number" ? er.row : idx + 1,
+          column: er.column,
+          message: String(er.message ?? "Error"),
+        };
+      }
+      return { row: idx + 1, message: String(e) };
+    });
+  }
+  return { imported, updated, skipped, errors };
+}
+
 interface ParsedPreview {
   headers: string[];
   rows: string[][];
@@ -208,7 +233,28 @@ export function BulkImportExport({
         },
         body: csvText,
       });
-      const json: ImportResult = await res.json();
+      const text = await res.text();
+      let parsed: unknown;
+      try {
+        parsed = text ? JSON.parse(text) : {};
+      } catch {
+        parsed = {
+          imported: 0,
+          errors: [{ row: 0, message: text.slice(0, 200) || "Invalid JSON response from server." }],
+        };
+      }
+      if (!res.ok) {
+        const msg =
+          parsed &&
+          typeof parsed === "object" &&
+          "message" in parsed &&
+          typeof (parsed as { message?: unknown }).message === "string"
+            ? (parsed as { message: string }).message
+            : (parsed as { error?: string })?.error ?? text?.slice(0, 200) ?? `HTTP ${res.status}`;
+        setResult({ imported: 0, errors: [{ row: 0, message: msg }] });
+        return;
+      }
+      const json = normalizeImportResult(parsed);
       setResult(json);
       if ((json.imported ?? 0) > 0 || (json.updated ?? 0) > 0) {
         onImported?.();
@@ -333,21 +379,21 @@ export function BulkImportExport({
       {result && (
         <div className={cn(
           "rounded-lg border p-4 space-y-3",
-          result.errors.length === 0 ? "border-green-300 bg-green-50 dark:bg-green-950/20" : "border-amber-300 bg-amber-50 dark:bg-amber-950/20",
+          (result.errors ?? []).length === 0 ? "border-green-300 bg-green-50 dark:bg-green-950/20" : "border-amber-300 bg-amber-50 dark:bg-amber-950/20",
         )}>
           <div className="flex items-center gap-2">
-            {result.errors.length === 0
+            {(result.errors ?? []).length === 0
               ? <CheckCircle2 className="h-5 w-5 text-green-600" />
               : <AlertTriangle className="h-5 w-5 text-amber-600" />}
             <p className="font-semibold text-sm">
               {result.imported} row{result.imported !== 1 ? "s" : ""} imported
               {result.updated ? `, ${result.updated} updated` : ""}
               {result.skipped ? `, ${result.skipped} skipped` : ""}
-              {result.errors.length > 0 ? `, ${result.errors.length} error${result.errors.length !== 1 ? "s" : ""}` : ""}
+              {(result.errors ?? []).length > 0 ? `, ${(result.errors ?? []).length} error${(result.errors ?? []).length !== 1 ? "s" : ""}` : ""}
             </p>
           </div>
 
-          {result.errors.length > 0 && (
+          {(result.errors ?? []).length > 0 && (
             <div>
               <button
                 onClick={() => setShowErrors((v) => !v)}
@@ -358,7 +404,7 @@ export function BulkImportExport({
               </button>
               {showErrors && (
                 <ul className="mt-2 space-y-1 max-h-40 overflow-y-auto">
-                  {result.errors.map((e, i) => (
+                  {(result.errors ?? []).map((e, i) => (
                     <li key={i} className="flex gap-2 text-xs text-amber-800 dark:text-amber-300">
                       <span className="shrink-0 font-mono font-medium">
                         {e.row > 0 ? `Row ${e.row}` : "Global"}

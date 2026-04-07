@@ -1,0 +1,213 @@
+{
+  "description": "Demo suppliers and supplier quotes. Quote workflow matches FurniCore API: PENDING → lock → LOCKED → approve → ADMIN_APPROVED → pay → PAID. (UI may label ADMIN_APPROVED as Approved.)",
+  "suppliers": [
+    {
+      "name": "Nordic Timber Collective AB",
+      "email": "procurement@nordictimber.demo",
+      "phone": "+46 8 555 0142",
+      "address": "Boxholmsvägen 12, 124 59 Stockholm, Sweden",
+      "contactPerson": "Erik Lindström",
+      "status": "active",
+      "rating": 4.7
+    },
+    {
+      "name": "Baltic Plywood Imports GmbH",
+      "email": "sales@balticply.demo",
+      "phone": "+49 30 8899 2201",
+      "address": "Hafenstraße 4, 18055 Rostock, Germany",
+      "contactPerson": "Katrin Vogel",
+      "status": "active",
+      "rating": 4.2
+    },
+    {
+      "name": "Metro Fasteners Ltd",
+      "email": "orders@metrofasteners.demo",
+      "phone": "+44 161 770 8890",
+      "address": "Unit 7 Trafford Park, Manchester M17 1WA, UK",
+      "contactPerson": "James O'Connor",
+      "status": "active",
+      "rating": 4.5
+    },
+    {
+      "name": "Prima Upholstery Supply",
+      "email": "quotes@primaupholstery.demo",
+      "phone": "+1 704 555 0198",
+      "address": "1820 Textile Row, High Point, NC 27260, USA",
+      "contactPerson": "Maria Santos",
+      "status": "active",
+      "rating": 4.8
+    },
+    {
+      "name": "EuroFinish Coatings SA",
+      "email": "b2b@eurofinish.demo",
+      "phone": "+33 4 72 55 10 33",
+      "address": "Zone Industrielle Nord, 69150 Décines, France",
+      "contactPerson": "Luc Moreau",
+      "status": "active",
+      "rating": 4.0
+    },
+    {
+      "name": "Anchor Steel & Hardware Co.",
+      "email": "supply@anchorsteel.demo",
+      "phone": "+1 412 555 0144",
+      "address": "450 Riverfront Drive, Pittsburgh, PA 15222, USA",
+      "contactPerson": "Dana Williams",
+      "status": "active",
+      "rating": 4.3
+    },
+    {
+      "name": "GreenField Sustainable Timber",
+      "email": "forest@greenfieldtimber.demo",
+      "phone": "+1 503 555 0177",
+      "address": "2200 Evergreen Way, Eugene, OR 97401, USA",
+      "contactPerson": "Noah Chen",
+      "status": "active",
+      "rating": 4.6
+    },
+    {
+      "name": "Cascade Logistics Materials",
+      "email": "vendor@cascadelogistics.demo",
+      "phone": "+1 206 555 0120",
+      "address": "800 Terminal Ave S, Seattle, WA 98134, USA",
+      "contactPerson": "Riley Patel",
+      "status": "active",
+      "rating": 3.9
+    }
+  ],
+  "quotes": [
+    {
+      "seedSlug": "oak-nordic-pending",
+      "supplierEmail": "procurement@nordictimber.demo",
+      "inventoryItemName": "European Oak Planks — Select Grade",
+      "description": "European oak planks — select grade, 420 bd_ft equivalent next delivery",
+      "quantity": 420,
+      "unitPrice": 8.95,
+      "status": "PENDING",
+      "validUntil": "2026-05-30T23:59:59.000Z",
+      "notes": "Spot quote; subject to mill availability."
+    },
+    {
+      "seedSlug": "oak-greenfield-pending",
+      "supplierEmail": "forest@greenfieldtimber.demo",
+      "inventoryItemName": "European Oak Planks — Select Grade",
+      "description": "FSC-certified oak, same grade — competitive bid",
+      "quantity": 420,
+      "unitPrice": 8.2,
+      "status": "PENDING",
+      "validUntil": "2026-06-15T23:59:59.000Z",
+      "notes": "Lower unit rate; longer lead time."
+    },
+    {
+      "seedSlug": "ply-baltic-pending",
+      "supplierEmail": "sales@balticply.demo",
+      "description": "Birch plywood 18mm, 120 sheets",
+      "quantity": 120,
+      "unitPrice": 42.5,
+      "status": "PENDING",
+      "validUntil": "2026-04-20T23:59:59.000Z",
+      "notes": null
+    },
+    {
+      "seedSlug": "fabric-prima-locked",
+      "supplierEmail": "quotes@primaupholstery.demo",
+      "inventoryItemName": "Upholstery Fabric Roll — Charcoal Weave",
+      "description": "Charcoal weave upholstery fabric, 95 linear metres",
+      "quantity": 95,
+      "unitPrice": 21.75,
+      "status": "LOCKED",
+      "validUntil": "2026-05-01T23:59:59.000Z",
+      "lockedAt": "2026-02-10T14:30:00.000Z",
+      "notes": "Price locked pending legal review."
+    },
+    {
+      "seedSlug": "nails-metro-locked",
+      "supplierEmail": "orders@metrofasteners.demo",
+      "inventoryItemName": "Galvanized Brad Nails — 18ga 32mm",
+      "description": "Brad nails 18ga — 200 boxes (10k pcs/box contract)",
+      "quantity": 200,
+      "unitPrice": 6.15,
+      "status": "LOCKED",
+      "validUntil": "2026-04-30T23:59:59.000Z",
+      "lockedAt": "2026-02-12T09:00:00.000Z",
+      "notes": null
+    },
+    {
+      "seedSlug": "walnut-cascade-locked",
+      "supplierEmail": "vendor@cascadelogistics.demo",
+      "inventoryItemName": "Black Walnut Boards — Kiln Dried",
+      "description": "Black walnut boards kiln dried, 185 bd_ft",
+      "quantity": 185,
+      "unitPrice": 15.4,
+      "status": "LOCKED",
+      "validUntil": "2026-05-10T23:59:59.000Z",
+      "lockedAt": "2026-02-14T16:45:00.000Z",
+      "notes": "Consolidated shipment with other SKUs."
+    },
+    {
+      "seedSlug": "polish-euro-approved",
+      "supplierEmail": "b2b@eurofinish.demo",
+      "inventoryItemName": "Polyurethane Wood Polish — Matte 1L",
+      "description": "Matte PU wood polish 1L cans — 60 unit lot",
+      "quantity": 60,
+      "unitPrice": 10.85,
+      "status": "ADMIN_APPROVED",
+      "validUntil": "2026-06-01T23:59:59.000Z",
+      "lockedAt": "2026-01-28T11:00:00.000Z",
+      "approvedAt": "2026-02-01T10:15:00.000Z",
+      "notes": "Approved for Q2 finishing line."
+    },
+    {
+      "seedSlug": "fabric-linen-prima-approved",
+      "supplierEmail": "quotes@primaupholstery.demo",
+      "inventoryItemName": "Linen Blend Fabric — Natural",
+      "description": "Natural linen blend — 72 linear metres",
+      "quantity": 72,
+      "unitPrice": 19.25,
+      "status": "ADMIN_APPROVED",
+      "validUntil": "2026-05-20T23:59:59.000Z",
+      "lockedAt": "2026-02-05T13:20:00.000Z",
+      "approvedAt": "2026-02-08T08:00:00.000Z",
+      "notes": null
+    },
+    {
+      "seedSlug": "steel-anchor-approved",
+      "supplierEmail": "supply@anchorsteel.demo",
+      "inventoryItemName": "Steel Finish Nails — 16ga 45mm",
+      "description": "Finish nails 16ga — 100 boxes",
+      "quantity": 100,
+      "unitPrice": 7.55,
+      "status": "ADMIN_APPROVED",
+      "validUntil": "2026-04-25T23:59:59.000Z",
+      "lockedAt": "2026-02-03T15:00:00.000Z",
+      "approvedAt": "2026-02-06T12:00:00.000Z",
+      "notes": null
+    },
+    {
+      "seedSlug": "oak-nordic-paid",
+      "supplierEmail": "procurement@nordictimber.demo",
+      "description": "Oak planks — prior PO #2025-884 (historical paid line)",
+      "quantity": 300,
+      "unitPrice": 8.5,
+      "status": "PAID",
+      "validUntil": "2025-12-31T23:59:59.000Z",
+      "lockedAt": "2025-11-15T10:00:00.000Z",
+      "approvedAt": "2025-11-18T14:00:00.000Z",
+      "paidAt": "2025-11-25T09:30:00.000Z",
+      "notes": "Paid in full — reference for margin analysis."
+    },
+    {
+      "seedSlug": "wax-eurofinish-paid",
+      "supplierEmail": "b2b@eurofinish.demo",
+      "inventoryItemName": "Hard Wax Oil — Satin 500ml",
+      "description": "Hard wax oil satin 500ml — 40 bottles",
+      "quantity": 40,
+      "unitPrice": 18.9,
+      "status": "PAID",
+      "validUntil": "2026-01-31T23:59:59.000Z",
+      "lockedAt": "2026-01-05T11:30:00.000Z",
+      "approvedAt": "2026-01-08T16:00:00.000Z",
+      "paidAt": "2026-01-12T10:00:00.000Z",
+      "notes": "Net 30 — settled."
+    }
+  ]
+}

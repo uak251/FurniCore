@@ -1,0 +1,597 @@
+{
+  "meta": {
+    "title": "FurniCore demo activity logs and notifications",
+    "prerequisite": "seed-demo-users should run first so user emails resolve to real IDs. Logs whose userEmail is not found are still inserted with userId = null.",
+    "idempotency": "Activity logs are deleted WHERE description LIKE '[demo-seed:activity]%'. Notifications are deleted WHERE message LIKE '[demo-seed:notify]%'. Both are then re-inserted on each run.",
+    "notificationTypes": ["info", "success", "warning", "error"],
+    "activityModules": ["inventory", "products", "suppliers", "quotes", "users", "accounting", "journal", "payroll", "manufacturing", "production", "hr", "accounts", "accruals", "auth", "settings"],
+    "activityActions": ["CREATE", "UPDATE", "DELETE", "APPROVE", "LOCK", "PAY", "GENERATE", "DEACTIVATE", "REVIEW", "LOGIN"]
+  },
+  "activityLogs": [
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "accounts",
+      "description": "[demo-seed:activity] Seeded 21 standard Chart of Accounts entries",
+      "oldData": null,
+      "newData": { "count": 21, "firstCode": "1000", "lastCode": "6900" },
+      "createdAt": "2026-01-02T08:05:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "users",
+      "description": "[demo-seed:activity] Created user alice.chen@furnicore.demo (customer)",
+      "oldData": null,
+      "newData": { "name": "Alice Chen", "email": "alice.chen@furnicore.demo", "role": "customer", "isVerified": true },
+      "createdAt": "2026-01-03T09:12:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "users",
+      "description": "[demo-seed:activity] Created user bob.martinez@furnicore.demo (customer)",
+      "oldData": null,
+      "newData": { "name": "Bob Martinez", "email": "bob.martinez@furnicore.demo", "role": "customer", "isVerified": true },
+      "createdAt": "2026-01-03T09:14:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Created inventory item Oak Timber (500 board-ft)",
+      "oldData": null,
+      "newData": { "name": "Oak Timber", "type": "raw_material", "unit": "board-ft", "quantity": "500", "reorderLevel": "50", "unitCost": "4.50" },
+      "createdAt": "2026-01-04T10:00:00.000Z"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "action": "CREATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Created inventory item Upholstery Fabric — Charcoal Grey (120 meters)",
+      "oldData": null,
+      "newData": { "name": "Upholstery Fabric - Charcoal Grey", "type": "raw_material", "unit": "meter", "quantity": "120", "reorderLevel": "15", "unitCost": "12.00" },
+      "createdAt": "2026-01-04T10:30:00.000Z"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "action": "CREATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Created inventory item Pine Plank (300 board-ft)",
+      "oldData": null,
+      "newData": { "name": "Pine Plank", "type": "raw_material", "unit": "board-ft", "quantity": "300", "reorderLevel": "30", "unitCost": "2.80" },
+      "createdAt": "2026-01-04T10:45:00.000Z"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "action": "CREATE",
+      "module": "products",
+      "description": "[demo-seed:activity] Created product Luxury 6-Seater Dining Table (SKU: TBL-LUX-001)",
+      "oldData": null,
+      "newData": { "name": "Luxury 6-Seater Dining Table", "sku": "TBL-LUX-001", "category": "Dining", "sellingPrice": "1800.00", "costPrice": "850.00" },
+      "createdAt": "2026-01-05T11:00:00.000Z"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "action": "CREATE",
+      "module": "products",
+      "description": "[demo-seed:activity] Created product Office Executive Desk (SKU: DSK-EXC-001)",
+      "oldData": null,
+      "newData": { "name": "Office Executive Desk", "sku": "DSK-EXC-001", "category": "Office", "sellingPrice": "1200.00", "costPrice": "540.00" },
+      "createdAt": "2026-01-05T11:20:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "hr",
+      "description": "[demo-seed:activity] Created employee Sam Rivera (worker, Production dept.)",
+      "oldData": null,
+      "newData": { "name": "Sam Rivera", "role": "worker", "department": "Production", "position": "Furniture Craftsman" },
+      "createdAt": "2026-01-06T08:30:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "suppliers",
+      "description": "[demo-seed:activity] Created supplier Hardwood Supply Co.",
+      "oldData": null,
+      "newData": { "name": "Hardwood Supply Co.", "email": "orders@hardwoodsupply.demo", "status": "active", "rating": 4 },
+      "createdAt": "2026-01-07T09:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "CREATE",
+      "module": "suppliers",
+      "description": "[demo-seed:activity] Created supplier FabricPlus Ltd.",
+      "oldData": null,
+      "newData": { "name": "FabricPlus Ltd.", "email": "sales@fabricplus.demo", "status": "active", "rating": 4 },
+      "createdAt": "2026-01-07T09:15:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "LOGIN",
+      "module": "auth",
+      "description": "[demo-seed:activity] User amira.hassan@furnicore.demo logged in",
+      "oldData": null,
+      "newData": null,
+      "createdAt": "2026-01-08T08:02:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "CREATE",
+      "module": "journal",
+      "description": "[demo-seed:activity] Created JE JE-DEMO-2026-001 (posted) — Owner capital contribution $250,000",
+      "oldData": null,
+      "newData": { "entryNumber": "JE-DEMO-2026-001", "status": "posted", "totalDebit": 250000, "totalCredit": 250000 },
+      "createdAt": "2026-01-08T09:00:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "CREATE",
+      "module": "journal",
+      "description": "[demo-seed:activity] Created JE JE-DEMO-2026-002 (posted) — Workshop equipment purchase $50,000",
+      "oldData": null,
+      "newData": { "entryNumber": "JE-DEMO-2026-002", "status": "posted", "totalDebit": 50000, "totalCredit": 50000 },
+      "createdAt": "2026-01-08T09:30:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "CREATE",
+      "module": "quotes",
+      "description": "[demo-seed:activity] New quote from Hardwood Supply Co. — Oak Timber 200 board-ft @ $4.50",
+      "oldData": null,
+      "newData": { "supplierName": "Hardwood Supply Co.", "description": "Oak Timber", "quantity": 200, "unitPrice": 4.50, "totalPrice": 900, "status": "PENDING" },
+      "createdAt": "2026-01-09T10:00:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "LOCK",
+      "module": "quotes",
+      "description": "[demo-seed:activity] Locked quote from Hardwood Supply Co. — price confirmed",
+      "oldData": { "status": "PENDING" },
+      "newData": { "status": "LOCKED", "lockedAt": "2026-01-10T11:00:00.000Z" },
+      "createdAt": "2026-01-10T11:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "APPROVE",
+      "module": "quotes",
+      "description": "[demo-seed:activity] Approved quote from Hardwood Supply Co. — total $900.00",
+      "oldData": { "status": "LOCKED" },
+      "newData": { "status": "ADMIN_APPROVED", "approvedAt": "2026-01-11T09:00:00.000Z" },
+      "createdAt": "2026-01-11T09:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "PAY",
+      "module": "quotes",
+      "description": "[demo-seed:activity] Paid quote from Hardwood Supply Co. — $900.00 disbursed",
+      "oldData": { "status": "ADMIN_APPROVED" },
+      "newData": { "status": "PAID", "paidAt": "2026-01-12T10:00:00.000Z" },
+      "createdAt": "2026-01-12T10:00:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "CREATE",
+      "module": "manufacturing",
+      "description": "[demo-seed:activity] Created task: Manufacture Dining Table Set — ORD-DEMO-2026-001",
+      "oldData": null,
+      "newData": { "title": "Manufacture Dining Table Set — ORD-DEMO-2026-001", "status": "pending", "priority": "high", "assignedTo": "sam.rivera@furnicore.demo" },
+      "createdAt": "2026-01-14T09:00:00.000Z"
+    },
+    {
+      "userEmail": "sam.rivera@furnicore.demo",
+      "action": "UPDATE",
+      "module": "production",
+      "description": "[demo-seed:activity] Started production task: Manufacture Dining Table Set — status pending → in_progress",
+      "oldData": { "status": "pending" },
+      "newData": { "status": "in_progress", "startedAt": "2026-01-15T08:00:00.000Z" },
+      "createdAt": "2026-01-15T08:00:00.000Z"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "action": "UPDATE",
+      "module": "products",
+      "description": "[demo-seed:activity] Updated product Office Executive Desk — selling price $1,100 → $1,200",
+      "oldData": { "name": "Office Executive Desk", "sellingPrice": "1100.00" },
+      "newData": { "name": "Office Executive Desk", "sellingPrice": "1200.00" },
+      "createdAt": "2026-01-16T14:00:00.000Z"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "action": "UPDATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Updated inventory item Oak Timber — quantity 500 → 44 board-ft (below reorder level of 50)",
+      "oldData": { "name": "Oak Timber", "quantity": "500", "reorderLevel": "50" },
+      "newData": { "name": "Oak Timber", "quantity": "44", "reorderLevel": "50" },
+      "createdAt": "2026-01-20T15:30:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "GENERATE",
+      "module": "payroll",
+      "description": "[demo-seed:activity] Generated payroll for January 2026 — 8 employee records",
+      "oldData": null,
+      "newData": { "month": 1, "year": 2026, "employeeCount": 8, "totalGross": 42000 },
+      "createdAt": "2026-01-31T16:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "APPROVE",
+      "module": "payroll",
+      "description": "[demo-seed:activity] Approved payroll for January 2026 — $42,000 gross",
+      "oldData": { "status": "pending" },
+      "newData": { "status": "approved", "approvedAt": "2026-02-01T09:00:00.000Z" },
+      "createdAt": "2026-02-01T09:00:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "CREATE",
+      "module": "accounting",
+      "description": "[demo-seed:activity] Created transaction: February warehouse rent ($12,000)",
+      "oldData": null,
+      "newData": { "type": "expense", "category": "Rent", "amount": "12000.00", "transactionDate": "2026-02-28" },
+      "createdAt": "2026-02-28T12:00:00.000Z"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "action": "UPDATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Updated inventory item Upholstery Fabric — quantity 120 → 11 meters (below reorder level of 15)",
+      "oldData": { "name": "Upholstery Fabric - Charcoal Grey", "quantity": "120", "reorderLevel": "15" },
+      "newData": { "name": "Upholstery Fabric - Charcoal Grey", "quantity": "11", "reorderLevel": "15" },
+      "createdAt": "2026-03-05T10:00:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "UPDATE",
+      "module": "suppliers",
+      "description": "[demo-seed:activity] Updated supplier FabricPlus Ltd. — contact person and phone updated",
+      "oldData": { "contactPerson": "Tom Harris", "phone": "+1-312-555-0100" },
+      "newData": { "contactPerson": "Maria Solis", "phone": "+1-312-555-0199" },
+      "createdAt": "2026-03-06T11:30:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "CREATE",
+      "module": "quotes",
+      "description": "[demo-seed:activity] New quote from FabricPlus Ltd. — Upholstery Fabric 60 m @ $12.00",
+      "oldData": null,
+      "newData": { "supplierName": "FabricPlus Ltd.", "description": "Upholstery Fabric - Charcoal Grey", "quantity": 60, "unitPrice": 12.00, "totalPrice": 720, "status": "PENDING" },
+      "createdAt": "2026-03-07T09:30:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "LOCK",
+      "module": "quotes",
+      "description": "[demo-seed:activity] Locked quote from FabricPlus Ltd. — awaiting admin approval",
+      "oldData": { "status": "PENDING" },
+      "newData": { "status": "LOCKED", "lockedAt": "2026-03-08T10:00:00.000Z" },
+      "createdAt": "2026-03-08T10:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "APPROVE",
+      "module": "quotes",
+      "description": "[demo-seed:activity] Approved quote from FabricPlus Ltd. — $720.00",
+      "oldData": { "status": "LOCKED" },
+      "newData": { "status": "ADMIN_APPROVED", "approvedAt": "2026-03-09T09:00:00.000Z" },
+      "createdAt": "2026-03-09T09:00:00.000Z"
+    },
+    {
+      "userEmail": "sam.rivera@furnicore.demo",
+      "action": "REVIEW",
+      "module": "production",
+      "description": "[demo-seed:activity] Quality review completed for task: Manufacture Dining Table Set — PASSED",
+      "oldData": { "status": "in_progress" },
+      "newData": { "status": "quality_check", "reviewedAt": "2026-03-10T14:00:00.000Z", "result": "passed" },
+      "createdAt": "2026-03-10T14:00:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "CREATE",
+      "module": "accruals",
+      "description": "[demo-seed:activity] Created accrued_income accrual: Custom installation services — Alice Chen ($15,000)",
+      "oldData": null,
+      "newData": { "type": "accrued_income", "amount": "15000.00", "status": "pending", "accrualDate": "2026-03-15" },
+      "createdAt": "2026-03-15T09:00:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "UPDATE",
+      "module": "accruals",
+      "description": "[demo-seed:activity] Recognized accrual: Custom installation services — $15,000 revenue recognized",
+      "oldData": { "status": "pending" },
+      "newData": { "status": "recognized", "recognitionDate": "2026-03-20" },
+      "createdAt": "2026-03-20T10:00:00.000Z"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "action": "UPDATE",
+      "module": "inventory",
+      "description": "[demo-seed:activity] Updated inventory item Pine Plank — quantity 300 → 22 board-ft (below reorder level of 30)",
+      "oldData": { "name": "Pine Plank", "quantity": "300", "reorderLevel": "30" },
+      "newData": { "name": "Pine Plank", "quantity": "22", "reorderLevel": "30" },
+      "createdAt": "2026-03-22T11:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "UPDATE",
+      "module": "settings",
+      "description": "[demo-seed:activity] Updated setting COMPANY_NAME = FurniCore Manufacturing Ltd.",
+      "oldData": { "COMPANY_NAME": "FurniCore" },
+      "newData": { "COMPANY_NAME": "FurniCore Manufacturing Ltd." },
+      "createdAt": "2026-03-25T08:30:00.000Z"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "action": "DELETE",
+      "module": "products",
+      "description": "[demo-seed:activity] Deleted product Discontinued Folding Stool (SKU: STL-DIS-099) — end-of-life",
+      "oldData": { "name": "Discontinued Folding Stool", "sku": "STL-DIS-099", "category": "Seating", "sellingPrice": "89.00" },
+      "newData": null,
+      "createdAt": "2026-03-28T13:00:00.000Z"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "action": "UPDATE",
+      "module": "manufacturing",
+      "description": "[demo-seed:activity] Updated task: Manufacture Custom L-Shaped Sofa (ORD-DEMO-2026-003) — status pending → in_progress",
+      "oldData": { "title": "Manufacture Custom L-Shaped Sofa", "status": "pending" },
+      "newData": { "title": "Manufacture Custom L-Shaped Sofa", "status": "in_progress" },
+      "createdAt": "2026-04-01T09:00:00.000Z"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "action": "DEACTIVATE",
+      "module": "hr",
+      "description": "[demo-seed:activity] Deactivated employee Jordan Ellis — on leave pending contract review",
+      "oldData": { "name": "Jordan Ellis", "isActive": true },
+      "newData": { "name": "Jordan Ellis", "isActive": false },
+      "createdAt": "2026-04-02T10:00:00.000Z"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "action": "GENERATE",
+      "module": "payroll",
+      "description": "[demo-seed:activity] Generated payroll for March 2026 — 7 employee records",
+      "oldData": null,
+      "newData": { "month": 3, "year": 2026, "employeeCount": 7, "totalGross": 38500 },
+      "createdAt": "2026-04-05T16:00:00.000Z"
+    }
+  ],
+  "notifications": [
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "Supplier Quote Awaiting Approval",
+      "message": "[demo-seed:notify] Hardwood Supply Co. submitted a quote for Oak Timber (200 board-ft @ $4.50). Review and approve to proceed.",
+      "type": "info",
+      "isRead": false,
+      "link": "/quotes"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "Low Stock Alert — Oak Timber",
+      "message": "[demo-seed:notify] Oak Timber inventory has dropped to 44 board-ft, below the reorder level of 50. Consider placing a purchase order.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/inventory"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "Payroll Ready for Approval",
+      "message": "[demo-seed:notify] January 2026 payroll has been generated for 8 employees totalling $42,000 gross. Awaiting your approval.",
+      "type": "info",
+      "isRead": true,
+      "link": "/payroll"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "New Customer Account Created",
+      "message": "[demo-seed:notify] A new customer account was registered for alice.chen@furnicore.demo. Review the profile if needed.",
+      "type": "info",
+      "isRead": true,
+      "link": "/users"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "Invoice Overdue — Emma Wilson",
+      "message": "[demo-seed:notify] Invoice INV-DEMO-2026-005 for Emma Wilson ($1,193.50) was due on 20 Mar 2026 and remains unpaid.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "title": "Quote Approved — FabricPlus Ltd.",
+      "message": "[demo-seed:notify] You approved the FabricPlus Ltd. quote for Upholstery Fabric ($720.00). Proceed to payment.",
+      "type": "success",
+      "isRead": true,
+      "link": "/quotes"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "title": "New Supplier Quote Submitted",
+      "message": "[demo-seed:notify] FabricPlus Ltd. submitted a new quote for Upholstery Fabric (60 m @ $12.00). Lock the price to proceed.",
+      "type": "info",
+      "isRead": false,
+      "link": "/quotes"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "title": "New Customer Order — David Johnson",
+      "message": "[demo-seed:notify] Order ORD-DEMO-2026-004 placed by David Johnson for a King Bedroom Set ($4,057.90). Confirm to start production.",
+      "type": "info",
+      "isRead": true,
+      "link": "/sales-manager/orders"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "title": "Production Task Completed — Dining Table Set",
+      "message": "[demo-seed:notify] Manufacturing task for ORD-DEMO-2026-001 (Dining Table Set) passed quality check and is ready for dispatch.",
+      "type": "success",
+      "isRead": true,
+      "link": "/manufacturing"
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "title": "Supplier Contact Updated — FabricPlus Ltd.",
+      "message": "[demo-seed:notify] FabricPlus Ltd. contact details were updated. New contact: Maria Solis (+1-312-555-0199). Verify for future orders.",
+      "type": "info",
+      "isRead": false,
+      "link": "/suppliers"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "title": "Low Stock Alert — Oak Timber",
+      "message": "[demo-seed:notify] Oak Timber is now at 44 board-ft, below the reorder level of 50. A new supplier quote has been requested.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/inventory"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "title": "Low Stock Alert — Upholstery Fabric",
+      "message": "[demo-seed:notify] Upholstery Fabric (Charcoal Grey) is at 11 meters — below the reorder level of 15. Current production orders are at risk.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/inventory"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "title": "Low Stock Alert — Pine Plank",
+      "message": "[demo-seed:notify] Pine Plank inventory dropped to 22 board-ft, below the reorder level of 30. Coordinate with procurement.",
+      "type": "warning",
+      "isRead": true,
+      "link": "/inventory"
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "title": "New Purchase Order Approved",
+      "message": "[demo-seed:notify] Quote for Upholstery Fabric from FabricPlus Ltd. was approved ($720.00). Expect restocking within 5–7 days.",
+      "type": "success",
+      "isRead": true,
+      "link": "/quotes"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "title": "Invoice Overdue — Emma Wilson",
+      "message": "[demo-seed:notify] Invoice INV-DEMO-2026-005 ($1,193.50) was due on 20 Mar 2026. A follow-up was sent on 25 Mar. No payment received.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "title": "Journal Entry Posted — Capital Contribution",
+      "message": "[demo-seed:notify] JE-DEMO-2026-001 (Owner capital contribution $250,000) has been posted and is now reflected in the trial balance.",
+      "type": "info",
+      "isRead": true,
+      "link": "/accounting/journal-entries"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "title": "Payroll Generated — January 2026",
+      "message": "[demo-seed:notify] January 2026 payroll for 8 employees ($42,000 gross) has been generated and submitted for approval.",
+      "type": "info",
+      "isRead": true,
+      "link": "/payroll"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "title": "Accrual Recognized — Installation Services",
+      "message": "[demo-seed:notify] Accrued income of $15,000 for custom installation services (Alice Chen) has been recognized and journalized.",
+      "type": "success",
+      "isRead": true,
+      "link": "/accounting/accruals"
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "title": "Invoice Receivable — Bob Martinez",
+      "message": "[demo-seed:notify] Invoice INV-DEMO-2026-002 ($2,170.00) has been sent to Bob Martinez. Due date: 1 May 2026.",
+      "type": "info",
+      "isRead": false,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "title": "Payment Received — Alice Chen",
+      "message": "[demo-seed:notify] Invoice INV-DEMO-2026-001 ($4,231.50) paid in full by Alice Chen via Bank Transfer (Ref: TXN-BNK-2026-8812).",
+      "type": "success",
+      "isRead": true,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "title": "New Order Placed — Carol Smith",
+      "message": "[demo-seed:notify] Carol Smith placed order ORD-DEMO-2026-003 for a Custom L-Shaped Sofa ($3,472.00). Confirm and queue for production.",
+      "type": "info",
+      "isRead": true,
+      "link": "/sales-manager/orders"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "title": "Invoice Overdue — Emma Wilson",
+      "message": "[demo-seed:notify] Deposit invoice INV-DEMO-2026-005 for Emma Wilson ($1,193.50) passed its due date on 20 Mar 2026. Action required.",
+      "type": "warning",
+      "isRead": false,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "title": "Order Shipped — Bob Martinez",
+      "message": "[demo-seed:notify] ORD-DEMO-2026-002 for Bob Martinez has been dispatched via FurniFreight (FF-2026-90134). ETA 20 Apr 2026.",
+      "type": "success",
+      "isRead": true,
+      "link": "/sales-manager/orders"
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "title": "Payment Received — Carol Smith",
+      "message": "[demo-seed:notify] Invoice INV-DEMO-2026-008 ($1,497.30) paid by Carol Smith via Credit Card (Ref: CC-AUTH-2026-55029) on delivery.",
+      "type": "success",
+      "isRead": true,
+      "link": "/sales-manager/invoices"
+    },
+    {
+      "userEmail": "chloe.park@furnicore.demo",
+      "title": "Your Order Has Been Confirmed",
+      "message": "[demo-seed:notify] Your order has been received and confirmed by our team. We will update you when production begins.",
+      "type": "info",
+      "isRead": true,
+      "link": "/customer-portal/orders"
+    },
+    {
+      "userEmail": "chloe.park@furnicore.demo",
+      "title": "Production Has Started on Your Order",
+      "message": "[demo-seed:notify] Great news! Your furniture order is now in production. Estimated completion in 3–4 weeks.",
+      "type": "info",
+      "isRead": true,
+      "link": "/customer-portal/orders"
+    },
+    {
+      "userEmail": "chloe.park@furnicore.demo",
+      "title": "Quality Check Passed — Your Order is Ready",
+      "message": "[demo-seed:notify] Your order passed our quality inspection and is scheduled for delivery soon. Thank you for your patience!",
+      "type": "success",
+      "isRead": false,
+      "link": "/customer-portal/orders"
+    },
+    {
+      "userEmail": "alice.chen@furnicore.demo",
+      "title": "Your Order Has Been Delivered",
+      "message": "[demo-seed:notify] ORD-DEMO-2026-001 has been delivered to your address on 12 Feb 2026. We hope you love your new dining set!",
+      "type": "success",
+      "isRead": true,
+      "link": "/customer-portal/orders"
+    },
+    {
+      "userEmail": "alice.chen@furnicore.demo",
+      "title": "Invoice Ready — INV-DEMO-2026-001",
+      "message": "[demo-seed:notify] Your invoice for the Luxury Dining Table Set ($4,231.50) is ready. Payment was received successfully. Thank you!",
+      "type": "info",
+      "isRead": true,
+      "link": "/customer-portal/invoices"
+    }
+  ]
+}

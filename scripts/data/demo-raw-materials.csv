@@ -1,0 +1,9 @@
+name,type,unit,quantity,reorderLevel,unitCost,imagePlaceholder
+European Oak Planks — Select Grade,raw_material,bd_ft,420,120,8.75,https://placehold.co/640x400/f1f5f9/475569?text=Oak+Planks
+Black Walnut Boards — Kiln Dried,raw_material,bd_ft,185,60,14.2,https://placehold.co/640x400/292524/d6d3d1?text=Walnut+Boards
+Upholstery Fabric Roll — Charcoal Weave,raw_material,linear_m,95,28,22.5,https://placehold.co/640x400/334155/e2e8f0?text=Fabric+Charcoal
+Linen Blend Fabric — Natural,raw_material,linear_m,72,24,18.9,https://placehold.co/640x400/f5f5dc/78716c?text=Linen+Fabric
+Galvanized Brad Nails — 18ga 32mm,raw_material,box,140,40,6.4,https://placehold.co/640x400/94a3b8/0f172a?text=Brad+Nails
+Steel Finish Nails — 16ga 45mm,raw_material,box,88,30,7.85,https://placehold.co/640x400/64748b/f8fafc?text=Finish+Nails
+Polyurethane Wood Polish — Matte 1L,raw_material,can,56,18,11.25,https://placehold.co/640x400/b45309/fff7ed?text=Matte+Polish
+Hard Wax Oil — Satin 500ml,raw_material,bottle,44,14,19.6,https://placehold.co/640x400/78350f/ffedd5?text=Wax+Oil+Satin

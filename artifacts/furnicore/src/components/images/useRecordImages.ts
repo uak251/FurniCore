@@ -43,7 +43,13 @@ function mergeAuthHeaders(init?: HeadersInit): Headers {
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const url = resolveApiPath(path);
+  const isFormData =
+    typeof FormData !== "undefined" && init?.body != null && init.body instanceof FormData;
   const headers = mergeAuthHeaders(init?.headers);
+  /* multipart/form-data must set boundary automatically — never send application/json */
+  if (isFormData) {
+    headers.delete("Content-Type");
+  }
   const r = await fetch(url, { credentials: "include", ...init, headers });
   if (!r.ok) {
     const e = await r.json().catch(() => ({})) as { message?: string; error?: string };

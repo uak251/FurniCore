@@ -1,0 +1,214 @@
+{
+  "meta": {
+    "title": "FurniCore demo accounting — double-entry journal entries",
+    "prerequisite": "Chart of accounts must exist (POST /accounts/seed as admin, or equivalent). Uses standard codes from accounts seed: 1000–6900.",
+    "reportMapping": {
+      "trialBalance": "All posted journal lines through `asOf` aggregate per account (debit/credit totals and signed balance). Includes every account type that has activity.",
+      "profitAndLoss": "Posted lines on income/expense accounts (4000–6900) with `date` between `from` and `to`. Operating activity is dated in 2026; the year-end closing entry is dated 2027-01-02 so P&L for calendar 2026 excludes closing and shows operating revenue and expenses only.",
+      "balanceSheet": "Posted lines on asset, liability, and equity accounts (1000–3100) with `date` <= `asOf`. Before closing, assets exceed liabilities+equity by the amount of net income still sitting in P&L accounts. Use `asOf` on or after 2027-01-02 (after the closing entry) for a balanced sheet with Retained Earnings reflecting net income.",
+      "cashBook": "Sums the `transactions` table (income vs expense types), not journal lines. Optional demo rows are included for the cash-book report."
+    }
+  },
+  "journalEntries": [
+    {
+      "entryNumber": "JE-DEMO-2026-001",
+      "date": "2026-01-05",
+      "description": "Owner capital contribution",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1000", "debit": 250000, "credit": 0, "description": "Cash funding" },
+        { "accountCode": "3000", "debit": 0, "credit": 250000, "description": "Owner's equity" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-002",
+      "date": "2026-01-08",
+      "description": "Purchase of workshop equipment (capitalized)",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1500", "debit": 50000, "credit": 0, "description": "Fixed assets" },
+        { "accountCode": "1000", "debit": 0, "credit": 50000, "description": "Cash paid" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-003",
+      "date": "2026-01-10",
+      "description": "Inventory purchase on credit",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1200", "debit": 90000, "credit": 0, "description": "Inventory received" },
+        { "accountCode": "2000", "debit": 0, "credit": 90000, "description": "Accounts payable" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-004",
+      "date": "2026-02-01",
+      "description": "Retail furniture sales — cash",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1000", "debit": 95000, "credit": 0, "description": "Cash receipts" },
+        { "accountCode": "4000", "debit": 0, "credit": 95000, "description": "Sales revenue" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-005",
+      "date": "2026-02-01",
+      "description": "Cost of goods sold — inventory relief",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "5000", "debit": 51000, "credit": 0, "description": "COGS" },
+        { "accountCode": "1200", "debit": 0, "credit": 51000, "description": "Inventory" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-006",
+      "date": "2026-02-28",
+      "description": "February warehouse rent",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "6100", "debit": 12000, "credit": 0, "description": "Rent expense" },
+        { "accountCode": "1000", "debit": 0, "credit": 12000, "description": "Cash" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-007",
+      "date": "2026-03-15",
+      "description": "March payroll accrual",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "6000", "debit": 28000, "credit": 0, "description": "Salaries expense" },
+        { "accountCode": "2300", "debit": 0, "credit": 28000, "description": "Salaries payable" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-008",
+      "date": "2026-03-20",
+      "description": "Payroll cash disbursement",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "2300", "debit": 28000, "credit": 0, "description": "Clear salaries payable" },
+        { "accountCode": "1000", "debit": 0, "credit": 28000, "description": "Cash" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-009",
+      "date": "2026-04-10",
+      "description": "Utilities — electric and water",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "6200", "debit": 3500, "credit": 0, "description": "Utilities expense" },
+        { "accountCode": "1000", "debit": 0, "credit": 3500, "description": "Cash" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-010",
+      "date": "2026-05-05",
+      "description": "Digital marketing campaign",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "6400", "debit": 4200, "credit": 0, "description": "Marketing expense" },
+        { "accountCode": "1000", "debit": 0, "credit": 4200, "description": "Cash" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-011",
+      "date": "2026-05-20",
+      "description": "Custom installation — billed to customer",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1100", "debit": 15000, "credit": 0, "description": "Accounts receivable" },
+        { "accountCode": "4100", "debit": 0, "credit": 15000, "description": "Service revenue" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-012",
+      "date": "2026-06-01",
+      "description": "Collection on service invoice",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "1000", "debit": 15000, "credit": 0, "description": "Cash" },
+        { "accountCode": "1100", "debit": 0, "credit": 15000, "description": "Accounts receivable" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-013",
+      "date": "2026-06-15",
+      "description": "Payment to suppliers on account",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "2000", "debit": 90000, "credit": 0, "description": "Accounts payable" },
+        { "accountCode": "1000", "debit": 0, "credit": 90000, "description": "Cash" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2026-014",
+      "date": "2026-06-30",
+      "description": "Monthly depreciation on equipment",
+      "referenceType": "manual",
+      "lines": [
+        { "accountCode": "6300", "debit": 2000, "credit": 0, "description": "Depreciation expense" },
+        { "accountCode": "1600", "debit": 0, "credit": 2000, "description": "Accumulated depreciation" }
+      ]
+    },
+    {
+      "entryNumber": "JE-DEMO-2027-015",
+      "date": "2027-01-02",
+      "description": "Year-end close — transfer net income to retained earnings (operating year 2026)",
+      "referenceType": "manual",
+      "notes": "Closing clears P&L accounts into 3100. P&L for 2026 should use to=2026-12-31. Balance sheet asOf=2027-01-02 or later includes updated RE.",
+      "lines": [
+        { "accountCode": "4000", "debit": 95000, "credit": 0, "description": "Close sales revenue" },
+        { "accountCode": "4100", "debit": 15000, "credit": 0, "description": "Close service revenue" },
+        { "accountCode": "5000", "debit": 0, "credit": 51000, "description": "Close COGS" },
+        { "accountCode": "6000", "debit": 0, "credit": 28000, "description": "Close salaries" },
+        { "accountCode": "6100", "debit": 0, "credit": 12000, "description": "Close rent" },
+        { "accountCode": "6200", "debit": 0, "credit": 3500, "description": "Close utilities" },
+        { "accountCode": "6300", "debit": 0, "credit": 2000, "description": "Close depreciation" },
+        { "accountCode": "6400", "debit": 0, "credit": 4200, "description": "Close marketing" },
+        { "accountCode": "3100", "debit": 0, "credit": 9300, "description": "Net income to retained earnings" }
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "type": "income",
+      "category": "Sales",
+      "amount": 95000,
+      "description": "[demo-seed:accounting] Cash sale — showroom (ties to narrative; journal is source of truth for TB/P&L/BS)",
+      "transactionDate": "2026-02-01T12:00:00.000Z",
+      "accountCode": "4000"
+    },
+    {
+      "type": "expense",
+      "category": "Rent",
+      "amount": 12000,
+      "description": "[demo-seed:accounting] Warehouse rent — February",
+      "transactionDate": "2026-02-28T12:00:00.000Z",
+      "accountCode": "6100"
+    },
+    {
+      "type": "expense",
+      "category": "Payroll",
+      "amount": 28000,
+      "description": "[demo-seed:accounting] March payroll (cash payment)",
+      "transactionDate": "2026-03-20T12:00:00.000Z",
+      "accountCode": "6000"
+    },
+    {
+      "type": "income",
+      "category": "Services",
+      "amount": 15000,
+      "description": "[demo-seed:accounting] Installation services — billed",
+      "transactionDate": "2026-05-20T12:00:00.000Z",
+      "accountCode": "4100"
+    },
+    {
+      "type": "expense",
+      "category": "Marketing",
+      "amount": 4200,
+      "description": "[demo-seed:accounting] Digital ads campaign",
+      "transactionDate": "2026-05-05T12:00:00.000Z",
+      "accountCode": "6400"
+    }
+  ]
+}

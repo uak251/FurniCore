@@ -1,0 +1,553 @@
+{
+  "meta": {
+    "title": "FurniCore demo customers — orders, invoices, payments, and product progress",
+    "prerequisite": "seed-demo-users should run first (for existing demo user IDs). seed-demo-catalog is optional — if run, product_id will be resolved by SKU, otherwise left null.",
+    "password": "Demo@123456 (or DEMO_USER_PASSWORD env)",
+    "reportMapping": {
+      "receivables": "GET /sales-manager/receivables — AR aging is derived from invoices with status 'sent' or 'overdue'. Demo invoices INV-DEMO-2026-002 (sent), INV-DEMO-2026-004 (sent), and INV-DEMO-2026-005 (overdue) appear as open receivables.",
+      "orderProgress": "GET /sales-manager/orders/:id — order_updates rows (visibleToCustomer=true) show production progress visible in the customer portal.",
+      "deliveryStatus": "Tracked via customer_orders.status + order_updates. Orders ORD-DEMO-2026-001 and ORD-DEMO-2026-008 are 'delivered'. ORD-DEMO-2026-002 is 'shipped'.",
+      "customerPortal": "Customers can log in with their demo email and see their orders, invoices, and progress updates via GET /customer-portal/orders and /invoices."
+    }
+  },
+  "customers": [
+    {
+      "name": "Alice Chen",
+      "email": "alice.chen@furnicore.demo",
+      "role": "customer"
+    },
+    {
+      "name": "Bob Martinez",
+      "email": "bob.martinez@furnicore.demo",
+      "role": "customer"
+    },
+    {
+      "name": "Carol Smith",
+      "email": "carol.smith@furnicore.demo",
+      "role": "customer"
+    },
+    {
+      "name": "David Johnson",
+      "email": "david.johnson@furnicore.demo",
+      "role": "customer"
+    },
+    {
+      "name": "Emma Wilson",
+      "email": "emma.wilson@furnicore.demo",
+      "role": "customer"
+    }
+  ],
+  "orders": [
+    {
+      "orderNumber": "ORD-DEMO-2026-001",
+      "customerEmail": "alice.chen@furnicore.demo",
+      "customerName": "Alice Chen",
+      "status": "delivered",
+      "notes": "Customer requested walnut finish instead of oak. Priority delivery requested.",
+      "shippingAddress": "14 Maple Avenue, Brooklyn, NY 11201, USA",
+      "subtotal": 3900.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 331.50,
+      "totalAmount": 4231.50,
+      "estimatedDelivery": "2026-02-15T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "Luxury 6-Seater Dining Table",
+          "productSku": "TBL-LUX-001",
+          "quantity": 1,
+          "unitPrice": 1800.00,
+          "discountPercent": 0,
+          "lineTotal": 1800.00
+        },
+        {
+          "productName": "Upholstered Dining Chair",
+          "productSku": "CHR-DIN-001",
+          "quantity": 6,
+          "unitPrice": 350.00,
+          "discountPercent": 0,
+          "lineTotal": 2100.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order received and confirmed. Materials allocated — walnut veneer selected per customer request.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Table frame constructed. Upholstery fabric for chairs is being prepared.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Walnut veneer applied and sanded. Dining chairs stitched and foam-padded.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Quality inspection passed. All 6 chairs and table meet finish standards.",
+          "status": "quality_check",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Order dispatched via SpeedFreight. Tracking no: SF-2026-44821.",
+          "status": "shipped",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Delivered and signed by Alice Chen on 12 Feb 2026. Thank you for your order!",
+          "status": "delivered",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-002",
+      "customerEmail": "bob.martinez@furnicore.demo",
+      "customerName": "Bob Martinez",
+      "status": "shipped",
+      "notes": "Ergonomic chairs — lumbar support model preferred. Leave at reception if absent.",
+      "shippingAddress": "88 West Trade Center Blvd, Suite 400, Chicago, IL 60606, USA",
+      "subtotal": 2100.00,
+      "discountCode": "CORP10",
+      "discountAmount": 100.00,
+      "taxRate": 8.50,
+      "taxAmount": 170.00,
+      "totalAmount": 2170.00,
+      "estimatedDelivery": "2026-04-20T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "Office Executive Desk",
+          "productSku": "DSK-EXC-001",
+          "quantity": 1,
+          "unitPrice": 1200.00,
+          "discountPercent": 0,
+          "lineTotal": 1200.00
+        },
+        {
+          "productName": "Ergonomic Leather Chair",
+          "productSku": "CHR-ERG-001",
+          "quantity": 2,
+          "unitPrice": 450.00,
+          "discountPercent": 0,
+          "lineTotal": 900.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order confirmed. CORP10 discount applied. Materials for executive desk sourced.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Desk frame assembled, lacquered. Ergonomic chair bases and armrests assembled.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Final QC completed. Lumbar support adjustment verified on both chairs.",
+          "status": "quality_check",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Shipped via FurniFreight. Tracking no: FF-2026-90134. ETA 20 Apr 2026.",
+          "status": "shipped",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-003",
+      "customerEmail": "carol.smith@furnicore.demo",
+      "customerName": "Carol Smith",
+      "status": "in_production",
+      "notes": "Custom fabric: charcoal grey linen. Carol confirmed fabric swatch on 15 Mar 2026.",
+      "shippingAddress": "5 Sunset Ridge Drive, Austin, TX 78745, USA",
+      "subtotal": 3200.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 272.00,
+      "totalAmount": 3472.00,
+      "estimatedDelivery": "2026-05-30T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "Custom L-Shaped Sofa",
+          "productSku": "SFA-LCUS-001",
+          "quantity": 1,
+          "unitPrice": 3200.00,
+          "discountPercent": 0,
+          "lineTotal": 3200.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order confirmed. Charcoal grey linen fabric sourced and approved by Carol.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Sofa frame built. Foam padding cut to custom L-shape dimensions. Fabric stitching begins next week.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-004",
+      "customerEmail": "david.johnson@furnicore.demo",
+      "customerName": "David Johnson",
+      "status": "quality_check",
+      "notes": "VIP client. White glove delivery required. Wardrobe must include internal lighting.",
+      "shippingAddress": "200 Park Lane, Penthouse 3, Miami, FL 33101, USA",
+      "subtotal": 3940.00,
+      "discountCode": "VIP20",
+      "discountAmount": 200.00,
+      "taxRate": 8.50,
+      "taxAmount": 317.90,
+      "totalAmount": 4057.90,
+      "estimatedDelivery": "2026-04-30T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "King Bed Frame (Walnut)",
+          "productSku": "BED-KNG-001",
+          "quantity": 1,
+          "unitPrice": 1500.00,
+          "discountPercent": 0,
+          "lineTotal": 1500.00
+        },
+        {
+          "productName": "Bedside Table",
+          "productSku": "TBL-SIDE-001",
+          "quantity": 2,
+          "unitPrice": 320.00,
+          "discountPercent": 0,
+          "lineTotal": 640.00
+        },
+        {
+          "productName": "4-Door Wardrobe with Lighting",
+          "productSku": "WRD-4DR-001",
+          "quantity": 1,
+          "unitPrice": 1800.00,
+          "discountPercent": 0,
+          "lineTotal": 1800.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order confirmed for VIP client. White glove delivery and internal wardrobe lighting noted.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Bed frame and wardrobe frames under construction. LED lighting strips integrated into wardrobe.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "All three pieces assembled. QC team running finish and function checks. Lighting tested.",
+          "status": "quality_check",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-005",
+      "customerEmail": "emma.wilson@furnicore.demo",
+      "customerName": "Emma Wilson",
+      "status": "confirmed",
+      "notes": "Emma asked if natural ash wood is available. Confirmed yes on 1 Apr 2026.",
+      "shippingAddress": "37 Birchwood Crescent, Seattle, WA 98101, USA",
+      "subtotal": 1100.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 93.50,
+      "totalAmount": 1193.50,
+      "estimatedDelivery": "2026-05-15T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "Solid Ash Coffee Table",
+          "productSku": "TBL-COF-001",
+          "quantity": 1,
+          "unitPrice": 680.00,
+          "discountPercent": 0,
+          "lineTotal": 680.00
+        },
+        {
+          "productName": "Ottoman Storage Bench",
+          "productSku": "OTT-STR-001",
+          "quantity": 1,
+          "unitPrice": 420.00,
+          "discountPercent": 0,
+          "lineTotal": 420.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order confirmed. Natural ash wood selected. Production queue scheduled for week of 21 Apr 2026.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-006",
+      "customerEmail": "alice.chen@furnicore.demo",
+      "customerName": "Alice Chen",
+      "status": "draft",
+      "notes": "Follow-up order. Alice browsing options — floating vs floor-standing bookshelf.",
+      "shippingAddress": "14 Maple Avenue, Brooklyn, NY 11201, USA",
+      "subtotal": 840.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 71.40,
+      "totalAmount": 911.40,
+      "estimatedDelivery": null,
+      "items": [
+        {
+          "productName": "Floating Wall Bookshelf (Set of 3)",
+          "productSku": "SHF-FLT-001",
+          "quantity": 3,
+          "unitPrice": 280.00,
+          "discountPercent": 0,
+          "lineTotal": 840.00
+        }
+      ],
+      "updates": []
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-007",
+      "customerEmail": "bob.martinez@furnicore.demo",
+      "customerName": "Bob Martinez",
+      "status": "cancelled",
+      "notes": "Customer cancelled due to office relocation. Full refund processed on 10 Feb 2026.",
+      "shippingAddress": "88 West Trade Center Blvd, Suite 400, Chicago, IL 60606, USA",
+      "subtotal": 2080.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 176.80,
+      "totalAmount": 2256.80,
+      "estimatedDelivery": null,
+      "items": [
+        {
+          "productName": "Outdoor Rattan Armchair",
+          "productSku": "CHR-RTN-001",
+          "quantity": 4,
+          "unitPrice": 380.00,
+          "discountPercent": 0,
+          "lineTotal": 1520.00
+        },
+        {
+          "productName": "Rattan Side Coffee Table",
+          "productSku": "TBL-RTN-001",
+          "quantity": 1,
+          "unitPrice": 560.00,
+          "discountPercent": 0,
+          "lineTotal": 560.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order cancelled by customer on 10 Feb 2026 — office relocation. Full refund of $2,256.80 initiated.",
+          "status": "cancelled",
+          "visibleToCustomer": true
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-DEMO-2026-008",
+      "customerEmail": "carol.smith@furnicore.demo",
+      "customerName": "Carol Smith",
+      "status": "delivered",
+      "notes": "Carol's repeat order. TV cabinet to match existing media unit purchased last season.",
+      "shippingAddress": "5 Sunset Ridge Drive, Austin, TX 78745, USA",
+      "subtotal": 1380.00,
+      "discountCode": null,
+      "discountAmount": 0.00,
+      "taxRate": 8.50,
+      "taxAmount": 117.30,
+      "totalAmount": 1497.30,
+      "estimatedDelivery": "2026-03-10T00:00:00.000Z",
+      "items": [
+        {
+          "productName": "Floating TV Cabinet (180 cm)",
+          "productSku": "CAB-TV-001",
+          "quantity": 1,
+          "unitPrice": 920.00,
+          "discountPercent": 0,
+          "lineTotal": 920.00
+        },
+        {
+          "productName": "Media Storage Unit",
+          "productSku": "STR-MED-001",
+          "quantity": 1,
+          "unitPrice": 460.00,
+          "discountPercent": 0,
+          "lineTotal": 460.00
+        }
+      ],
+      "updates": [
+        {
+          "message": "Order confirmed. Matching finish to previous purchase retrieved from records.",
+          "status": "confirmed",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "TV cabinet frame and media unit in production. Lacquer finish matched.",
+          "status": "in_production",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Quality check passed. Finish consistent with previous order.",
+          "status": "quality_check",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Shipped via DirectFreight. Tracking no: DF-2026-77230.",
+          "status": "shipped",
+          "visibleToCustomer": true
+        },
+        {
+          "message": "Delivered to Carol Smith on 8 Mar 2026. Customer satisfaction confirmed via email.",
+          "status": "delivered",
+          "visibleToCustomer": true
+        }
+      ]
+    }
+  ],
+  "invoices": [
+    {
+      "invoiceNumber": "INV-DEMO-2026-001",
+      "orderNumber": "ORD-DEMO-2026-001",
+      "customerEmail": "alice.chen@furnicore.demo",
+      "customerName": "Alice Chen",
+      "status": "paid",
+      "subtotal": 3900.00,
+      "discountAmount": 0.00,
+      "taxAmount": 331.50,
+      "totalAmount": 4231.50,
+      "dueDate": "2026-03-01T00:00:00.000Z",
+      "paidAt": "2026-02-18T14:30:00.000Z",
+      "paymentMethod": "Bank Transfer",
+      "paymentReference": "TXN-BNK-2026-8812",
+      "notes": "Payment received in full. Walnut dining set order."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-002",
+      "orderNumber": "ORD-DEMO-2026-002",
+      "customerEmail": "bob.martinez@furnicore.demo",
+      "customerName": "Bob Martinez",
+      "status": "sent",
+      "subtotal": 2100.00,
+      "discountAmount": 100.00,
+      "taxAmount": 170.00,
+      "totalAmount": 2170.00,
+      "dueDate": "2026-05-01T00:00:00.000Z",
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "CORP10 discount applied. Invoice sent 10 Apr 2026. Payment pending."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-003",
+      "orderNumber": "ORD-DEMO-2026-003",
+      "customerEmail": "carol.smith@furnicore.demo",
+      "customerName": "Carol Smith",
+      "status": "draft",
+      "subtotal": 3200.00,
+      "discountAmount": 0.00,
+      "taxAmount": 272.00,
+      "totalAmount": 3472.00,
+      "dueDate": "2026-06-15T00:00:00.000Z",
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "Draft — to be sent upon production completion."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-004",
+      "orderNumber": "ORD-DEMO-2026-004",
+      "customerEmail": "david.johnson@furnicore.demo",
+      "customerName": "David Johnson",
+      "status": "sent",
+      "subtotal": 3940.00,
+      "discountAmount": 200.00,
+      "taxAmount": 317.90,
+      "totalAmount": 4057.90,
+      "dueDate": "2026-05-10T00:00:00.000Z",
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "VIP20 discount applied. Invoice issued pending QC sign-off."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-005",
+      "orderNumber": "ORD-DEMO-2026-005",
+      "customerEmail": "emma.wilson@furnicore.demo",
+      "customerName": "Emma Wilson",
+      "status": "overdue",
+      "subtotal": 1100.00,
+      "discountAmount": 0.00,
+      "taxAmount": 93.50,
+      "totalAmount": 1193.50,
+      "dueDate": "2026-03-20T00:00:00.000Z",
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "Deposit invoice overdue. Customer follow-up sent on 25 Mar 2026."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-006",
+      "orderNumber": "ORD-DEMO-2026-006",
+      "customerEmail": "alice.chen@furnicore.demo",
+      "customerName": "Alice Chen",
+      "status": "draft",
+      "subtotal": 840.00,
+      "discountAmount": 0.00,
+      "taxAmount": 71.40,
+      "totalAmount": 911.40,
+      "dueDate": null,
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "Draft — order still pending confirmation from customer."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-007",
+      "orderNumber": "ORD-DEMO-2026-007",
+      "customerEmail": "bob.martinez@furnicore.demo",
+      "customerName": "Bob Martinez",
+      "status": "cancelled",
+      "subtotal": 2080.00,
+      "discountAmount": 0.00,
+      "taxAmount": 176.80,
+      "totalAmount": 2256.80,
+      "dueDate": null,
+      "paidAt": null,
+      "paymentMethod": null,
+      "paymentReference": null,
+      "notes": "Cancelled — order voided due to customer office relocation."
+    },
+    {
+      "invoiceNumber": "INV-DEMO-2026-008",
+      "orderNumber": "ORD-DEMO-2026-008",
+      "customerEmail": "carol.smith@furnicore.demo",
+      "customerName": "Carol Smith",
+      "status": "paid",
+      "subtotal": 1380.00,
+      "discountAmount": 0.00,
+      "taxAmount": 117.30,
+      "totalAmount": 1497.30,
+      "dueDate": "2026-03-25T00:00:00.000Z",
+      "paidAt": "2026-03-10T09:15:00.000Z",
+      "paymentMethod": "Credit Card",
+      "paymentReference": "CC-AUTH-2026-55029",
+      "notes": "Paid in full on delivery day. Repeat customer — TV cabinet order."
+    }
+  ]
+}

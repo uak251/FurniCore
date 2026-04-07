@@ -1,0 +1,139 @@
+{
+  "description": "Demo raw materials and finished products for FurniCore. Images are UI/documentation placeholders only (not stored in DB).",
+  "rawMaterials": [
+    {
+      "name": "European Oak Planks — Select Grade",
+      "type": "raw_material",
+      "unit": "bd_ft",
+      "quantity": 420,
+      "reorderLevel": 120,
+      "unitCost": 8.75,
+      "imagePlaceholder": "https://placehold.co/640x400/f1f5f9/475569?text=Oak+Planks"
+    },
+    {
+      "name": "Black Walnut Boards — Kiln Dried",
+      "type": "raw_material",
+      "unit": "bd_ft",
+      "quantity": 185,
+      "reorderLevel": 60,
+      "unitCost": 14.2,
+      "imagePlaceholder": "https://placehold.co/640x400/292524/d6d3d1?text=Walnut+Boards"
+    },
+    {
+      "name": "Upholstery Fabric Roll — Charcoal Weave",
+      "type": "raw_material",
+      "unit": "linear_m",
+      "quantity": 95,
+      "reorderLevel": 28,
+      "unitCost": 22.5,
+      "imagePlaceholder": "https://placehold.co/640x400/334155/e2e8f0?text=Fabric+Charcoal"
+    },
+    {
+      "name": "Linen Blend Fabric — Natural",
+      "type": "raw_material",
+      "unit": "linear_m",
+      "quantity": 72,
+      "reorderLevel": 24,
+      "unitCost": 18.9,
+      "imagePlaceholder": "https://placehold.co/640x400/f5f5dc/78716c?text=Linen+Fabric"
+    },
+    {
+      "name": "Galvanized Brad Nails — 18ga 32mm",
+      "type": "raw_material",
+      "unit": "box",
+      "quantity": 140,
+      "reorderLevel": 40,
+      "unitCost": 6.4,
+      "imagePlaceholder": "https://placehold.co/640x400/94a3b8/0f172a?text=Brad+Nails"
+    },
+    {
+      "name": "Steel Finish Nails — 16ga 45mm",
+      "type": "raw_material",
+      "unit": "box",
+      "quantity": 88,
+      "reorderLevel": 30,
+      "unitCost": 7.85,
+      "imagePlaceholder": "https://placehold.co/640x400/64748b/f8fafc?text=Finish+Nails"
+    },
+    {
+      "name": "Polyurethane Wood Polish — Matte 1L",
+      "type": "raw_material",
+      "unit": "can",
+      "quantity": 56,
+      "reorderLevel": 18,
+      "unitCost": 11.25,
+      "imagePlaceholder": "https://placehold.co/640x400/b45309/fff7ed?text=Matte+Polish"
+    },
+    {
+      "name": "Hard Wax Oil — Satin 500ml",
+      "type": "raw_material",
+      "unit": "bottle",
+      "quantity": 44,
+      "reorderLevel": 14,
+      "unitCost": 19.6,
+      "imagePlaceholder": "https://placehold.co/640x400/78350f/ffedd5?text=Wax+Oil+Satin"
+    }
+  ],
+  "finishedProducts": [
+    {
+      "name": "Harbor 6-Seat Dining Table — Oak",
+      "sku": "SKU-TBL-HARBOR-6-OAK",
+      "category": "Tables",
+      "sellingPrice": 1899,
+      "costPrice": 920,
+      "stockQuantity": 12,
+      "description": "Solid oak top, seating for six. Suitable for dining or meeting spaces.",
+      "imagePlaceholder": "https://placehold.co/800x500/e2e8f0/1e293b?text=Dining+Table"
+    },
+    {
+      "name": "Summit Executive Desk — Walnut",
+      "sku": "SKU-DESK-SUMMIT-WAL",
+      "category": "Tables",
+      "sellingPrice": 2499,
+      "costPrice": 1180,
+      "stockQuantity": 6,
+      "description": "Walnut veneer, cable management, soft-close drawers.",
+      "imagePlaceholder": "https://placehold.co/800x500/44403c/f5f5f4?text=Executive+Desk"
+    },
+    {
+      "name": "Apex Ergonomic Office Chair",
+      "sku": "SKU-CHR-APEX-ERG",
+      "category": "Chairs",
+      "sellingPrice": 549,
+      "costPrice": 265,
+      "stockQuantity": 34,
+      "description": "Adjustable lumbar, breathable mesh, 120kg rating.",
+      "imagePlaceholder": "https://placehold.co/800x500/cbd5e1/0f172a?text=Office+Chair"
+    },
+    {
+      "name": "Luna Lounge Armchair — Fabric",
+      "sku": "SKU-CHR-LUNA-ARM",
+      "category": "Chairs",
+      "sellingPrice": 799,
+      "costPrice": 385,
+      "stockQuantity": 18,
+      "description": "Deep seat, charcoal upholstery, oak legs.",
+      "imagePlaceholder": "https://placehold.co/800x500/475569/f1f5f9?text=Lounge+Armchair"
+    },
+    {
+      "name": "Metro 3-Seat Sofa — Linen",
+      "sku": "SKU-SFA-METRO-3-LIN",
+      "category": "Sofas",
+      "sellingPrice": 2199,
+      "costPrice": 1040,
+      "stockQuantity": 9,
+      "description": "Three-seat sofa, removable cushion covers, FSC timber frame.",
+      "imagePlaceholder": "https://placehold.co/800x500/d6d3d1/292524?text=3-Seat+Sofa"
+    },
+    {
+      "name": "Ridge L-Sectional Sofa — Left Chaise",
+      "sku": "SKU-SFA-RIDGE-LSEC",
+      "category": "Sofas",
+      "sellingPrice": 3299,
+      "costPrice": 1580,
+      "stockQuantity": 4,
+      "description": "L-shaped sectional with left chaise, high-resilience foam.",
+      "imagePlaceholder": "https://placehold.co/800x500/a8a29e/1c1917?text=Sectional+Sofa"
+    }
+  ]
+}

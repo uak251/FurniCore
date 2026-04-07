@@ -1,0 +1,10 @@
+displayRole,name,email,role
+Admin,Victoria Chen,victoria.chen@furnicore.demo,admin
+Production Manager,Marcus Webb,marcus.webb@furnicore.demo,manager
+Inventory Manager,Nina Okonkwo,nina.okonkwo@furnicore.demo,inventory_manager
+Supplier,Diego Alvarez,diego.alvarez@furnicore.demo,supplier
+Accountant,Amira Hassan,amira.hassan@furnicore.demo,accountant
+HR,Jordan Ellis,jordan.ellis@furnicore.demo,manager
+Worker,Sam Rivera,sam.rivera@furnicore.demo,worker
+Sales Manager,Priya Nair,priya.nair@furnicore.demo,sales_manager
+Customer,Chloe Park,chloe.park@furnicore.demo,customer

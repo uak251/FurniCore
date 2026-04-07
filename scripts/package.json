@@ -6,6 +6,13 @@
   "scripts": {
     "hello": "tsx ./src/hello.ts",
     "seed-admin": "tsx --env-file=../.env ./src/seed-admin.ts",
+    "seed-demo-users": "tsx --env-file=../.env ./src/seed-demo-users.ts",
+    "seed-demo-catalog": "tsx --env-file=../.env ./src/seed-demo-catalog.ts",
+    "seed-demo-suppliers": "tsx --env-file=../.env ./src/seed-demo-suppliers.ts",
+    "seed-demo-manufacturing": "tsx --env-file=../.env ./src/seed-demo-manufacturing.ts",
+    "seed-demo-accounting": "tsx --env-file=../.env ./src/seed-demo-accounting.ts",
+    "seed-demo-customers": "tsx --env-file=../.env ./src/seed-demo-customers.ts",
+    "seed-demo-activity": "tsx --env-file=../.env ./src/seed-demo-activity.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

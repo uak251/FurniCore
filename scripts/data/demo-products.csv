@@ -1,0 +1,7 @@
+name,sku,category,sellingPrice,costPrice,stockQuantity,description,isActive,imagePlaceholder
+Harbor 6-Seat Dining Table — Oak,SKU-TBL-HARBOR-6-OAK,Tables,1899,920,12,"Solid oak top, seating for six.",true,https://placehold.co/800x500/e2e8f0/1e293b?text=Dining+Table
+Summit Executive Desk — Walnut,SKU-DESK-SUMMIT-WAL,Tables,2499,1180,6,"Walnut veneer, cable management.",true,https://placehold.co/800x500/44403c/f5f5f4?text=Executive+Desk
+Apex Ergonomic Office Chair,SKU-CHR-APEX-ERG,Chairs,549,265,34,"Adjustable lumbar, mesh back.",true,https://placehold.co/800x500/cbd5e1/0f172a?text=Office+Chair
+Luna Lounge Armchair — Fabric,SKU-CHR-LUNA-ARM,Chairs,799,385,18,"Deep seat, charcoal upholstery.",true,https://placehold.co/800x500/475569/f1f5f9?text=Lounge+Armchair
+Metro 3-Seat Sofa — Linen,SKU-SFA-METRO-3-LIN,Sofas,2199,1040,9,"Three-seat, removable covers.",true,https://placehold.co/800x500/d6d3d1/292524?text=3-Seat+Sofa
+Ridge L-Sectional Sofa — Left Chaise,SKU-SFA-RIDGE-LSEC,Sofas,3299,1580,4,"L-shaped sectional, left chaise.",true,https://placehold.co/800x500/a8a29e/1c1917?text=Sectional+Sofa

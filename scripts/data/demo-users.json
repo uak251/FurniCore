@@ -1,0 +1,61 @@
+{
+  "description": "FurniCore demo users. Roles match users.role in PostgreSQL (varchar). Production Manager and HR both use role \"manager\" because the ERP gates /hr and production modules with that slug.",
+  "defaultPassword": "Demo@123456",
+  "users": [
+    {
+      "displayRole": "Admin",
+      "name": "Victoria Chen",
+      "email": "victoria.chen@furnicore.demo",
+      "role": "admin"
+    },
+    {
+      "displayRole": "Production Manager",
+      "name": "Marcus Webb",
+      "email": "marcus.webb@furnicore.demo",
+      "role": "manager"
+    },
+    {
+      "displayRole": "Inventory Manager",
+      "name": "Nina Okonkwo",
+      "email": "nina.okonkwo@furnicore.demo",
+      "role": "inventory_manager"
+    },
+    {
+      "displayRole": "Supplier",
+      "name": "Diego Alvarez",
+      "email": "diego.alvarez@furnicore.demo",
+      "role": "supplier"
+    },
+    {
+      "displayRole": "Accountant",
+      "name": "Amira Hassan",
+      "email": "amira.hassan@furnicore.demo",
+      "role": "accountant"
+    },
+    {
+      "displayRole": "HR",
+      "name": "Jordan Ellis",
+      "email": "jordan.ellis@furnicore.demo",
+      "role": "manager",
+      "note": "HR module access uses role manager in this codebase"
+    },
+    {
+      "displayRole": "Worker",
+      "name": "Sam Rivera",
+      "email": "sam.rivera@furnicore.demo",
+      "role": "worker"
+    },
+    {
+      "displayRole": "Sales Manager",
+      "name": "Priya Nair",
+      "email": "priya.nair@furnicore.demo",
+      "role": "sales_manager"
+    },
+    {
+      "displayRole": "Customer",
+      "name": "Chloe Park",
+      "email": "chloe.park@furnicore.demo",
+      "role": "customer"
+    }
+  ]
+}

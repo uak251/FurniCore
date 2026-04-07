@@ -2,10 +2,10 @@
  * Bulk Import / Export routes
  *
  * Endpoints
- *   POST /api/bulk/inventory/import   — admin | inventory_manager
- *   GET  /api/bulk/inventory/export   — admin | inventory_manager
- *   POST /api/bulk/products/import    — admin | inventory_manager
- *   GET  /api/bulk/products/export    — admin | inventory_manager
+ *   POST /api/bulk/inventory/import   — admin | manager | employee | sales_manager | inventory_manager
+ *   GET  /api/bulk/inventory/export   — same
+ *   POST /api/bulk/products/import    — same
+ *   GET  /api/bulk/products/export    — same
  *   POST /api/bulk/employees/import   — admin | manager
  *   GET  /api/bulk/employees/export   — admin | manager
  *   POST /api/bulk/payroll/import     — admin | accountant | manager
@@ -37,7 +37,10 @@ const router: IRouter = Router();
 
 const csvBody = express.text({ type: "text/csv", limit: "5mb" });
 
-const invRole   = [authenticate, requireRole("admin", "inventory_manager")];
+const invRole = [
+  authenticate,
+  requireRole("admin", "manager", "accountant", "employee", "sales_manager", "inventory_manager"),
+];
 const hrRole    = [authenticate, requireRole("admin", "manager")];
 const payRole   = [authenticate, requireRole("admin", "accountant", "manager")];
 

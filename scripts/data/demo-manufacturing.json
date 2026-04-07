@@ -1,0 +1,275 @@
+{
+  "description": "Demo manufacturing tasks, production orders, and QC remarks. Assignee uses worker demo user; inspectors use production manager. Requires seed-demo-users, seed-demo-catalog (product SKUs). Task statuses: pending | in_progress | completed. Order statuses: planned | in_production | quality_check | completed | cancelled.",
+  "tasks": [
+    {
+      "seedSlug": "harbor-dining-feb",
+      "title": "Work order — Harbor 6-seat dining tables (batch A)",
+      "description": "Cut and join oak tops; mortise legs; finish with matte PU per spec FC-TP-12. First article inspection before full run.",
+      "productSku": "SKU-TBL-HARBOR-6-OAK",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "pending",
+      "priority": "high",
+      "estimatedHours": 42,
+      "actualHours": 4.5,
+      "progress": 12,
+      "dueDate": "2026-02-26T17:00:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "summit-desk-walnut",
+      "title": "Summit executive desk — veneer layup & cable grommets",
+      "description": "Walnut veneer panels; install soft-close drawers; route cable channels; label ports A–D.",
+      "productSku": "SKU-DESK-SUMMIT-WAL",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "in_progress",
+      "priority": "high",
+      "estimatedHours": 28,
+      "actualHours": 14.25,
+      "progress": 48,
+      "dueDate": "2026-02-20T16:00:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "apex-chair-mesh",
+      "title": "Apex ergonomic chairs — assembly line 2",
+      "description": "Gas lift install, armrest torque 18 Nm, mesh tension QC sample every 10th unit.",
+      "productSku": "SKU-CHR-APEX-ERG",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "in_progress",
+      "priority": "medium",
+      "estimatedHours": 16,
+      "actualHours": 11,
+      "progress": 72,
+      "dueDate": "2026-02-18T15:30:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "luna-armchair-fabric",
+      "title": "Luna lounge armchair — upholstery & legs",
+      "description": "Charcoal fabric pattern match; staple schedule per template LUNA-01; oak legs oil finish.",
+      "productSku": "SKU-CHR-LUNA-ARM",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "completed",
+      "priority": "medium",
+      "estimatedHours": 10,
+      "actualHours": 9.5,
+      "progress": 100,
+      "dueDate": "2026-02-10T18:00:00.000Z",
+      "completedAt": "2026-02-09T14:20:00.000Z"
+    },
+    {
+      "seedSlug": "metro-sofa-linen",
+      "title": "Metro 3-seat sofa — frame & cushion fill",
+      "description": "Kiln-dried frame glue-up; pocket springs; HR foam layers; zipper alignment on covers.",
+      "productSku": "SKU-SFA-METRO-3-LIN",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "pending",
+      "priority": "critical",
+      "estimatedHours": 52,
+      "actualHours": null,
+      "progress": 0,
+      "dueDate": "2026-03-05T17:00:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "ridge-sectional-chaise",
+      "title": "Ridge L-sectional — left chaise module build",
+      "description": "Chaise frame reinforcement; bracket torque 22 Nm; align sectional keys L/R.",
+      "productSku": "SKU-SFA-RIDGE-LSEC",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "in_progress",
+      "priority": "high",
+      "estimatedHours": 64,
+      "actualHours": 19,
+      "progress": 28,
+      "dueDate": "2026-03-12T17:00:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "summit-desk-rework",
+      "title": "Summit desk — rework after QC fail (drawer glide)",
+      "description": "Replace misaligned glide rails; re-square carcass; re-submit to QC lane B.",
+      "productSku": "SKU-DESK-SUMMIT-WAL",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "in_progress",
+      "priority": "critical",
+      "estimatedHours": 6,
+      "actualHours": 2,
+      "progress": 35,
+      "dueDate": "2026-02-17T12:00:00.000Z",
+      "completedAt": null
+    },
+    {
+      "seedSlug": "harbor-table-pilot",
+      "title": "Harbor table — pilot units (showroom)",
+      "description": "Two pilot tables for showroom; brass inlay optional per drawing SHW-88.",
+      "productSku": "SKU-TBL-HARBOR-6-OAK",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "completed",
+      "priority": "low",
+      "estimatedHours": 24,
+      "actualHours": 23,
+      "progress": 100,
+      "dueDate": "2026-01-31T17:00:00.000Z",
+      "completedAt": "2026-01-29T11:00:00.000Z"
+    }
+  ],
+  "productionOrders": [
+    {
+      "orderNumber": "PO-DEMO-202602-001",
+      "taskSeedSlug": "harbor-dining-feb",
+      "productSku": "SKU-TBL-HARBOR-6-OAK",
+      "quantity": 6,
+      "targetDate": "2026-02-26T23:59:59.000Z",
+      "status": "planned",
+      "notes": "Retail allocation — Midwest DC. Link to batch A work order."
+    },
+    {
+      "orderNumber": "PO-DEMO-202602-002",
+      "taskSeedSlug": "summit-desk-walnut",
+      "productSku": "SKU-DESK-SUMMIT-WAL",
+      "quantity": 4,
+      "targetDate": "2026-02-20T23:59:59.000Z",
+      "status": "in_production",
+      "notes": "B2B contract — Acme Offices. Partial ship allowed."
+    },
+    {
+      "orderNumber": "PO-DEMO-202602-003",
+      "taskSeedSlug": "apex-chair-mesh",
+      "productSku": "SKU-CHR-APEX-ERG",
+      "quantity": 24,
+      "targetDate": "2026-02-18T23:59:59.000Z",
+      "status": "in_production",
+      "notes": "Line 2 throughput target 6 units/day."
+    },
+    {
+      "orderNumber": "PO-DEMO-202601-088",
+      "taskSeedSlug": "luna-armchair-fabric",
+      "productSku": "SKU-CHR-LUNA-ARM",
+      "quantity": 12,
+      "targetDate": "2026-02-10T23:59:59.000Z",
+      "status": "completed",
+      "notes": "Closed — all units passed final QC and shipped."
+    },
+    {
+      "orderNumber": "PO-DEMO-202603-010",
+      "taskSeedSlug": "metro-sofa-linen",
+      "productSku": "SKU-SFA-METRO-3-LIN",
+      "quantity": 8,
+      "targetDate": "2026-03-05T23:59:59.000Z",
+      "status": "planned",
+      "notes": "Awaiting fabric release from receiving."
+    },
+    {
+      "orderNumber": "PO-DEMO-202603-020",
+      "taskSeedSlug": "ridge-sectional-chaise",
+      "productSku": "SKU-SFA-RIDGE-LSEC",
+      "quantity": 3,
+      "targetDate": "2026-03-12T23:59:59.000Z",
+      "status": "in_production",
+      "notes": "High-value SKUs — photograph at QC hold point."
+    },
+    {
+      "orderNumber": "PO-DEMO-202602-099",
+      "taskSeedSlug": "summit-desk-rework",
+      "productSku": "SKU-DESK-SUMMIT-WAL",
+      "quantity": 1,
+      "targetDate": "2026-02-17T23:59:59.000Z",
+      "status": "quality_check",
+      "notes": "Rework ticket RT-4412 — glide replacement."
+    },
+    {
+      "orderNumber": "PO-DEMO-202601-050",
+      "taskSeedSlug": null,
+      "productSku": "SKU-CHR-APEX-ERG",
+      "quantity": 10,
+      "targetDate": "2026-03-01T23:59:59.000Z",
+      "status": "planned",
+      "notes": "Unassigned floor task — pool stock for e-commerce flash sale (no task link yet)."
+    },
+    {
+      "orderNumber": "PO-DEMO-202512-777",
+      "taskSeedSlug": "harbor-table-pilot",
+      "productSku": "SKU-TBL-HARBOR-6-OAK",
+      "quantity": 2,
+      "targetDate": "2026-01-31T23:59:59.000Z",
+      "status": "completed",
+      "notes": "Showroom pilots — signed off by design lead."
+    },
+    {
+      "orderNumber": "PO-DEMO-202602-888",
+      "taskSeedSlug": "metro-sofa-linen",
+      "productSku": "SKU-SFA-METRO-3-LIN",
+      "quantity": 2,
+      "targetDate": "2026-02-28T23:59:59.000Z",
+      "status": "cancelled",
+      "notes": "Customer PO voided — cancel remaining WIP; salvage foam where possible."
+    }
+  ],
+  "qcRemarks": [
+    {
+      "seedSlug": "qc-harbor-moisture",
+      "taskSeedSlug": "harbor-dining-feb",
+      "inspectorEmail": "marcus.webb@furnicore.demo",
+      "result": "hold",
+      "remarks": "Incoming oak lot OH-229: moisture 11.2% (spec ≤10%). Hold machining until kiln conditioning 48h; re-sample station 3.",
+      "visibleToCustomer": false
+    },
+    {
+      "seedSlug": "qc-summit-veneer",
+      "taskSeedSlug": "summit-desk-walnut",
+      "inspectorEmail": "marcus.webb@furnicore.demo",
+      "result": "pass",
+      "remarks": "Veneer seam book-match within tolerance; no voids >2mm; glue line shear spot test OK.",
+      "visibleToCustomer": true
+    },
+    {
+      "seedSlug": "qc-apex-torque",
+      "taskSeedSlug": "apex-chair-mesh",
+      "inspectorEmail": "jordan.ellis@furnicore.demo",
+      "result": "pass",
+      "remarks": "Armrest torque audit 10/10 pass; mesh tension deflection 12mm @40N (spec 10–15mm).",
+      "visibleToCustomer": false
+    },
+    {
+      "seedSlug": "qc-luna-final",
+      "taskSeedSlug": "luna-armchair-fabric",
+      "inspectorEmail": "marcus.webb@furnicore.demo",
+      "result": "pass",
+      "remarks": "Final visual AQL 2.5 — no pulls or puckering; leg wipe test clear coat intact. Release to pack-out.",
+      "visibleToCustomer": true
+    },
+    {
+      "seedSlug": "qc-summit-glide-fail",
+      "taskSeedSlug": "summit-desk-rework",
+      "inspectorEmail": "marcus.webb@furnicore.demo",
+      "result": "fail",
+      "remarks": "Left drawer glide rail 1.8mm out of parallel — binding at 60% extension. Remove fail tag RT-4412; return to bench.",
+      "visibleToCustomer": false
+    },
+    {
+      "seedSlug": "qc-summit-glide-recheck",
+      "taskSeedSlug": "summit-desk-rework",
+      "inspectorEmail": "marcus.webb@furnicore.demo",
+      "result": "hold",
+      "remarks": "Post-rework partial check: rails square within 0.5mm; full cycle test pending second drawer install.",
+      "visibleToCustomer": false
+    },
+    {
+      "seedSlug": "qc-ridge-bracket",
+      "taskSeedSlug": "ridge-sectional-chaise",
+      "inspectorEmail": "jordan.ellis@furnicore.demo",
+      "result": "pass",
+      "remarks": "Chaise bracket hardware torque log verified; no creep after 5 load cycles @75kg.",
+      "visibleToCustomer": true
+    },
+    {
+      "seedSlug": "qc-harbor-pilot",
+      "taskSeedSlug": "harbor-table-pilot",
+      "inspectorEmail": "victoria.chen@furnicore.demo",
+      "result": "pass",
+      "remarks": "Showroom pilots: surface flatness 0.4mm/m; edge profile matches golden sample HT-01.",
+      "visibleToCustomer": true
+    }
+  ]
+}

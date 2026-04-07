@@ -16,6 +16,13 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
 import { getAuthToken } from "@/lib/auth";
 
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+
+function apiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${API_BASE}${path}`;
+}
+
 /* ── types ───────────────────────────────────────────────────────────────── */
 interface Account {
   id: number; code: string; name: string;
@@ -27,9 +34,20 @@ interface AccountForm { code: string; name: string; type: string; subtype: strin
 
 /* ── api helpers ─────────────────────────────────────────────────────────── */
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(path, { credentials: "include", headers: { "Content-Type": "application/json" }, ...init });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any).message ?? `HTTP ${r.status}`); }
-  return r.json();
+  const r = await fetch(apiUrl(path), {
+    credentials: "include",
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getAuthToken() ?? ""}`,
+      ...(init?.headers as Record<string, string>),
+    },
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error((e as { message?: string }).message ?? `HTTP ${r.status}`);
+  }
+  return r.json() as Promise<T>;
 }
 
 function useAccounts() {
@@ -111,7 +129,9 @@ export default function ChartOfAccountsPage() {
 
   const handleExport = async () => {
     try {
-      const resp = await fetch("/api/accounts/export.csv", { headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` } });
+      const resp = await fetch(apiUrl("/api/accounts/export.csv"), {
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+      });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       const url  = URL.createObjectURL(blob);
@@ -123,7 +143,9 @@ export default function ChartOfAccountsPage() {
 
   const handleSampleDownload = async () => {
     try {
-      const resp = await fetch("/api/accounts/sample.csv", { headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` } });
+      const resp = await fetch(apiUrl("/api/accounts/sample.csv"), {
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+      });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const blob = await resp.blob();
       const url  = URL.createObjectURL(blob);
@@ -137,16 +159,20 @@ export default function ChartOfAccountsPage() {
     setImporting(true);
     try {
       const csv = await file.text();
-      const resp = await fetch("/api/accounts/import", {
+      const resp = await fetch(apiUrl("/api/accounts/import"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken() ?? ""}` },
         body: JSON.stringify({ csv }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.message ?? `HTTP ${resp.status}`);
-      setImportResult(data);
+      const errList = Array.isArray(data.errors) ? data.errors : [];
+      setImportResult({ ...data, errors: errList });
       invalidate();
-      toast({ title: "Import complete", description: `Created: ${data.created}, Updated: ${data.updated}${data.errors.length ? `, Errors: ${data.errors.length}` : ""}` });
+      toast({
+        title: "Import complete",
+        description: `Created: ${data.created}, Updated: ${data.updated}${errList.length ? `, Errors: ${errList.length}` : ""}`,
+      });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Import failed", description: e.message });
     } finally {
@@ -371,11 +397,11 @@ export default function ChartOfAccountsPage() {
                 <p className="font-medium">Import results ({importResult.total} rows processed)</p>
                 <p className="text-green-600">✓ Created: {importResult.created}</p>
                 <p className="text-blue-600">↻ Updated: {importResult.updated}</p>
-                {importResult.errors.length > 0 && (
+                {(importResult.errors ?? []).length > 0 && (
                   <div>
-                    <p className="text-destructive">✗ Errors: {importResult.errors.length}</p>
+                    <p className="text-destructive">✗ Errors: {(importResult.errors ?? []).length}</p>
                     <ul className="mt-1 max-h-32 overflow-y-auto text-xs text-muted-foreground space-y-0.5">
-                      {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                      {(importResult.errors ?? []).map((e, i) => <li key={i}>{e}</li>)}
                     </ul>
                   </div>
                 )}
