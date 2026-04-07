@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Banknote, CheckCircle, Plus, ChevronDown, ChevronUp, RefreshCw,
-  TrendingUp, TrendingDown, AlertTriangle, Clock, Trash2, Info,
+  TrendingUp, TrendingDown, AlertTriangle, Clock, Trash2, Info, Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -30,6 +30,7 @@ import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { cn } from "@/lib/utils";
+import { BulkImportExport } from "@/components/BulkImportExport";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_ID = "payroll";
@@ -303,6 +304,7 @@ export default function PayrollPage() {
   const [page, setPage]                   = useState(1);
   const [pageSize, setPageSize]           = useState(10);
   const [showGenDialog, setShowGenDialog] = useState(false);
+  const [showBulk, setShowBulk]           = useState(false);
   const [expandedId, setExpandedId]       = useState<number | null>(null);
   const [adjRecord, setAdjRecord]         = useState<any | null>(null);
   const [filterMonth, setFilterMonth]     = useState<string>("all");
@@ -399,9 +401,14 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold tracking-tight">Payroll</h1>
           <p className="text-muted-foreground">Generate payroll with transparent attendance penalties and bonuses</p>
         </div>
-        <Button onClick={() => setShowGenDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden /> Generate payroll
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowBulk(true)}>
+            <Upload className="mr-2 h-4 w-4" aria-hidden /> Bulk import/export
+          </Button>
+          <Button onClick={() => setShowGenDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden /> Generate payroll
+          </Button>
+        </div>
       </div>
 
       {/* Pending alert */}
@@ -603,6 +610,27 @@ export default function PayrollPage() {
               <Button type="submit" disabled={generatePayroll.isPending}>Generate</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk import/export dialog */}
+      <Dialog open={showBulk} onOpenChange={setShowBulk}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import / Export — Payroll</DialogTitle>
+          </DialogHeader>
+          <BulkImportExport
+            module="Payroll"
+            importEndpoint="/api/bulk/payroll/import"
+            exportEndpoint="/api/bulk/payroll/export"
+            exportFilename="payroll-export.csv"
+            templateHeaders={["employeeEmail", "month", "year", "baseSalary", "bonus", "deductions", "netSalary", "status", "notes"]}
+            templateSample={[
+              ["alice@company.com", "4", "2026", "4000", "200", "50", "4150", "draft", ""],
+              ["bob@company.com",   "4", "2026", "3500", "0",   "0",  "3500", "draft", "No deductions"],
+            ]}
+            onImported={invalidate}
+          />
         </DialogContent>
       </Dialog>
 

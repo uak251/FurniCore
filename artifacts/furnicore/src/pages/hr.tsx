@@ -44,6 +44,7 @@ import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { cn } from "@/lib/utils";
+import { BulkImportExport } from "@/components/BulkImportExport";
 
 /* ─── Shared helpers ─────────────────────────────────────────────────────────── */
 
@@ -320,6 +321,7 @@ function EmployeesTab() {
   const [pageSize, setPageSize] = useState(10);
   const [showEmpDialog, setShowEmpDialog]   = useState(false);
   const [showAttDialog, setShowAttDialog]   = useState(false);
+  const [showBulkEmp, setShowBulkEmp]       = useState(false);
   const [editItem, setEditItem]             = useState<any>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
 
@@ -449,9 +451,14 @@ function EmployeesTab() {
         onExportCsv={exportCsv} exportDisabled={sorted.length===0}
         resultsText={total===0 ? "No matching employees" : `Showing ${from}–${to} of ${total}`}
       >
-        <Button onClick={openCreate}>
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add employee
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowBulkEmp(true)}>
+            <Upload className="mr-1.5 h-4 w-4" aria-hidden /> Bulk import/export
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Add employee
+          </Button>
+        </div>
       </TableToolbar>
 
       <Card>
@@ -527,6 +534,25 @@ function EmployeesTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk import/export dialog */}
+      <Dialog open={showBulkEmp} onOpenChange={setShowBulkEmp}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>Bulk Import / Export — Employees</DialogTitle></DialogHeader>
+          <BulkImportExport
+            module="Employees"
+            importEndpoint="/api/bulk/employees/import"
+            exportEndpoint="/api/bulk/employees/export"
+            exportFilename="employees-export.csv"
+            templateHeaders={["name", "email", "phone", "department", "position", "baseSalary", "hireDate", "isActive"]}
+            templateSample={[
+              ["Alice Johnson", "alice@company.com", "+1-555-0101", "Manufacturing", "Senior Craftsman", "48000", "2022-03-15", "true"],
+              ["Bob Smith",     "bob@company.com",   "+1-555-0102", "Sales",          "Sales Executive",  "42000", "2021-07-01", "true"],
+            ]}
+            onImported={invalidate}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Employee dialog */}
       <Dialog open={showEmpDialog} onOpenChange={setShowEmpDialog}>

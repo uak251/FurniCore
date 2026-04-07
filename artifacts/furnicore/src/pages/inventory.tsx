@@ -16,12 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Plus, Package, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Package, Pencil, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
+import { BulkImportExport } from "@/components/BulkImportExport";
 
 interface InventoryFormData {
   name: string;
@@ -44,6 +45,7 @@ export default function InventoryPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showDialog, setShowDialog] = useState(false);
+  const [showBulk, setShowBulk]     = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
   const { data: inventory, isLoading } = useListInventory();
@@ -179,10 +181,16 @@ export default function InventoryPage() {
           <h1 className="text-3xl font-bold tracking-tight">Inventory</h1>
           <p className="text-muted-foreground">Manage raw materials and stock levels</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Add item
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowBulk(true)}>
+            <Upload className="mr-2 h-4 w-4" aria-hidden />
+            Bulk import/export
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Add item
+          </Button>
+        </div>
       </div>
 
       {lowStock && lowStock.length > 0 && (
@@ -334,6 +342,27 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Bulk import/export dialog ──────────────────────────────── */}
+      <Dialog open={showBulk} onOpenChange={setShowBulk}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import / Export — Raw Materials</DialogTitle>
+          </DialogHeader>
+          <BulkImportExport
+            module="Inventory"
+            importEndpoint="/api/bulk/inventory/import"
+            exportEndpoint="/api/bulk/inventory/export"
+            exportFilename="inventory-export.csv"
+            templateHeaders={["name", "type", "unit", "quantity", "reorderLevel", "unitCost"]}
+            templateSample={[
+              ["Oak Wood", "raw_material", "kg", "500", "100", "2.50"],
+              ["Steel Bolts", "raw_material", "units", "2000", "500", "0.05"],
+            ]}
+            onImported={() => queryClient.invalidateQueries({ queryKey: ["listInventory"] })}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>

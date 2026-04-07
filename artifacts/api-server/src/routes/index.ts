@@ -20,6 +20,7 @@ import hrPortalRouter from "./hr-portal";
 import workerPortalRouter from "./worker-portal";
 import salesManagerRouter from "./sales-manager";
 import customerPortalRouter from "./customer-portal";
+import bulkRouter from "./bulk";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(hrPortalRouter);
 router.use(workerPortalRouter);
 router.use(salesManagerRouter);
 router.use(customerPortalRouter);
+router.use(bulkRouter);
 
 export default router;

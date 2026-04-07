@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Package, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Package, Search, Pencil, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
+import { BulkImportExport } from "@/components/BulkImportExport";
 
 interface ProductForm {
   name: string;
@@ -29,6 +30,7 @@ export default function ProductsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
+  const [showBulk, setShowBulk]     = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
   const { data: products, isLoading } = useListProducts();
@@ -105,10 +107,16 @@ export default function ProductsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground">Manage your product catalog and pricing</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowBulk(true)}>
+            <Upload className="mr-2 h-4 w-4" aria-hidden />
+            Bulk import/export
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
@@ -168,6 +176,27 @@ export default function ProductsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk import/export dialog */}
+      <Dialog open={showBulk} onOpenChange={setShowBulk}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Bulk Import / Export — Products</DialogTitle>
+          </DialogHeader>
+          <BulkImportExport
+            module="Products"
+            importEndpoint="/api/bulk/products/import"
+            exportEndpoint="/api/bulk/products/export"
+            exportFilename="products-export.csv"
+            templateHeaders={["name", "sku", "category", "sellingPrice", "costPrice", "stockQuantity", "description", "isActive"]}
+            templateSample={[
+              ["Oak Executive Desk", "DESK-OAK-001", "Desks", "1200", "700", "15", "Solid oak executive desk", "true"],
+              ["Steel Chair", "CHAIR-STL-002", "Chairs", "350", "180", "30", "Ergonomic steel frame chair", "true"],
+            ]}
+            onImported={() => queryClient.invalidateQueries({ queryKey: ["listProducts"] })}
+          />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
