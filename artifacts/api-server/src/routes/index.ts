@@ -15,6 +15,7 @@ import activityRouter from "./activity";
 import dashboardRouter from "./dashboard";
 import powerbiRouter from "./powerbi";
 import productionRouter from "./production";
+import supplierPortalRouter from "./supplier-portal";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(activityRouter);
 router.use(dashboardRouter);
 router.use(powerbiRouter);
 router.use(productionRouter);
+router.use(supplierPortalRouter);
 
 export default router;

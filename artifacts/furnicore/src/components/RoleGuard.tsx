@@ -84,6 +84,7 @@ export function useRoleAccess() {
     isManager:  role === "manager",
     isAccounts: role === "accounts",
     isEmployee: role === "employee",
+    /** true when the user is a supplier — they should be in /supplier-portal */
     isSupplier: role === "supplier",
     can: (...roles: string[]) => roles.includes(role),
   };

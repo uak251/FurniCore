@@ -5,6 +5,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLogin } from "@workspace/api-client-react";
 import { setAuthToken } from "@/lib/auth";
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(base64));
+  } catch {
+    return {};
+  }
+}
 import { Hammer, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -44,13 +53,17 @@ export default function Login() {
     try {
       const response = await login.mutateAsync({ data: values });
       setAuthToken(response.accessToken);
-      
+
+      // Decode the token to get the role, then redirect accordingly
+      const payload = decodeJwtPayload(response.accessToken);
+      const role = typeof payload.role === "string" ? payload.role : "employee";
+
       toast({
         title: "Welcome back",
         description: "Successfully logged in to FurniCore.",
       });
-      
-      setLocation("/");
+
+      setLocation(role === "supplier" ? "/supplier-portal" : "/");
     } catch (error: any) {
       toast({
         variant: "destructive",

@@ -2,7 +2,10 @@ import { Router, type IRouter } from "express";
 import { eq, ilike } from "drizzle-orm";
 import { db, suppliersTable, supplierQuotesTable } from "@workspace/db";
 import { CreateSupplierBody, UpdateSupplierBody, GetSupplierParams, UpdateSupplierParams, DeleteSupplierParams, ListSuppliersQueryParams, GetSupplierQuotesParams } from "@workspace/api-zod";
-import { authenticate, AuthRequest } from "../middlewares/authenticate";
+import { authenticate, requireRole, AuthRequest } from "../middlewares/authenticate";
+
+// Suppliers table is internal — supplier-role users must use /supplier-portal/* instead.
+const internalOnly = requireRole("admin", "manager", "accounts", "employee");
 import { logActivity } from "../lib/activityLogger";
 
 const router: IRouter = Router();
@@ -26,7 +29,7 @@ function toQuote(q: typeof supplierQuotesTable.$inferSelect, supplierName: strin
   };
 }
 
-router.get("/suppliers", authenticate, async (req, res): Promise<void> => {
+router.get("/suppliers", authenticate, internalOnly, async (req, res): Promise<void> => {
   const params = ListSuppliersQueryParams.safeParse(req.query);
   let query = db.select().from(suppliersTable).$dynamic();
   if (params.success && params.data.search) {
@@ -36,7 +39,7 @@ router.get("/suppliers", authenticate, async (req, res): Promise<void> => {
   res.json(suppliers.map(toSupplier));
 });
 
-router.post("/suppliers", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/suppliers", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateSupplierBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [supplier] = await db.insert(suppliersTable).values(parsed.data).returning();
@@ -44,7 +47,7 @@ router.post("/suppliers", authenticate, async (req: AuthRequest, res): Promise<v
   res.status(201).json(toSupplier(supplier));
 });
 
-router.get("/suppliers/:id", authenticate, async (req, res): Promise<void> => {
+router.get("/suppliers/:id", authenticate, internalOnly, async (req, res): Promise<void> => {
   const params = GetSupplierParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, params.data.id));
@@ -52,7 +55,7 @@ router.get("/suppliers/:id", authenticate, async (req, res): Promise<void> => {
   res.json(toSupplier(supplier));
 });
 
-router.get("/suppliers/:id/quotes", authenticate, async (req, res): Promise<void> => {
+router.get("/suppliers/:id/quotes", authenticate, internalOnly, async (req, res): Promise<void> => {
   const params = GetSupplierQuotesParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, params.data.id));
@@ -61,7 +64,7 @@ router.get("/suppliers/:id/quotes", authenticate, async (req, res): Promise<void
   res.json(quotes.map(q => toQuote(q, supplier.name)));
 });
 
-router.patch("/suppliers/:id", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.patch("/suppliers/:id", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const params = UpdateSupplierParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = UpdateSupplierBody.safeParse(req.body);
@@ -75,7 +78,7 @@ router.patch("/suppliers/:id", authenticate, async (req: AuthRequest, res): Prom
   res.json(toSupplier(supplier));
 });
 
-router.delete("/suppliers/:id", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.delete("/suppliers/:id", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const params = DeleteSupplierParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [supplier] = await db.delete(suppliersTable).where(eq(suppliersTable.id, params.data.id)).returning();

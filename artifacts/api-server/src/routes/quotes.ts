@@ -2,7 +2,11 @@ import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db, supplierQuotesTable, suppliersTable, inventoryTable } from "@workspace/db";
 import { CreateQuoteBody, ListQuotesQueryParams, GetQuoteParams, LockQuoteParams, ApproveQuoteParams, PayQuoteParams } from "@workspace/api-zod";
-import { authenticate, AuthRequest } from "../middlewares/authenticate";
+import { authenticate, requireRole, AuthRequest } from "../middlewares/authenticate";
+
+// Internal quotes routes are restricted to staff roles only.
+// Suppliers use /supplier-portal/quotes instead.
+const internalOnly = requireRole("admin", "manager", "accounts", "employee");
 import { logActivity, createNotification } from "../lib/activityLogger";
 
 const router: IRouter = Router();
@@ -28,7 +32,7 @@ async function toQuote(q: typeof supplierQuotesTable.$inferSelect) {
   };
 }
 
-router.get("/quotes", authenticate, async (req, res): Promise<void> => {
+router.get("/quotes", authenticate, internalOnly, async (req, res): Promise<void> => {
   const params = ListQuotesQueryParams.safeParse(req.query);
   let query = db.select().from(supplierQuotesTable).$dynamic();
   if (params.success && params.data.status) {
@@ -39,7 +43,7 @@ router.get("/quotes", authenticate, async (req, res): Promise<void> => {
   res.json(enriched);
 });
 
-router.post("/quotes", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/quotes", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateQuoteBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const totalPrice = parsed.data.quantity * parsed.data.unitPrice;
@@ -56,7 +60,7 @@ router.post("/quotes", authenticate, async (req: AuthRequest, res): Promise<void
   res.status(201).json(enriched);
 });
 
-router.get("/quotes/:id", authenticate, async (req, res): Promise<void> => {
+router.get("/quotes/:id", authenticate, internalOnly, async (req, res): Promise<void> => {
   const params = GetQuoteParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [quote] = await db.select().from(supplierQuotesTable).where(eq(supplierQuotesTable.id, params.data.id));
@@ -64,7 +68,7 @@ router.get("/quotes/:id", authenticate, async (req, res): Promise<void> => {
   res.json(await toQuote(quote));
 });
 
-router.post("/quotes/:id/lock", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/quotes/:id/lock", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const params = LockQuoteParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [existing] = await db.select().from(supplierQuotesTable).where(eq(supplierQuotesTable.id, params.data.id));
@@ -76,7 +80,7 @@ router.post("/quotes/:id/lock", authenticate, async (req: AuthRequest, res): Pro
   res.json(enriched);
 });
 
-router.post("/quotes/:id/approve", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/quotes/:id/approve", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const params = ApproveQuoteParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [existing] = await db.select().from(supplierQuotesTable).where(eq(supplierQuotesTable.id, params.data.id));
@@ -88,7 +92,7 @@ router.post("/quotes/:id/approve", authenticate, async (req: AuthRequest, res): 
   res.json(enriched);
 });
 
-router.post("/quotes/:id/pay", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/quotes/:id/pay", authenticate, internalOnly, async (req: AuthRequest, res): Promise<void> => {
   const params = PayQuoteParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const [existing] = await db.select().from(supplierQuotesTable).where(eq(supplierQuotesTable.id, params.data.id));

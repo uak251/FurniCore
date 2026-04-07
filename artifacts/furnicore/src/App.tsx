@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
+import { SupplierLayout } from "@/components/SupplierLayout";
 import { RoleGuard } from "@/components/RoleGuard";
 
 import Login from "@/pages/login";
@@ -22,6 +23,7 @@ import NotificationsPage from "@/pages/notifications";
 import ActivityPage from "@/pages/activity";
 import UsersPage from "@/pages/users";
 import SettingsPage from "@/pages/settings";
+import SupplierPortalPage from "@/pages/supplier-portal";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -41,7 +43,7 @@ const queryClient = new QueryClient({
  *  manager  → all except /users and /settings
  *  accounts → finance routes only
  *  employee → core ops (dashboard, inventory, products, manufacturing, notifications)
- *  supplier → dashboard + quotes
+ *  supplier → /supplier-portal only (isolated shell, no internal nav)
  */
 function Router() {
   return (
@@ -49,25 +51,36 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
 
+      {/* ── Supplier portal — isolated layout, no internal modules ── */}
+      <Route path="/supplier-portal">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["supplier"]}>
+            <SupplierLayout>
+              <SupplierPortalPage />
+            </SupplierLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
+
       <Route>
         <ProtectedRoute>
           <Layout>
             <Switch>
-              {/* ── Accessible to all authenticated roles ── */}
+              {/* ── Accessible to all internal authenticated roles ── */}
               <Route path="/" component={Dashboard} />
               <Route path="/inventory" component={InventoryPage} />
               <Route path="/products" component={ProductsPage} />
               <Route path="/manufacturing" component={ManufacturingPage} />
               <Route path="/notifications" component={NotificationsPage} />
 
-              {/* ── Suppliers & Quotes: admin / manager / accounts / supplier ── */}
+              {/* ── Suppliers & Quotes: internal staff only ── */}
               <Route path="/suppliers">
                 <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
                   <SuppliersPage />
                 </RoleGuard>
               </Route>
               <Route path="/quotes">
-                <RoleGuard allowedRoles={["admin", "manager", "accounts", "supplier"]}>
+                <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
                   <QuotesPage />
                 </RoleGuard>
               </Route>

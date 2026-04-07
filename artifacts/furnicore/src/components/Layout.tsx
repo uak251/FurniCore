@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, Redirect } from "wouter";
 import { useLogout, useGetCurrentUser, useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
 import {
@@ -40,7 +40,7 @@ interface LayoutProps {
  *  manager  — all except Users & Settings management
  *  accounts — finance modules (Suppliers, Quotes, Payroll, Accounting)
  *  employee — core ops (Dashboard, Inventory, Products, Manufacturing, Notifications)
- *  supplier — Dashboard + Quotes only
+ *  supplier — isolated portal only (/supplier-portal); auto-redirected before reaching this layout
  */
 type NavItem = {
   href: string;
@@ -61,7 +61,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/inventory",      label: "Inventory",      icon: Boxes,  badge: "lowStock" },
       { href: "/products",       label: "Products",       icon: Package },
       { href: "/suppliers",      label: "Suppliers",      icon: Truck,  roles: ["admin", "manager", "accounts"] },
-      { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accounts", "supplier"] },
+      { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accounts"] },
       { href: "/manufacturing",  label: "Manufacturing",  icon: Hammer },
     ],
   },
@@ -164,6 +164,11 @@ export function Layout({ children }: LayoutProps) {
   });
   const lowStockCount = summary?.lowStockCount ?? 0;
   const userRole = user?.role ?? "";
+
+  // Suppliers must use the isolated Supplier Portal, not the internal ERP layout
+  if (user && userRole === "supplier") {
+    return <Redirect to="/supplier-portal" />;
+  }
 
   useEffect(() => {
     setMobileOpen(false);
