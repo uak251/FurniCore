@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, UserCircle, Pencil, Trash2 } from "lucide-react";
+import { Plus, UserCircle, Pencil, UserX, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
@@ -72,6 +72,7 @@ export default function UsersPage() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [showInactive, setShowInactive] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
@@ -94,6 +95,8 @@ export default function UsersPage() {
     return filterAndSortRows(rows, {
       search,
       match: (row: any, q: string) => {
+        // Hide inactive users unless toggle is on
+        if (!showInactive && !row.isActive) return false;
         const qn = q.toLowerCase();
         const textMatch =
           !qn ||
@@ -174,11 +177,21 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this user? This action cannot be undone.")) return;
+  const handleDeactivate = async (id: number, name: string) => {
+    if (!confirm(`Deactivate "${name}"?\n\nThey will no longer be able to log in. All their data and history will be preserved. You can reactivate them at any time.`)) return;
     try {
       await deleteUser.mutateAsync({ id });
-      toast({ title: "User deleted" });
+      toast({ title: "User deactivated", description: `${name} has been deactivated.` });
+      invalidate();
+    } catch (e: unknown) {
+      toast({ variant: "destructive", title: "Error", description: apiErrorMessage(e) });
+    }
+  };
+
+  const handleReactivate = async (id: number, name: string) => {
+    try {
+      await updateUser.mutateAsync({ id, data: { isActive: true } as any });
+      toast({ title: "User reactivated", description: `${name} can log in again.` });
       invalidate();
     } catch (e: unknown) {
       toast({ variant: "destructive", title: "Error", description: apiErrorMessage(e) });
@@ -195,10 +208,20 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Master Admin Portal</h1>
           <p className="text-muted-foreground">Create, manage, and assign roles for all system users</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Add user
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showInactive ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowInactive(!showInactive)}
+          >
+            {showInactive ? <UserX className="mr-2 h-4 w-4" /> : <UserCheck className="mr-2 h-4 w-4" />}
+            {showInactive ? "Hide inactive" : "Show inactive"}
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Add user
+          </Button>
+        </div>
       </div>
 
       <TableToolbar
@@ -270,7 +293,7 @@ export default function UsersPage() {
                   </TableHeader>
                   <TableBody>
                     {pageRows.map((u: any) => (
-                      <TableRow key={u.id}>
+                      <TableRow key={u.id} className={!u.isActive ? "opacity-50" : undefined}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div
@@ -279,7 +302,12 @@ export default function UsersPage() {
                             >
                               {u.name.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-medium">{u.name}</span>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{u.name}</span>
+                              {!u.isActive && (
+                                <span className="text-xs text-destructive font-medium">Inactive</span>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{u.email}</TableCell>
@@ -293,23 +321,38 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Edit ${u.name}`}
-                              onClick={() => openEdit(u)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="text-destructive"
-                              aria-label={`Delete ${u.name}`}
-                              onClick={() => handleDelete(u.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {u.isActive ? (
+                              <>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  aria-label={`Edit ${u.name}`}
+                                  onClick={() => openEdit(u)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive"
+                                  aria-label={`Deactivate ${u.name}`}
+                                  onClick={() => handleDeactivate(u.id, u.name)}
+                                >
+                                  <UserX className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-green-600 border-green-300 hover:bg-green-50 hover:text-green-700"
+                                aria-label={`Reactivate ${u.name}`}
+                                onClick={() => handleReactivate(u.id, u.name)}
+                              >
+                                <UserCheck className="mr-1 h-4 w-4" />
+                                Reactivate
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

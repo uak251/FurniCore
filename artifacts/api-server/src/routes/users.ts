@@ -103,14 +103,39 @@ router.patch("/users/:id", authenticate, requireRole("admin"), async (req: AuthR
   }
 });
 
+/**
+ * Soft-delete: sets isActive=false instead of removing the row.
+ * Hard-deleting users breaks FK constraints across activity_logs,
+ * notifications, hr, sales, production, and many other tables.
+ * ERP best-practice is to deactivate users and preserve audit history.
+ * Use PATCH /users/:id with { isActive: true } to reactivate.
+ */
 router.delete("/users/:id", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const params = DeleteUserParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "INVALID_ID", message: "Invalid user id." }); return; }
 
+  // Prevent self-deactivation
+  if (req.user?.id === params.data.id) {
+    res.status(400).json({ error: "SELF_DEACTIVATE", message: "You cannot deactivate your own account." });
+    return;
+  }
+
   try {
-    const [user] = await db.delete(usersTable).where(eq(usersTable.id, params.data.id)).returning();
+    const [user] = await db
+      .update(usersTable)
+      .set({ isActive: false })
+      .where(eq(usersTable.id, params.data.id))
+      .returning();
+
     if (!user) { res.status(404).json({ error: "USER_NOT_FOUND", message: "User not found." }); return; }
-    await logActivity({ userId: req.user?.id, action: "DELETE", module: "users", description: `Deleted user ${user.name}` });
+
+    await logActivity({
+      userId:      req.user?.id,
+      action:      "DEACTIVATE",
+      module:      "users",
+      description: `Deactivated user ${user.name} (${user.role})`,
+    });
+
     res.sendStatus(204);
   } catch (err) {
     next(err);
