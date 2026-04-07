@@ -18,6 +18,7 @@ import {
   LogOut,
   UserCircle,
   Menu,
+  ShoppingCart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { href: "/suppliers",      label: "Suppliers",      icon: Truck,  roles: ["admin", "manager", "accounts"] },
       { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accounts"] },
       { href: "/manufacturing",  label: "Manufacturing",  icon: Hammer },
+      { href: "/sales",          label: "Sales",          icon: ShoppingCart, roles: ["admin", "manager", "sales_manager"] },
     ],
   },
   {
@@ -165,9 +167,10 @@ export function Layout({ children }: LayoutProps) {
   const lowStockCount = summary?.lowStockCount ?? 0;
   const userRole = user?.role ?? "";
 
-  // Suppliers and workers must use their isolated portals, not the internal ERP layout
+  // Isolated portal roles must not enter the internal ERP layout
   if (user && userRole === "supplier") return <Redirect to="/supplier-portal" />;
   if (user && userRole === "worker")   return <Redirect to="/worker-portal" />;
+  if (user && userRole === "customer") return <Redirect to="/customer-portal" />;
 
   useEffect(() => {
     setMobileOpen(false);

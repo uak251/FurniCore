@@ -64,7 +64,8 @@ export default function Login() {
       });
 
       if (role === "supplier") setLocation("/supplier-portal");
-      else if (role === "worker") setLocation("/worker-portal");
+      else if (role === "worker")   setLocation("/worker-portal");
+      else if (role === "customer") setLocation("/customer-portal");
       else setLocation("/");
     } catch (error: any) {
       toast({

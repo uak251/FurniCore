@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import { SupplierLayout } from "@/components/SupplierLayout";
 import { WorkerLayout } from "@/components/WorkerLayout";
+import { CustomerLayout } from "@/components/CustomerLayout";
 import { RoleGuard } from "@/components/RoleGuard";
 
 import Login from "@/pages/login";
@@ -26,6 +27,8 @@ import UsersPage from "@/pages/users";
 import SettingsPage from "@/pages/settings";
 import SupplierPortalPage from "@/pages/supplier-portal";
 import WorkerPortalPage from "@/pages/worker-portal";
+import CustomerPortalPage from "@/pages/customer-portal";
+import SalesPage from "@/pages/sales";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -47,6 +50,8 @@ const queryClient = new QueryClient({
  *  employee → core ops (dashboard, inventory, products, manufacturing, notifications)
  *  supplier → /supplier-portal only (isolated shell, no internal nav)
  *  worker   → /worker-portal only  (isolated shell, no internal nav)
+ *  customer → /customer-portal only (isolated shell, no internal nav)
+ *  sales_manager → /sales + standard ERP routes
  */
 function Router() {
   return (
@@ -76,6 +81,17 @@ function Router() {
         </ProtectedRoute>
       </Route>
 
+      {/* ── Customer portal — isolated layout, own orders/invoices only ── */}
+      <Route path="/customer-portal">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["customer"]}>
+            <CustomerLayout>
+              <CustomerPortalPage />
+            </CustomerLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
+
       <Route>
         <ProtectedRoute>
           <Layout>
@@ -96,6 +112,13 @@ function Router() {
               <Route path="/quotes">
                 <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
                   <QuotesPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Sales: admin / manager / sales_manager ── */}
+              <Route path="/sales">
+                <RoleGuard allowedRoles={["admin", "manager", "sales_manager"]}>
+                  <SalesPage />
                 </RoleGuard>
               </Route>
 

@@ -18,6 +18,8 @@ import productionRouter from "./production";
 import supplierPortalRouter from "./supplier-portal";
 import hrPortalRouter from "./hr-portal";
 import workerPortalRouter from "./worker-portal";
+import salesManagerRouter from "./sales-manager";
+import customerPortalRouter from "./customer-portal";
 
 const router: IRouter = Router();
 
@@ -40,5 +42,7 @@ router.use(productionRouter);
 router.use(supplierPortalRouter);
 router.use(hrPortalRouter);
 router.use(workerPortalRouter);
+router.use(salesManagerRouter);
+router.use(customerPortalRouter);
 
 export default router;
