@@ -14,6 +14,7 @@ import notificationsRouter from "./notifications";
 import activityRouter from "./activity";
 import dashboardRouter from "./dashboard";
 import powerbiRouter from "./powerbi";
+import productionRouter from "./production";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(notificationsRouter);
 router.use(activityRouter);
 router.use(dashboardRouter);
 router.use(powerbiRouter);
+router.use(productionRouter);
 
 export default router;
