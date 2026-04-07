@@ -1082,10 +1082,10 @@ function AccrualsTab({ accounts }: { accounts: Account[] }) {
               <div className="space-y-1.5">
                 <Label>Related Entity</Label>
                 <Controller name="relatedEntityType" control={control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "__none__"} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       <SelectItem value="customer">Customer</SelectItem>
                       <SelectItem value="supplier">Supplier</SelectItem>
                       <SelectItem value="expense">Expense</SelectItem>

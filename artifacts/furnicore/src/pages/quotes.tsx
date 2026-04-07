@@ -126,7 +126,10 @@ export default function QuotesPage() {
       toast({ title: msg });
       invalidate();
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+      // Extract the server-side message from ApiError (e.g. "Quote can only be locked from PENDING status")
+      const serverMsg: string =
+        e?.data?.message ?? e?.data?.error ?? e?.message ?? "Something went wrong.";
+      toast({ variant: "destructive", title: "Action failed", description: serverMsg });
     }
   };
 
@@ -154,6 +157,10 @@ export default function QuotesPage() {
   };
 
   const onSubmit = async (data: QuoteForm) => {
+    if (!data.supplierId) {
+      toast({ variant: "destructive", title: "Validation error", description: "Please select a supplier." });
+      return;
+    }
     const total = Number(data.quantity) * Number(data.unitPrice);
     try {
       await createQuote.mutateAsync({ data: { ...data, totalPrice: total } });
@@ -162,7 +169,8 @@ export default function QuotesPage() {
       setShowDialog(false);
       reset();
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+      const serverMsg: string = e?.data?.message ?? e?.data?.error ?? e?.message ?? "Something went wrong.";
+      toast({ variant: "destructive", title: "Failed to create quote", description: serverMsg });
     }
   };
 
@@ -356,7 +364,10 @@ export default function QuotesPage() {
                   control={control}
                   rules={{ required: true }}
                   render={({ field }) => (
-                    <Select value={field.value?.toString()} onValueChange={(v) => field.onChange(Number(v))}>
+                    <Select
+                      value={field.value ? String(field.value) : ""}
+                      onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select supplier…" />
                       </SelectTrigger>

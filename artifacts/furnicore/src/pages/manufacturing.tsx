@@ -1336,10 +1336,10 @@ export default function ManufacturingPage() {
               <div className="space-y-1">
                 <Label>Assign to</Label>
                 <Controller name="assigneeId" control={taskForm.control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "__none__"} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="__none__">Unassigned</SelectItem>
                       {(users as any[]).map((u) => (
                         <SelectItem key={u.id} value={String(u.id)}>{u.name}</SelectItem>
                       ))}
@@ -1350,10 +1350,10 @@ export default function ManufacturingPage() {
               <div className="space-y-1">
                 <Label>Linked product</Label>
                 <Controller name="productId" control={taskForm.control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "__none__"} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {(products as any[]).map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
                       ))}
@@ -1425,10 +1425,10 @@ export default function ManufacturingPage() {
               <div className="space-y-1">
                 <Label>Link to task (optional)</Label>
                 <Controller name="taskId" control={orderForm.control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "__none__"} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="No task linked" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="__none__">None</SelectItem>
                       {(tasks as any[]).map((t) => (
                         <SelectItem key={t.id} value={String(t.id)}>{t.title}</SelectItem>
                       ))}

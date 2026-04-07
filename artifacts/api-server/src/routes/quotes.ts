@@ -6,7 +6,7 @@ import { authenticate, requireRole, AuthRequest } from "../middlewares/authentic
 
 // Internal quotes routes are restricted to staff roles only.
 // Suppliers use /supplier-portal/quotes instead.
-const internalOnly = requireRole("admin", "manager", "accounts", "employee");
+const internalOnly = requireRole("admin", "manager", "accountant", "sales_manager", "employee");
 import { logActivity, createNotification } from "../lib/activityLogger";
 
 const router: IRouter = Router();
