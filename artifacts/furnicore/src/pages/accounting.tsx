@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { useListTransactions, useCreateTransaction, useGetFinancialSummary } from "@workspace/api-client-react";
-import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,20 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Receipt, TrendingUp, TrendingDown, DollarSign, BarChart3, Lock } from "lucide-react";
+import { Plus, Receipt, TrendingUp, TrendingDown, DollarSign, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
-import { usePowerBI } from "@/hooks/use-powerbi";
-import {
-  PowerBIEmbed,
-  PowerBIEmbedLoading,
-  PowerBIUnconfigured,
-  PowerBIEmbedError,
-} from "@/components/PowerBIEmbed";
+import { PowerBIReportsHub } from "@/components/PowerBIReportsHub";
 
 interface TransactionForm {
   type: string;
@@ -38,62 +31,11 @@ interface TransactionForm {
 
 const TABLE_ID = "accounting";
 
-// Roles allowed to view Power BI financial dashboards
-const BI_ROLES = ["admin", "accounts"];
-
-// ─── Power BI report panels ───────────────────────────────────────────────────
-
-interface BIReportPanelProps {
-  reportId: string;
-}
-
-function BIReportPanel({ reportId }: BIReportPanelProps) {
-  const { fetchEmbedToken, getEmbedState, reports } = usePowerBI();
-  const state = getEmbedState(reportId);
-
-  const reportMeta = reports.find((r) => r.id === reportId);
-
-  useEffect(() => {
-    if (state.status === "idle") {
-      fetchEmbedToken(reportId);
-    }
-  }, [reportId, state.status, fetchEmbedToken]);
-
-  if (state.status === "idle" || state.status === "loading") {
-    return <PowerBIEmbedLoading />;
-  }
-  if (state.status === "unconfigured") {
-    return <PowerBIUnconfigured reportId={reportId} message={state.message} />;
-  }
-  if (state.status === "error") {
-    return (
-      <PowerBIEmbedError
-        message={state.message}
-        onRetry={() => fetchEmbedToken(reportId)}
-      />
-    );
-  }
-  return (
-    <PowerBIEmbed
-      label={reportMeta?.label ?? reportId}
-      config={state.config}
-    />
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AccountingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Current user — used to gate Power BI tab visibility
-  const { data: user } = useGetCurrentUser();
-  const canViewBI = BI_ROLES.includes(user?.role ?? "");
-
-  // Power BI report list (fetched lazily when user opens Analytics tab)
-  const pbi = usePowerBI();
-  const [biFetched, setBiFetched] = useState(false);
 
   const [activeTab, setActiveTab] = useState("ledger");
   const [search, setSearch] = useState("");
@@ -108,23 +50,13 @@ export default function AccountingPage() {
   const { data: financial } = useGetFinancialSummary();
   const createTransaction = useCreateTransaction();
 
-  const { register, handleSubmit, control, reset, watch } = useForm<TransactionForm>({
+  const { register, handleSubmit, control, reset } = useForm<TransactionForm>({
     defaultValues: {
       type: "income",
       status: "completed",
       transactionDate: new Date().toISOString().split("T")[0],
     },
   });
-  const selectedType = watch("type");
-
-  // Fetch BI report list once when Analytics tab is first opened
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === "analytics" && !biFetched && canViewBI) {
-      setBiFetched(true);
-      pbi.fetchReports();
-    }
-  };
 
   useEffect(() => {
     setPage(1);
@@ -281,7 +213,7 @@ export default function AccountingPage() {
       )}
 
       {/* ── Tabs ── */}
-      <Tabs value={activeTab} onValueChange={handleTabChange}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-2">
           <TabsTrigger value="ledger">
             <Receipt className="mr-1.5 h-4 w-4" aria-hidden />
@@ -289,8 +221,7 @@ export default function AccountingPage() {
           </TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5">
             <BarChart3 className="h-4 w-4" aria-hidden />
-            Analytics
-            {!canViewBI && <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />}
+            Reports &amp; Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -410,38 +341,9 @@ export default function AccountingPage() {
           </Card>
         </TabsContent>
 
-        {/* ── Analytics tab (Power BI) ── */}
+        {/* ── Analytics tab (Power BI Reports Hub) ── */}
         <TabsContent value="analytics">
-          {!canViewBI ? (
-            <Card>
-              <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
-                <Lock className="h-10 w-10 text-muted-foreground" aria-hidden />
-                <p className="text-lg font-semibold">Access restricted</p>
-                <p className="max-w-sm text-sm text-muted-foreground">
-                  Financial dashboards are only available to users with the{" "}
-                  <span className="font-medium">Admin</span> or{" "}
-                  <span className="font-medium">Accounts</span> role. Contact your system
-                  administrator if you require access.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <Tabs defaultValue="supplier-ledger" className="space-y-4">
-              <TabsList className="flex-wrap">
-                {biReports.map((r) => (
-                  <TabsTrigger key={r.id} value={r.id}>
-                    {r.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {biReports.map((r) => (
-                <TabsContent key={r.id} value={r.id} className="mt-0">
-                  <BIReportPanel reportId={r.id} />
-                </TabsContent>
-              ))}
-            </Tabs>
-          )}
+          <PowerBIReportsHub />
         </TabsContent>
       </Tabs>
 

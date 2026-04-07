@@ -139,6 +139,7 @@ async function generateEmbedToken(workspaceId: string, reportId: string): Promis
 const REPORT_IDS = [
   "supplier-ledger",
   "expense-income",
+  "trial-balance",
   "payroll-summary",
   "profit-margin",
 ] as const;
@@ -148,6 +149,7 @@ type ReportId = (typeof REPORT_IDS)[number];
 const REPORT_META: Record<ReportId, { label: string; envKey: string }> = {
   "supplier-ledger": { label: "Supplier Ledger Reconciliation", envKey: "POWERBI_REPORT_SUPPLIER_LEDGER" },
   "expense-income":  { label: "Expense vs Income",              envKey: "POWERBI_REPORT_EXPENSE_INCOME" },
+  "trial-balance":   { label: "Trial Balance",                  envKey: "POWERBI_REPORT_TRIAL_BALANCE" },
   "payroll-summary": { label: "Payroll Summaries",              envKey: "POWERBI_REPORT_PAYROLL_SUMMARY" },
   "profit-margin":   { label: "Profit Margin Analysis",         envKey: "POWERBI_REPORT_PROFIT_MARGIN" },
 };
@@ -381,6 +383,51 @@ router.get(
       monthly: (monthly as any).rows,
       inventoryValue: (inventory as any).rows,
     });
+  },
+);
+
+/**
+ * Trial Balance — account-level debit/credit summary.
+ *
+ * Groups completed transactions by category to produce a period-end
+ * trial balance showing credits (income), debits (expenses), and net balance.
+ *
+ * Power BI reports: account balance table, variance highlights
+ */
+router.get(
+  "/powerbi/data/trial-balance",
+  authenticate,
+  requireRole("admin", "accounts"),
+  async (_req, res): Promise<void> => {
+    const result = await cachedQuery("trial-balance", () =>
+      db.execute(sql`
+        SELECT
+          COALESCE(category, 'Uncategorized')                                         AS account,
+          SUM(CASE WHEN type = 'income'  THEN amount ELSE 0 END)::float              AS credits,
+          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END)::float              AS debits,
+          (SUM(CASE WHEN type = 'income'  THEN amount ELSE 0 END)
+         - SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END))::float            AS balance,
+          COUNT(*)::int                                                               AS transaction_count,
+          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END)::float            AS pending_amount
+        FROM transactions
+        GROUP BY COALESCE(category, 'Uncategorized')
+        ORDER BY ABS(
+          SUM(CASE WHEN type = 'income'  THEN amount ELSE 0 END)
+        + SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END)
+        ) DESC
+      `),
+    );
+    const rows = (result as any).rows as Array<{
+      account: string; credits: number; debits: number;
+      balance: number; transaction_count: number; pending_amount: number;
+    }>;
+    const totals = {
+      totalCredits:  rows.reduce((s, r) => s + r.credits, 0),
+      totalDebits:   rows.reduce((s, r) => s + r.debits,  0),
+      netBalance:    rows.reduce((s, r) => s + r.balance,  0),
+      accountCount:  rows.length,
+    };
+    res.json({ accounts: rows, totals });
   },
 );
 
