@@ -405,8 +405,9 @@ router.get("/powerbi/data/inventory-analysis", authenticate, async (req: AuthReq
 
 /* ── HR Dashboard ────────────────────────────────────────────────────────────── */
 router.get("/powerbi/data/hr-dashboard", authenticate, async (req: AuthRequest, res): Promise<void> => {
+  try {
   await withModuleAccess(req, res as any, "hr", async () => {
-    const [employees, attendance, reviews] = await Promise.all([
+    const [employees, attendance] = await Promise.all([
       cachedQuery("hr-dashboard:employees", () =>
         db.execute(sql`
           SELECT id, name, department, position, is_active,
@@ -424,22 +425,29 @@ router.get("/powerbi/data/hr-dashboard", authenticate, async (req: AuthRequest, 
           FROM attendance a JOIN employees e ON e.id = a.employee_id
           GROUP BY e.department ORDER BY e.department
         `)),
-      cachedQuery("hr-dashboard:reviews", () =>
+    ]);
+
+    // performance_reviews may not exist in all deployments — degrade gracefully
+    let reviewRows: any[] = [];
+    try {
+      const reviews = await cachedQuery("hr-dashboard:reviews", () =>
         db.execute(sql`
           SELECT e.department,
                  COUNT(*)::int AS review_count,
                  AVG(pr.overall_rating)::float AS avg_rating
           FROM performance_reviews pr JOIN employees e ON e.id = pr.employee_id
           GROUP BY e.department ORDER BY e.department
-        `)),
-    ]);
+        `));
+      reviewRows = (reviews as any).rows ?? [];
+    } catch {
+      // table might not exist yet — skip gracefully
+    }
     const empRows = (employees as any).rows as Array<{ id: number; name: string; department: string; is_active: boolean; base_salary: number; }>;
-    const attRows = (attendance as any).rows;
-    const revRows = (reviews as any).rows;
+    const attRows = (attendance as any).rows as any[];
     const deptBreakdown = [...new Set(empRows.map((e) => e.department))].map((dept) => {
       const emps     = empRows.filter((e) => e.department === dept);
       const att      = attRows.find((r: any) => r.department === dept) ?? {};
-      const rev      = revRows.find((r: any) => r.department === dept) ?? {};
+      const rev      = reviewRows.find((r: any) => r.department === dept) ?? {};
       const totalRecords = Number(att.total_records) || 0;
       const present      = Number(att.present) || 0;
       return {
@@ -462,6 +470,10 @@ router.get("/powerbi/data/hr-dashboard", authenticate, async (req: AuthRequest, 
       attendance: attRows,
     });
   });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Failed to load HR dashboard data";
+    (res as any).status(500).json({ error: "HR_DASHBOARD_ERROR", message: msg });
+  }
 });
 
 /* ── Sales Overview ──────────────────────────────────────────────────────────── */

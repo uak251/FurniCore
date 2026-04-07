@@ -1393,10 +1393,11 @@ export default function ManufacturingPage() {
               <div className="col-span-2 space-y-1">
                 <Label>Product *</Label>
                 <Controller name="productId" control={orderForm.control} rules={{ required: true }} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value || "__none__"} onValueChange={(v) => field.onChange(v === "__none__" ? "" : v)}>
                     <SelectTrigger><SelectValue placeholder="Select product…" /></SelectTrigger>
                     <SelectContent>
-                      {(products as any[]).map((p) => (
+                      <SelectItem value="__none__" disabled>Select product…</SelectItem>
+                      {(products as any[]).filter((p: any) => p.id).map((p: any) => (
                         <SelectItem key={p.id} value={String(p.id)}>{p.name} ({p.sku})</SelectItem>
                       ))}
                     </SelectContent>

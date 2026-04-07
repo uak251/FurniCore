@@ -50,6 +50,36 @@ const STANDARD_ACCOUNTS = [
   { code: "6900", name: "Other Expenses",         type: "expense",   subtype: "operating",        normalBalance: "debit" },
 ] as const;
 
+/* ── CSV helpers ───────────────────────────────────────────────────────────── */
+
+const CSV_COLUMNS = ["code", "name", "type", "subtype", "normal_balance", "description"] as const;
+
+function toCsvRow(fields: string[]): string {
+  return fields.map((f) => {
+    const s = f ?? "";
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  }).join(",");
+}
+
+function parseCsvLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === "," && !inQuotes) {
+      result.push(current.trim()); current = "";
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 /* ── GET /accounts ─────────────────────────────────────────────────────────── */
 router.get("/accounts", authenticate, async (_req, res, next: NextFunction): Promise<void> => {
   try {
@@ -60,6 +90,106 @@ router.get("/accounts", authenticate, async (_req, res, next: NextFunction): Pro
     res.json(rows);
   } catch (err) { next(err); }
 });
+
+/* ── GET /accounts/sample.csv — download sample CSV template ─────────────── */
+router.get("/accounts/sample.csv", authenticate, async (_req, res): Promise<void> => {
+  const sample = [
+    toCsvRow([...CSV_COLUMNS]),
+    toCsvRow(["1000", "Cash & Bank",           "asset",     "current_asset",     "debit",  "Cash on hand and in bank accounts"]),
+    toCsvRow(["1100", "Accounts Receivable",   "asset",     "current_asset",     "debit",  "Trade receivables from customers"]),
+    toCsvRow(["1500", "Fixed Assets",          "asset",     "fixed_asset",       "debit",  "Property plant and equipment"]),
+    toCsvRow(["2000", "Accounts Payable",      "liability", "current_liability", "credit", "Amounts owed to suppliers"]),
+    toCsvRow(["3000", "Owner's Equity",        "equity",    "equity",            "credit", "Owner investment and retained earnings"]),
+    toCsvRow(["4000", "Sales Revenue",         "income",    "operating",         "credit", "Revenue from furniture sales"]),
+    toCsvRow(["5000", "Cost of Goods Sold",    "expense",   "cogs",              "debit",  "Direct cost of products sold"]),
+    toCsvRow(["6000", "Salaries Expense",      "expense",   "operating",         "debit",  "Employee wages and salaries"]),
+  ].join("\n");
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="chart-of-accounts-sample.csv"');
+  res.send(sample);
+});
+
+/* ── GET /accounts/export.csv — export all accounts ─────────────────────── */
+router.get("/accounts/export.csv", authenticate, async (_req, res, next: NextFunction): Promise<void> => {
+  try {
+    const rows = await db.select().from(chartOfAccountsTable).orderBy(asc(chartOfAccountsTable.code));
+    const lines = [
+      toCsvRow([...CSV_COLUMNS]),
+      ...rows.map((r) => toCsvRow([r.code, r.name, r.type, r.subtype ?? "", r.normalBalance, r.description ?? ""])),
+    ];
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="chart-of-accounts.csv"');
+    res.send(lines.join("\n"));
+  } catch (err) { next(err); }
+});
+
+/* ── POST /accounts/import — bulk import from CSV ─────────────────────────── */
+router.post(
+  "/accounts/import",
+  authenticate,
+  requireRole("admin", "accountant"),
+  async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+    try {
+      const { csv } = req.body as { csv?: string };
+      if (!csv || typeof csv !== "string") {
+        res.status(400).json({ error: "VALIDATION_ERROR", message: "csv body field is required." });
+        return;
+      }
+      const rawLines = csv.split(/\r?\n/).filter((l) => l.trim());
+      if (rawLines.length < 2) {
+        res.status(400).json({ error: "VALIDATION_ERROR", message: "CSV must have a header row and at least one data row." });
+        return;
+      }
+
+      // Parse header to find column indices flexibly
+      const header = parseCsvLine(rawLines[0]).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+      const idx = (name: string) => header.indexOf(name);
+      const iCode = idx("code"); const iName = idx("name"); const iType = idx("type");
+      const iSub  = idx("subtype"); const iNB = idx("normal_balance"); const iDesc = idx("description");
+
+      if (iCode === -1 || iName === -1 || iType === -1 || iNB === -1) {
+        res.status(400).json({ error: "INVALID_HEADER", message: "CSV must have columns: code, name, type, normal_balance (plus optional subtype, description)." });
+        return;
+      }
+
+      const VALID_TYPES   = ["asset","liability","equity","income","expense"];
+      const VALID_NB      = ["debit","credit"];
+
+      const created: string[] = []; const updated: string[] = []; const errors: string[] = [];
+
+      for (let i = 1; i < rawLines.length; i++) {
+        const cols   = parseCsvLine(rawLines[i]);
+        const code   = (cols[iCode] ?? "").trim();
+        const name   = (cols[iName] ?? "").trim();
+        const type   = (cols[iType] ?? "").trim().toLowerCase();
+        const subtype     = iSub  >= 0 ? (cols[iSub]  ?? "").trim() : "";
+        const normalBalance = (cols[iNB] ?? "").trim().toLowerCase();
+        const description = iDesc >= 0 ? (cols[iDesc] ?? "").trim() : "";
+
+        if (!code || !name) { errors.push(`Row ${i + 1}: code and name are required.`); continue; }
+        if (!VALID_TYPES.includes(type))  { errors.push(`Row ${i + 1}: invalid type "${type}".`); continue; }
+        if (!VALID_NB.includes(normalBalance)) { errors.push(`Row ${i + 1}: invalid normal_balance "${normalBalance}".`); continue; }
+
+        try {
+          const existing = await db.select({ id: chartOfAccountsTable.id }).from(chartOfAccountsTable).where(eq(chartOfAccountsTable.code, code)).limit(1);
+          if (existing.length > 0) {
+            await db.update(chartOfAccountsTable).set({ name, subtype: subtype || null, normalBalance, description: description || null, isActive: true }).where(eq(chartOfAccountsTable.code, code));
+            updated.push(code);
+          } else {
+            await db.insert(chartOfAccountsTable).values({ code, name, type, subtype: subtype || null, normalBalance, description: description || null, isActive: true });
+            created.push(code);
+          }
+        } catch (rowErr: any) {
+          errors.push(`Row ${i + 1} (${code}): ${rowErr?.message ?? "Unknown error"}`);
+        }
+      }
+
+      await logActivity({ userId: req.user?.id, action: "CREATE", module: "accounts", description: `CSV import: ${created.length} created, ${updated.length} updated, ${errors.length} errors` });
+      res.json({ created: created.length, updated: updated.length, errors, total: rawLines.length - 1 });
+    } catch (err) { next(err); }
+  },
+);
 
 /* ── POST /accounts/seed ─────────────────────────────────────────────────────*/
 router.post("/accounts/seed", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, BookOpen, Pencil, ToggleLeft, ToggleRight, Sprout, Search } from "lucide-react";
+import { Plus, BookOpen, Pencil, ToggleLeft, ToggleRight, Sprout, Search, Download, Upload, FileDown } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
+import { getAuthToken } from "@/lib/auth";
 
 /* ── types ───────────────────────────────────────────────────────────────── */
 interface Account {
@@ -66,6 +67,10 @@ export default function ChartOfAccountsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editItem,   setEditItem]   = useState<Account | null>(null);
   const [form,       setForm]       = useState<AccountForm>({ code: "", name: "", type: "asset", subtype: "current_asset", normalBalance: "debit", description: "" });
+  const [showImport, setShowImport] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; updated: number; errors: string[]; total: number } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["accounts"] });
 
@@ -102,6 +107,52 @@ export default function ChartOfAccountsPage() {
     setEditItem(null);
     setForm({ code: "", name: "", type: "asset", subtype: "current_asset", normalBalance: "debit", description: "" });
     setShowDialog(true);
+  };
+
+  const handleExport = async () => {
+    try {
+      const resp = await fetch("/api/accounts/export.csv", { headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` } });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "chart-of-accounts.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast({ variant: "destructive", title: "Export failed", description: e.message }); }
+  };
+
+  const handleSampleDownload = async () => {
+    try {
+      const resp = await fetch("/api/accounts/sample.csv", { headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` } });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = "chart-of-accounts-sample.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast({ variant: "destructive", title: "Download failed", description: e.message }); }
+  };
+
+  const handleImportFile = async (file: File) => {
+    setImporting(true);
+    try {
+      const csv = await file.text();
+      const resp = await fetch("/api/accounts/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken() ?? ""}` },
+        body: JSON.stringify({ csv }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.message ?? `HTTP ${resp.status}`);
+      setImportResult(data);
+      invalidate();
+      toast({ title: "Import complete", description: `Created: ${data.created}, Updated: ${data.updated}${data.errors.length ? `, Errors: ${data.errors.length}` : ""}` });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Import failed", description: e.message });
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   const openEdit = (a: Account) => {
@@ -144,7 +195,21 @@ export default function ChartOfAccountsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Chart of Accounts</h1>
           <p className="text-muted-foreground">Manage the master list of ledger accounts used in double-entry bookkeeping.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSampleDownload} title="Download sample CSV format">
+            <FileDown className="mr-1.5 h-4 w-4" />
+            Sample CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="mr-1.5 h-4 w-4" />
+            Export CSV
+          </Button>
+          {canWrite && (
+            <Button variant="outline" size="sm" onClick={() => { setImportResult(null); setShowImport(true); }}>
+              <Upload className="mr-1.5 h-4 w-4" />
+              Import CSV
+            </Button>
+          )}
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => seedMutation.mutate()} disabled={seedMutation.isPending}>
               <Sprout className="mr-1.5 h-4 w-4" />
@@ -261,6 +326,67 @@ export default function ChartOfAccountsPage() {
           )}
         </div>
       )}
+
+      {/* Hidden file input for CSV import */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImportFile(f); }}
+      />
+
+      {/* CSV Import dialog */}
+      <Dialog open={showImport} onOpenChange={setShowImport}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Chart of Accounts from CSV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Upload a CSV file to bulk create or update accounts. Existing accounts (matched by <span className="font-mono text-xs">code</span>) will be updated; new codes will be created.
+            </p>
+            <div className="rounded-md border bg-muted/40 p-3 text-xs font-mono text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">Required columns:</p>
+              <p>code, name, type, normal_balance</p>
+              <p className="font-semibold text-foreground mt-1">Optional columns:</p>
+              <p>subtype, description</p>
+              <p className="font-semibold text-foreground mt-1">Valid types:</p>
+              <p>asset · liability · equity · income · expense</p>
+              <p className="font-semibold text-foreground mt-1">Valid normal_balance:</p>
+              <p>debit · credit</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleSampleDownload} className="flex-1">
+                <FileDown className="mr-1.5 h-4 w-4" />
+                Download sample CSV
+              </Button>
+              <Button size="sm" className="flex-1" disabled={importing} onClick={() => fileRef.current?.click()}>
+                <Upload className="mr-1.5 h-4 w-4" />
+                {importing ? "Importing…" : "Choose CSV file"}
+              </Button>
+            </div>
+            {importResult && (
+              <div className="rounded-md border p-3 space-y-1 text-sm">
+                <p className="font-medium">Import results ({importResult.total} rows processed)</p>
+                <p className="text-green-600">✓ Created: {importResult.created}</p>
+                <p className="text-blue-600">↻ Updated: {importResult.updated}</p>
+                {importResult.errors.length > 0 && (
+                  <div>
+                    <p className="text-destructive">✗ Errors: {importResult.errors.length}</p>
+                    <ul className="mt-1 max-h-32 overflow-y-auto text-xs text-muted-foreground space-y-0.5">
+                      {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowImport(false); setImportResult(null); }}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create/Edit Dialog */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

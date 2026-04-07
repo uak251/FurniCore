@@ -132,7 +132,7 @@ function BrowseTab({
   const { data: discountResult } = useValidateDiscount(discountInput, subtotal);
 
   const categories = useMemo(() => {
-    const cats = new Set(catalog.map(p => p.category));
+    const cats = new Set(catalog.map(p => p.category).filter((c): c is string => !!c));
     return Array.from(cats).sort();
   }, [catalog]);
 
