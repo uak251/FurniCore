@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Users, ClipboardList, Plus, Pencil, Trash2,
   Star, BarChart3, TrendingUp, CalendarDays, CheckCircle,
-  AlertTriangle, Clock, UserCheck, Banknote,
+  AlertTriangle, Clock, UserCheck, UserX, Banknote,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -46,6 +46,20 @@ import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "
 import { cn } from "@/lib/utils";
 
 /* ─── Shared helpers ─────────────────────────────────────────────────────────── */
+
+function apiErrorMessage(e: unknown): string {
+  if (e && typeof e === "object") {
+    const resp = (e as any).response;
+    if (resp?.data) {
+      const d = resp.data;
+      if (typeof d === "string" && !d.startsWith("<!")) return d;
+      if (d.message) return d.message;
+      if (d.error)   return d.error;
+    }
+    if ((e as any).message) return (e as any).message;
+  }
+  return "Something went wrong. Please try again.";
+}
 
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -392,7 +406,7 @@ function EmployeesTab() {
       if (editItem) { await updateEmployee.mutateAsync({ id: editItem.id, data }); toast({ title: "Employee updated" }); }
       else          { await createEmployee.mutateAsync({ data });                   toast({ title: "Employee created" }); }
       invalidate(); setShowEmpDialog(false);
-    } catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    } catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
   const onSubmitAttendance = async (data: AttendanceForm) => {
     try {
@@ -401,12 +415,19 @@ function EmployeesTab() {
       qc.invalidateQueries({ queryKey: ["attendance"] });
       qc.invalidateQueries({ queryKey: ["attendanceSummary"] });
       setShowAttDialog(false);
-    } catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    } catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this employee?")) return;
-    try { await deleteEmployee.mutateAsync({ id }); toast({ title: "Employee deleted" }); invalidate(); }
-    catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+  const handleDeactivate = async (id: number) => {
+    if (!confirm("Deactivate this employee? They can be reactivated later via Edit.")) return;
+    try { await deleteEmployee.mutateAsync({ id }); toast({ title: "Employee deactivated" }); invalidate(); }
+    catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
+  };
+  const handleReactivate = async (emp: any) => {
+    try {
+      await updateEmployee.mutateAsync({ id: emp.id, data: { isActive: true } });
+      toast({ title: "Employee reactivated" });
+      invalidate();
+    } catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
 
   return (
@@ -485,9 +506,15 @@ function EmployeesTab() {
                             <Button size="icon" variant="ghost" aria-label={`Edit ${e.name}`} onClick={() => openEdit(e)}>
                               <Pencil className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="text-destructive" aria-label={`Delete ${e.name}`} onClick={() => handleDelete(e.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {e.isActive ? (
+                              <Button size="icon" variant="ghost" className="text-destructive" aria-label={`Deactivate ${e.name}`} onClick={() => handleDeactivate(e.id)}>
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button size="icon" variant="ghost" className="text-green-600" aria-label={`Reactivate ${e.name}`} onClick={() => handleReactivate(e)}>
+                                <UserCheck className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -631,7 +658,7 @@ function AttendanceTab() {
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this attendance record?")) return;
     try { await deleteAtt.mutateAsync(id); toast({ title: "Deleted" }); }
-    catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
 
   return (
@@ -789,7 +816,7 @@ function EditAttendanceDialog({
       await updateAtt.mutateAsync({ id: record.id, ...data });
       toast({ title: "Attendance updated" });
       onClose();
-    } catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    } catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
 
   return (
@@ -897,13 +924,13 @@ function PerformanceTab() {
         toast({ title: "Review created" });
       }
       setShowDialog(false);
-    } catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    } catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this review?")) return;
     try { await deleteReview.mutateAsync(id); toast({ title: "Review deleted" }); }
-    catch (e: any) { toast({ variant:"destructive", title:"Error", description: e.message }); }
+    catch (e) { toast({ variant:"destructive", title:"Error", description: apiErrorMessage(e) }); }
   };
 
   // Suggested bonus from rating

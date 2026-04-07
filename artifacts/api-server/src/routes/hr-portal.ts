@@ -15,7 +15,7 @@
  *   (daily rate = monthly base / 22 working days)
  */
 
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction } from "express";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { z } from "zod";
 import {
@@ -140,12 +140,14 @@ router.patch("/attendance/:id", authenticate, async (req: AuthRequest, res): Pro
 });
 
 /* DELETE /attendance/:id */
-router.delete("/attendance/:id", ...mgmt, async (req, res): Promise<void> => {
+router.delete("/attendance/:id", ...mgmt, async (req, res, next: NextFunction): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [record] = await db.delete(attendanceTable).where(eq(attendanceTable.id, id)).returning();
-  if (!record) { res.status(404).json({ error: "Attendance record not found" }); return; }
-  res.sendStatus(204);
+  try {
+    const [record] = await db.delete(attendanceTable).where(eq(attendanceTable.id, id)).returning();
+    if (!record) { res.status(404).json({ error: "Attendance record not found" }); return; }
+    res.sendStatus(204);
+  } catch (err) { next(err); }
 });
 
 /* GET /hr/attendance-summary?month&year — aggregate per employee */
@@ -314,12 +316,14 @@ router.patch("/performance-reviews/:id", ...mgmt, async (req: AuthRequest, res):
   res.json({ ...review, employeeName: emp?.name ?? "", department: emp?.department ?? "" });
 });
 
-router.delete("/performance-reviews/:id", ...mgmt, async (req, res): Promise<void> => {
+router.delete("/performance-reviews/:id", ...mgmt, async (req, res, next: NextFunction): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [review] = await db.delete(performanceReviewsTable).where(eq(performanceReviewsTable.id, id)).returning();
-  if (!review) { res.status(404).json({ error: "Review not found" }); return; }
-  res.sendStatus(204);
+  try {
+    const [review] = await db.delete(performanceReviewsTable).where(eq(performanceReviewsTable.id, id)).returning();
+    if (!review) { res.status(404).json({ error: "Review not found" }); return; }
+    res.sendStatus(204);
+  } catch (err) { next(err); }
 });
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -374,12 +378,14 @@ router.post("/payroll-adjustments", ...mgmt, async (req: AuthRequest, res): Prom
   res.status(201).json({ ...adj, amount: Number(adj.amount), employeeName: emp?.name ?? "" });
 });
 
-router.delete("/payroll-adjustments/:id", ...mgmt, async (req, res): Promise<void> => {
+router.delete("/payroll-adjustments/:id", ...mgmt, async (req, res, next: NextFunction): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [adj] = await db.delete(payrollAdjustmentsTable).where(eq(payrollAdjustmentsTable.id, id)).returning();
-  if (!adj) { res.status(404).json({ error: "Adjustment not found" }); return; }
-  res.sendStatus(204);
+  try {
+    const [adj] = await db.delete(payrollAdjustmentsTable).where(eq(payrollAdjustmentsTable.id, id)).returning();
+    if (!adj) { res.status(404).json({ error: "Adjustment not found" }); return; }
+    res.sendStatus(204);
+  } catch (err) { next(err); }
 });
 
 /* ═══════════════════════════════════════════════════════════════ */

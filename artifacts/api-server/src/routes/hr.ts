@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction } from "express";
 import { eq, ilike } from "drizzle-orm";
 import { db, employeesTable, attendanceTable } from "@workspace/db";
 import { CreateEmployeeBody, UpdateEmployeeBody, GetEmployeeParams, UpdateEmployeeParams, DeleteEmployeeParams, ListEmployeesQueryParams, GetEmployeeAttendanceParams, GetEmployeeAttendanceQueryParams, RecordAttendanceBody } from "@workspace/api-zod";
@@ -32,18 +32,20 @@ router.get("/employees", authenticate, async (req, res): Promise<void> => {
   res.json(employees.map(toEmployee));
 });
 
-router.post("/employees", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.post("/employees", authenticate, async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const parsed = CreateEmployeeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [employee] = await db.insert(employeesTable).values({
-    ...parsed.data,
-    baseSalary: String(parsed.data.baseSalary),
-    hireDate: new Date(parsed.data.hireDate),
-    userId: parsed.data.userId ?? null,
-    phone: parsed.data.phone ?? null,
-  }).returning();
-  await logActivity({ userId: req.user?.id, action: "CREATE", module: "hr", description: `Created employee ${employee.name}`, newData: toEmployee(employee) });
-  res.status(201).json(toEmployee(employee));
+  try {
+    const [employee] = await db.insert(employeesTable).values({
+      ...parsed.data,
+      baseSalary: String(parsed.data.baseSalary),
+      hireDate: new Date(parsed.data.hireDate),
+      userId: parsed.data.userId ?? null,
+      phone: parsed.data.phone ?? null,
+    }).returning();
+    await logActivity({ userId: req.user?.id, action: "CREATE", module: "hr", description: `Created employee ${employee.name}`, newData: toEmployee(employee) });
+    res.status(201).json(toEmployee(employee));
+  } catch (err) { next(err); }
 });
 
 router.get("/employees/:id", authenticate, async (req, res): Promise<void> => {
@@ -54,27 +56,40 @@ router.get("/employees/:id", authenticate, async (req, res): Promise<void> => {
   res.json(toEmployee(employee));
 });
 
-router.patch("/employees/:id", authenticate, async (req: AuthRequest, res): Promise<void> => {
+router.patch("/employees/:id", authenticate, async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const params = UpdateEmployeeParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = UpdateEmployeeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.baseSalary !== undefined) updateData.baseSalary = String(parsed.data.baseSalary);
-  const [old] = await db.select().from(employeesTable).where(eq(employeesTable.id, params.data.id));
-  const [employee] = await db.update(employeesTable).set(updateData).where(eq(employeesTable.id, params.data.id)).returning();
-  if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
-  await logActivity({ userId: req.user?.id, action: "UPDATE", module: "hr", description: `Updated employee ${employee.name}`, oldData: toEmployee(old), newData: toEmployee(employee) });
-  res.json(toEmployee(employee));
+  try {
+    const updateData: Record<string, unknown> = { ...parsed.data };
+    if (parsed.data.baseSalary !== undefined) updateData.baseSalary = String(parsed.data.baseSalary);
+    const [old] = await db.select().from(employeesTable).where(eq(employeesTable.id, params.data.id));
+    const [employee] = await db.update(employeesTable).set(updateData).where(eq(employeesTable.id, params.data.id)).returning();
+    if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
+    await logActivity({ userId: req.user?.id, action: "UPDATE", module: "hr", description: `Updated employee ${employee.name}`, oldData: toEmployee(old), newData: toEmployee(employee) });
+    res.json(toEmployee(employee));
+  } catch (err) { next(err); }
 });
 
-router.delete("/employees/:id", authenticate, async (req: AuthRequest, res): Promise<void> => {
+/**
+ * Soft-delete: sets isActive=false.
+ * Hard-deleting breaks FK constraints from attendance, payroll, and performance tables.
+ * Use PATCH /employees/:id with { isActive: true } to reactivate.
+ */
+router.delete("/employees/:id", authenticate, async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const params = DeleteEmployeeParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [employee] = await db.delete(employeesTable).where(eq(employeesTable.id, params.data.id)).returning();
-  if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
-  await logActivity({ userId: req.user?.id, action: "DELETE", module: "hr", description: `Deleted employee ${employee.name}` });
-  res.sendStatus(204);
+  try {
+    const [employee] = await db
+      .update(employeesTable)
+      .set({ isActive: false })
+      .where(eq(employeesTable.id, params.data.id))
+      .returning();
+    if (!employee) { res.status(404).json({ error: "Employee not found" }); return; }
+    await logActivity({ userId: req.user?.id, action: "DEACTIVATE", module: "hr", description: `Deactivated employee ${employee.name}` });
+    res.sendStatus(204);
+  } catch (err) { next(err); }
 });
 
 router.get("/employees/:id/attendance", authenticate, async (req, res): Promise<void> => {
