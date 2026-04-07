@@ -10,6 +10,7 @@ import { X, ChevronLeft, ChevronRight, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { resolvePublicAssetUrl } from "@/lib/image-url";
 import type { RecordImage } from "./useRecordImages";
 
 interface ImageModalProps {
@@ -63,7 +64,7 @@ export function ImageModal({ images, initialIndex = 0, onClose, canDelete, onDel
               </Badge>
             )}
             <a
-              href={current.url}
+              href={resolvePublicAssetUrl(current.url)}
               download={current.originalName ?? current.filename}
               target="_blank"
               rel="noopener noreferrer"
@@ -120,7 +121,7 @@ export function ImageModal({ images, initialIndex = 0, onClose, canDelete, onDel
                   i === idx ? "border-primary" : "border-transparent opacity-60 hover:opacity-100",
                 )}
               >
-                <img src={img.url} alt={img.altText ?? ""} className="h-full w-full object-cover" />
+                <img src={resolvePublicAssetUrl(img.url)} alt={img.altText ?? ""} className="h-full w-full object-cover" />
               </button>
             ))}
           </div>

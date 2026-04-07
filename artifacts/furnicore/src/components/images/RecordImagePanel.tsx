@@ -10,6 +10,7 @@
  */
 
 import { ImageIcon } from "lucide-react";
+import { resolvePublicAssetUrl } from "@/lib/image-url";
 import { useEntityImages, type EntityType } from "./useRecordImages";
 import { ImageGallery } from "./ImageGallery";
 
@@ -32,7 +33,7 @@ export function RecordImagePanel({ entityType, entityId, canUpload, canDelete, c
       {/* Large primary image */}
       {!isLoading && primary && !compact && (
         <div className="relative overflow-hidden rounded-xl border bg-muted/20 aspect-video">
-          <img src={primary.url} alt={primary.altText ?? ""} className="h-full w-full object-contain" />
+          <img src={resolvePublicAssetUrl(primary.url)} alt={primary.altText ?? ""} className="h-full w-full object-contain" />
         </div>
       )}
 
@@ -64,7 +65,7 @@ export function RecordAvatar({ entityType, entityId, className }: { entityType: 
 
   return (
     <img
-      src={primary.url}
+      src={resolvePublicAssetUrl(primary.url)}
       alt={primary.altText ?? ""}
       className={`rounded-lg object-cover ${className ?? "h-10 w-10"}`}
       loading="lazy"

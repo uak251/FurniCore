@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { resolvePublicAssetUrl } from "@/lib/image-url";
 import { ImageModal } from "./ImageModal";
 import { ImageUpload } from "./ImageUpload";
 import { useDeleteImage, useSetPrimaryImage, type EntityType, type RecordImage } from "./useRecordImages";
@@ -36,7 +37,7 @@ function ImageThumbnail({
   return (
     <div className="group relative overflow-hidden rounded-lg border bg-muted/30 aspect-square">
       <img
-        src={image.url}
+        src={resolvePublicAssetUrl(image.url)}
         alt={image.altText ?? image.originalName ?? ""}
         className="h-full w-full object-cover transition-transform group-hover:scale-105"
         loading="lazy"

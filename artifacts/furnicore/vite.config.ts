@@ -72,6 +72,11 @@ export default defineConfig({
         target: apiUrl,
         changeOrigin: true,
       },
+      // Express serves uploaded images at /uploads/* — same origin as API
+      "/uploads": {
+        target: apiUrl,
+        changeOrigin: true,
+      },
     },
     fs: {
       strict: true,
@@ -82,5 +87,9 @@ export default defineConfig({
     port,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": { target: apiUrl, changeOrigin: true },
+      "/uploads": { target: apiUrl, changeOrigin: true },
+    },
   },
 });

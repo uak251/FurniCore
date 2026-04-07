@@ -33,7 +33,8 @@ export default function ProductsPage() {
   const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
   const { data: me } = useGetCurrentUser();
-  const canManageImages = me?.role === "admin" || me?.role === "manager";
+  const canManageImages =
+    me?.role === "admin" || me?.role === "manager" || me?.role === "sales_manager" || me?.role === "accountant";
 
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);

@@ -306,7 +306,8 @@ export default function PayrollPage() {
   const fmt = (n: number) => fmtCur(Math.abs(n));
   const qc         = useQueryClient();
   const { data: me } = useGetCurrentUser();
-  const canManageImages = me?.role === "admin" || me?.role === "manager";
+  const canManageImages =
+    me?.role === "admin" || me?.role === "manager" || me?.role === "accountant";
 
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState("all");

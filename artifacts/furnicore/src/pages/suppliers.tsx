@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useListSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier } from "@workspace/api-client-react";
+import { useListSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier, useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Truck, Pencil, Trash2, Star } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
+import { Plus, Truck, Pencil, Trash2, Star, Images } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
@@ -32,6 +34,12 @@ const TABLE_ID = "suppliers";
 export default function SuppliersPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: me } = useGetCurrentUser();
+  const canManageImages =
+    me?.role === "admin" || me?.role === "manager" || me?.role === "accountant";
+  const [showGallery, setShowGallery] = useState(false);
+  const { data: allImages = [] } = useModuleImages("supplier");
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey] = useState("name");
@@ -166,10 +174,16 @@ export default function SuppliersPage() {
           <h1 className="text-3xl font-bold tracking-tight">Suppliers</h1>
           <p className="text-muted-foreground">Manage your supplier network</p>
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Add supplier
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setShowGallery(true)}>
+            <Images className="mr-2 h-4 w-4" aria-hidden />
+            Gallery
+          </Button>
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Add supplier
+          </Button>
+        </div>
       </div>
 
       <TableToolbar
@@ -225,6 +239,7 @@ export default function SuppliersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col" className="w-12" />
                       <TableHead scope="col">Name</TableHead>
                       <TableHead scope="col">Contact</TableHead>
                       <TableHead scope="col">Phone</TableHead>
@@ -238,6 +253,9 @@ export default function SuppliersPage() {
                   <TableBody>
                     {pageRows.map((s: any) => (
                       <TableRow key={s.id}>
+                        <TableCell className="w-12">
+                          <RecordAvatar entityType="supplier" entityId={s.id} className="h-9 w-9" />
+                        </TableCell>
                         <TableCell>
                           <div className="font-medium">{s.name}</div>
                           <div className="text-xs text-muted-foreground">{s.email}</div>
@@ -288,65 +306,97 @@ export default function SuppliersPage() {
       </Card>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editItem ? "Edit supplier" : "Add supplier"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="sup-name">Company name</Label>
-                <Input id="sup-name" {...register("name", { required: true })} placeholder="WoodCraft Materials" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sup-email">Email</Label>
-                <Input id="sup-email" type="email" {...register("email")} placeholder="contact@supplier.com" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sup-phone">Phone</Label>
-                <Input id="sup-phone" {...register("phone")} placeholder="+1-555-0100" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sup-contact">Contact person</Label>
-                <Input id="sup-contact" {...register("contactPerson")} placeholder="John Smith" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="sup-rating">Rating (0–5)</Label>
-                <Input id="sup-rating" type="number" min="0" max="5" step="0.1" {...register("rating", { valueAsNumber: true })} />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="sup-addr">Address</Label>
-                <Input id="sup-addr" {...register("address")} placeholder="123 Main St, City, State" />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label>Status</Label>
-                <Controller
-                  name="status"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="blacklisted">Blacklisted</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+          <Tabs defaultValue="details">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              {editItem && <TabsTrigger value="images">Images</TabsTrigger>}
+            </TabsList>
+            <TabsContent value="details">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor="sup-name">Company name</Label>
+                    <Input id="sup-name" {...register("name", { required: true })} placeholder="WoodCraft Materials" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sup-email">Email</Label>
+                    <Input id="sup-email" type="email" {...register("email")} placeholder="contact@supplier.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sup-phone">Phone</Label>
+                    <Input id="sup-phone" {...register("phone")} placeholder="+1-555-0100" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sup-contact">Contact person</Label>
+                    <Input id="sup-contact" {...register("contactPerson")} placeholder="John Smith" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sup-rating">Rating (0–5)</Label>
+                    <Input id="sup-rating" type="number" min="0" max="5" step="0.1" {...register("rating", { valueAsNumber: true })} />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor="sup-addr">Address</Label>
+                    <Input id="sup-addr" {...register("address")} placeholder="123 Main St, City, State" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Status</Label>
+                    <Controller
+                      name="status"
+                      control={control}
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                            <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={createSupplier.isPending || updateSupplier.isPending}>
+                    Save
+                  </Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+            {editItem && (
+              <TabsContent value="images">
+                <RecordImagePanel
+                  entityType="supplier"
+                  entityId={editItem.id}
+                  canUpload={canManageImages}
+                  canDelete={canManageImages}
                 />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createSupplier.isPending || updateSupplier.isPending}>
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
+              </TabsContent>
+            )}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Supplier images &amp; documents</DialogTitle>
+          </DialogHeader>
+          <ModuleGallery
+            entityType="supplier"
+            images={allImages}
+            canDelete={canManageImages}
+            entityLabels={Object.fromEntries((rows ?? []).map((s: any) => [s.id, s.name]))}
+          />
         </DialogContent>
       </Dialog>
     </div>

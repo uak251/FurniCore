@@ -1,7 +1,7 @@
 /**
  * Images API — polymorphic image upload, listing, and deletion
  *
- * Supported entityType values: product | inventory | employee | payroll
+ * Supported entityType values: product | inventory | employee | payroll | supplier
  *
  * UPLOAD:
  *   POST /images/:entityType/:entityId          — single image  (multipart/form-data, field "image")
@@ -33,7 +33,10 @@ import { logActivity } from "../lib/activityLogger";
 
 const router: IRouter = Router();
 
-const VALID_ENTITY_TYPES = new Set(["product","inventory","employee","payroll"]);
+const VALID_ENTITY_TYPES = new Set(["product", "inventory", "employee", "payroll", "supplier"]);
+
+/** Who may upload / delete / reorder images (view is any authenticated user). */
+const IMAGE_EDIT_ROLES = ["admin", "manager", "accountant", "sales_manager"] as const;
 
 function validateEntityType(req: Request, res: any): boolean {
   const { entityType } = req.params as any;
@@ -76,7 +79,7 @@ router.get("/images/:entityType", authenticate, async (req, res, next: NextFunct
 router.post(
   "/images/:entityType/:entityId",
   authenticate,
-  requireRole("admin", "manager"),
+  requireRole(...IMAGE_EDIT_ROLES),
   (req, res, next) => {
     if (!validateEntityType(req, res)) return;
     uploadSingle(req, res, (err) => {
@@ -116,7 +119,7 @@ router.post(
 router.post(
   "/images/:entityType/:entityId/bulk",
   authenticate,
-  requireRole("admin", "manager"),
+  requireRole(...IMAGE_EDIT_ROLES),
   (req, res, next) => {
     if (!validateEntityType(req, res)) return;
     uploadMulti(req, res, (err) => {
@@ -149,7 +152,7 @@ router.post(
 );
 
 /* ── PATCH /images/:id/sort-order ─────────────────────────────────────────── */
-router.patch("/images/:id/sort-order", authenticate, requireRole("admin", "manager"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+router.patch("/images/:id/sort-order", authenticate, requireRole(...IMAGE_EDIT_ROLES), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const id = parseInt((req.params as any).id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "INVALID_ID" }); return; }
   const { sortOrder } = req.body as { sortOrder: number };
@@ -162,7 +165,7 @@ router.patch("/images/:id/sort-order", authenticate, requireRole("admin", "manag
 });
 
 /* ── PATCH /images/:id/alt-text ──────────────────────────────────────────── */
-router.patch("/images/:id/alt-text", authenticate, requireRole("admin", "manager"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+router.patch("/images/:id/alt-text", authenticate, requireRole(...IMAGE_EDIT_ROLES), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const id = parseInt((req.params as any).id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "INVALID_ID" }); return; }
   const { altText } = req.body as { altText: string };
@@ -174,7 +177,7 @@ router.patch("/images/:id/alt-text", authenticate, requireRole("admin", "manager
 });
 
 /* ── DELETE /images/:id ───────────────────────────────────────────────────── */
-router.delete("/images/:id", authenticate, requireRole("admin", "manager"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+router.delete("/images/:id", authenticate, requireRole(...IMAGE_EDIT_ROLES), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const id = parseInt((req.params as any).id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "INVALID_ID" }); return; }
   try {

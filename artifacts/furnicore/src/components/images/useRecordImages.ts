@@ -1,11 +1,17 @@
 /**
  * React Query hooks for the record-images API.
+ *
+ * All requests send Authorization: Bearer (required by the API). Optional
+ * VITE_API_URL prefixes paths when the UI and API run on different origins.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthToken } from "@/lib/auth";
 
-export type EntityType = "product" | "inventory" | "employee" | "payroll";
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+
+export type EntityType = "product" | "inventory" | "employee" | "payroll" | "supplier";
 
 export interface RecordImage {
   id: number;
@@ -22,9 +28,28 @@ export interface RecordImage {
   createdAt: string | null;
 }
 
+function resolveApiPath(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  if (API_BASE) return `${API_BASE}${path}`;
+  return path;
+}
+
+function mergeAuthHeaders(init?: HeadersInit): Headers {
+  const h = new Headers(init);
+  const token = getAuthToken();
+  if (token) h.set("Authorization", `Bearer ${token}`);
+  return h;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(path, { credentials: "include", ...init });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as any).message ?? `HTTP ${r.status}`); }
+  const url = resolveApiPath(path);
+  const headers = mergeAuthHeaders(init?.headers);
+  const r = await fetch(url, { credentials: "include", ...init, headers });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({})) as { message?: string; error?: string };
+    const msg = e.message ?? e.error ?? `HTTP ${r.status}`;
+    throw new Error(msg);
+  }
   return r.json() as Promise<T>;
 }
 
@@ -50,7 +75,10 @@ export function useUploadImage(entityType: EntityType, entityId: number) {
   const { toast } = useToast();
   return useMutation<RecordImage, Error, FormData>({
     mutationFn: (form) =>
-      apiFetch(`/api/images/${entityType}/${entityId}`, { method: "POST", body: form }),
+      apiFetch(`/api/images/${entityType}/${entityId}`, {
+        method: "POST",
+        body: form,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["images", entityType, entityId] });
       qc.invalidateQueries({ queryKey: ["images", entityType] });
@@ -65,7 +93,10 @@ export function useBulkUploadImages(entityType: EntityType, entityId: number) {
   const { toast } = useToast();
   return useMutation<RecordImage[], Error, FormData>({
     mutationFn: (form) =>
-      apiFetch(`/api/images/${entityType}/${entityId}/bulk`, { method: "POST", body: form }),
+      apiFetch(`/api/images/${entityType}/${entityId}/bulk`, {
+        method: "POST",
+        body: form,
+      }),
     onSuccess: (imgs) => {
       qc.invalidateQueries({ queryKey: ["images", entityType, entityId] });
       qc.invalidateQueries({ queryKey: ["images", entityType] });
@@ -94,7 +125,11 @@ export function useSetPrimaryImage(entityType: EntityType, entityId: number) {
   const { toast } = useToast();
   return useMutation<void, Error, { id: number; sortOrder: number }>({
     mutationFn: ({ id, sortOrder }) =>
-      apiFetch(`/api/images/${id}/sort-order`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sortOrder }) }),
+      apiFetch(`/api/images/${id}/sort-order`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder }),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["images", entityType, entityId] });
     },
