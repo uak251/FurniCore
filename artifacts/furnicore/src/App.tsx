@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
 import { SupplierLayout } from "@/components/SupplierLayout";
+import { WorkerLayout } from "@/components/WorkerLayout";
 import { RoleGuard } from "@/components/RoleGuard";
 
 import Login from "@/pages/login";
@@ -24,6 +25,7 @@ import ActivityPage from "@/pages/activity";
 import UsersPage from "@/pages/users";
 import SettingsPage from "@/pages/settings";
 import SupplierPortalPage from "@/pages/supplier-portal";
+import WorkerPortalPage from "@/pages/worker-portal";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -44,6 +46,7 @@ const queryClient = new QueryClient({
  *  accounts → finance routes only
  *  employee → core ops (dashboard, inventory, products, manufacturing, notifications)
  *  supplier → /supplier-portal only (isolated shell, no internal nav)
+ *  worker   → /worker-portal only  (isolated shell, no internal nav)
  */
 function Router() {
   return (
@@ -58,6 +61,17 @@ function Router() {
             <SupplierLayout>
               <SupplierPortalPage />
             </SupplierLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
+
+      {/* ── Worker portal — isolated layout, own data only ── */}
+      <Route path="/worker-portal">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["worker"]}>
+            <WorkerLayout>
+              <WorkerPortalPage />
+            </WorkerLayout>
           </RoleGuard>
         </ProtectedRoute>
       </Route>

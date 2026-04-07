@@ -63,7 +63,9 @@ export default function Login() {
         description: "Successfully logged in to FurniCore.",
       });
 
-      setLocation(role === "supplier" ? "/supplier-portal" : "/");
+      if (role === "supplier") setLocation("/supplier-portal");
+      else if (role === "worker") setLocation("/worker-portal");
+      else setLocation("/");
     } catch (error: any) {
       toast({
         variant: "destructive",

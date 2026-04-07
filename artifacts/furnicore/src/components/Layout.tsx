@@ -165,10 +165,9 @@ export function Layout({ children }: LayoutProps) {
   const lowStockCount = summary?.lowStockCount ?? 0;
   const userRole = user?.role ?? "";
 
-  // Suppliers must use the isolated Supplier Portal, not the internal ERP layout
-  if (user && userRole === "supplier") {
-    return <Redirect to="/supplier-portal" />;
-  }
+  // Suppliers and workers must use their isolated portals, not the internal ERP layout
+  if (user && userRole === "supplier") return <Redirect to="/supplier-portal" />;
+  if (user && userRole === "worker")   return <Redirect to="/worker-portal" />;
 
   useEffect(() => {
     setMobileOpen(false);

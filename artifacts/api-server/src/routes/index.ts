@@ -17,6 +17,7 @@ import powerbiRouter from "./powerbi";
 import productionRouter from "./production";
 import supplierPortalRouter from "./supplier-portal";
 import hrPortalRouter from "./hr-portal";
+import workerPortalRouter from "./worker-portal";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(powerbiRouter);
 router.use(productionRouter);
 router.use(supplierPortalRouter);
 router.use(hrPortalRouter);
+router.use(workerPortalRouter);
 
 export default router;
