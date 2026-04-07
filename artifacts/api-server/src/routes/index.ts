@@ -13,6 +13,7 @@ import accountingRouter from "./accounting";
 import notificationsRouter from "./notifications";
 import activityRouter from "./activity";
 import dashboardRouter from "./dashboard";
+import powerbiRouter from "./powerbi";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(accountingRouter);
 router.use(notificationsRouter);
 router.use(activityRouter);
 router.use(dashboardRouter);
+router.use(powerbiRouter);
 
 export default router;

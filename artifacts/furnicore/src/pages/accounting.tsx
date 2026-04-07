@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useListTransactions, useCreateTransaction, useGetFinancialSummary } from "@workspace/api-client-react";
+import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Receipt, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Receipt, TrendingUp, TrendingDown, DollarSign, BarChart3, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
+import { usePowerBI } from "@/hooks/use-powerbi";
+import {
+  PowerBIEmbed,
+  PowerBIEmbedLoading,
+  PowerBIUnconfigured,
+  PowerBIEmbedError,
+} from "@/components/PowerBIEmbed";
 
 interface TransactionForm {
   type: string;
@@ -29,9 +38,64 @@ interface TransactionForm {
 
 const TABLE_ID = "accounting";
 
+// Roles allowed to view Power BI financial dashboards
+const BI_ROLES = ["admin", "accounts"];
+
+// ─── Power BI report panels ───────────────────────────────────────────────────
+
+interface BIReportPanelProps {
+  reportId: string;
+}
+
+function BIReportPanel({ reportId }: BIReportPanelProps) {
+  const { fetchEmbedToken, getEmbedState, reports } = usePowerBI();
+  const state = getEmbedState(reportId);
+
+  const reportMeta = reports.find((r) => r.id === reportId);
+
+  useEffect(() => {
+    if (state.status === "idle") {
+      fetchEmbedToken(reportId);
+    }
+  }, [reportId, state.status, fetchEmbedToken]);
+
+  if (state.status === "idle" || state.status === "loading") {
+    return <PowerBIEmbedLoading />;
+  }
+  if (state.status === "unconfigured") {
+    return <PowerBIUnconfigured reportId={reportId} message={state.message} />;
+  }
+  if (state.status === "error") {
+    return (
+      <PowerBIEmbedError
+        message={state.message}
+        onRetry={() => fetchEmbedToken(reportId)}
+      />
+    );
+  }
+  return (
+    <PowerBIEmbed
+      label={reportMeta?.label ?? reportId}
+      config={state.config}
+    />
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function AccountingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Current user — used to gate Power BI tab visibility
+  const { data: user } = useGetCurrentUser();
+  const canViewBI = BI_ROLES.includes(user?.role ?? "");
+
+  // Power BI report list (fetched lazily when user opens Analytics tab)
+  const pbi = usePowerBI();
+  const [biFetched, setBiFetched] = useState(false);
+
+  const [activeTab, setActiveTab] = useState("ledger");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [sortKey, setSortKey] = useState("transactionDate");
@@ -52,6 +116,15 @@ export default function AccountingPage() {
     },
   });
   const selectedType = watch("type");
+
+  // Fetch BI report list once when Analytics tab is first opened
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === "analytics" && !biFetched && canViewBI) {
+      setBiFetched(true);
+      pbi.fetchReports();
+    }
+  };
 
   useEffect(() => {
     setPage(1);
@@ -138,19 +211,31 @@ export default function AccountingPage() {
   const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
   const to = Math.min(safePage * pageSize, total);
 
+  // BI report tabs definition (always rendered; auth gated in the tab content)
+  const biReports = [
+    { id: "supplier-ledger", label: "Supplier Ledger" },
+    { id: "expense-income",  label: "Expense vs Income" },
+    { id: "payroll-summary", label: "Payroll" },
+    { id: "profit-margin",   label: "Profit Margin" },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* ── Page header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Accounting ledger</h1>
-          <p className="text-muted-foreground">Track income, expenses, and financial health</p>
+          <h1 className="text-3xl font-bold tracking-tight">Accounting</h1>
+          <p className="text-muted-foreground">Ledger, reports, and financial dashboards</p>
         </div>
-        <Button onClick={() => { reset(); setShowDialog(true); }}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Record transaction
-        </Button>
+        {activeTab === "ledger" && (
+          <Button onClick={() => { reset(); setShowDialog(true); }}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Record transaction
+          </Button>
+        )}
       </div>
 
+      {/* ── KPI cards ── */}
       {financial && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
@@ -195,119 +280,172 @@ export default function AccountingPage() {
         </div>
       )}
 
-      <TableToolbar
-        id={TABLE_ID}
-        entityLabel="transactions"
-        searchValue={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Search by description or category…"
-        filterLabel="Type"
-        filterValue={typeFilter}
-        onFilterChange={setTypeFilter}
-        filterOptions={[
-          { value: "all", label: "All" },
-          { value: "income", label: "Income" },
-          { value: "expense", label: "Expense" },
-        ]}
-        sortKey={sortKey}
-        onSortKeyChange={setSortKey}
-        sortOptions={[
-          { value: "transactionDate", label: "Date" },
-          { value: "description", label: "Description" },
-          { value: "category", label: "Category" },
-          { value: "type", label: "Type" },
-          { value: "amount", label: "Amount" },
-          { value: "status", label: "Status" },
-        ]}
-        sortDir={sortDir}
-        onSortDirChange={setSortDir}
-        pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        onExportCsv={exportCsv}
-        exportDisabled={sorted.length === 0}
-        resultsText={
-          total === 0
-            ? "No matching transactions"
-            : `Showing ${from}–${to} of ${total} matching transactions`
-        }
-      />
+      {/* ── Tabs ── */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
+        <TabsList className="mb-2">
+          <TabsTrigger value="ledger">
+            <Receipt className="mr-1.5 h-4 w-4" aria-hidden />
+            Ledger
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-1.5">
+            <BarChart3 className="h-4 w-4" aria-hidden />
+            Analytics
+            {!canViewBI && <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />}
+          </TabsTrigger>
+        </TabsList>
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="space-y-3 p-6">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : pageRows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Receipt className="mb-3 h-10 w-10" aria-hidden />
-              <p>No transactions match your filters</p>
-            </div>
+        {/* ── Ledger tab ── */}
+        <TabsContent value="ledger" className="space-y-4">
+          <TableToolbar
+            id={TABLE_ID}
+            entityLabel="transactions"
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by description or category…"
+            filterLabel="Type"
+            filterValue={typeFilter}
+            onFilterChange={setTypeFilter}
+            filterOptions={[
+              { value: "all", label: "All" },
+              { value: "income", label: "Income" },
+              { value: "expense", label: "Expense" },
+            ]}
+            sortKey={sortKey}
+            onSortKeyChange={setSortKey}
+            sortOptions={[
+              { value: "transactionDate", label: "Date" },
+              { value: "description", label: "Description" },
+              { value: "category", label: "Category" },
+              { value: "type", label: "Type" },
+              { value: "amount", label: "Amount" },
+              { value: "status", label: "Status" },
+            ]}
+            sortDir={sortDir}
+            onSortDirChange={setSortDir}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            onExportCsv={exportCsv}
+            exportDisabled={sorted.length === 0}
+            resultsText={
+              total === 0
+                ? "No matching transactions"
+                : `Showing ${from}–${to} of ${total} matching transactions`
+            }
+          />
+
+          <Card>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="space-y-3 p-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Skeleton key={i} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : pageRows.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Receipt className="mb-3 h-10 w-10" aria-hidden />
+                  <p>No transactions match your filters</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead scope="col">Date</TableHead>
+                          <TableHead scope="col">Description</TableHead>
+                          <TableHead scope="col">Category</TableHead>
+                          <TableHead scope="col">Type</TableHead>
+                          <TableHead scope="col" className="text-right">
+                            Amount
+                          </TableHead>
+                          <TableHead scope="col">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pageRows.map((t: any) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {new Date(t.transactionDate || t.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] truncate font-medium">
+                              {t.description || "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{t.category || "—"}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={t.type === "income" ? "default" : "outline"}
+                                className={t.type === "income" ? "bg-green-100 text-green-800" : ""}
+                              >
+                                {t.type === "income" ? "Income" : "Expense"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                "text-right font-mono font-semibold tabular-nums",
+                                t.type === "income" ? "text-green-600" : "text-destructive",
+                              )}
+                            >
+                              {t.type === "expense" ? "−" : "+"}${Number(t.amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">
+                                {t.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <TablePaginationBar
+                    id={TABLE_ID}
+                    page={safePage}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Analytics tab (Power BI) ── */}
+        <TabsContent value="analytics">
+          {!canViewBI ? (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
+                <Lock className="h-10 w-10 text-muted-foreground" aria-hidden />
+                <p className="text-lg font-semibold">Access restricted</p>
+                <p className="max-w-sm text-sm text-muted-foreground">
+                  Financial dashboards are only available to users with the{" "}
+                  <span className="font-medium">Admin</span> or{" "}
+                  <span className="font-medium">Accounts</span> role. Contact your system
+                  administrator if you require access.
+                </p>
+              </CardContent>
+            </Card>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Date</TableHead>
-                      <TableHead scope="col">Description</TableHead>
-                      <TableHead scope="col">Category</TableHead>
-                      <TableHead scope="col">Type</TableHead>
-                      <TableHead scope="col" className="text-right">
-                        Amount
-                      </TableHead>
-                      <TableHead scope="col">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pageRows.map((t: any) => (
-                      <TableRow key={t.id}>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {new Date(t.transactionDate || t.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate font-medium">
-                          {t.description || "—"}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{t.category || "—"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={t.type === "income" ? "default" : "outline"}
-                            className={t.type === "income" ? "bg-green-100 text-green-800" : ""}
-                          >
-                            {t.type === "income" ? "Income" : "Expense"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "text-right font-mono font-semibold tabular-nums",
-                            t.type === "income" ? "text-green-600" : "text-destructive",
-                          )}
-                        >
-                          {t.type === "expense" ? "−" : "+"}${Number(t.amount).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="capitalize">
-                            {t.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <TablePaginationBar
-                id={TABLE_ID}
-                page={safePage}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            <Tabs defaultValue="supplier-ledger" className="space-y-4">
+              <TabsList className="flex-wrap">
+                {biReports.map((r) => (
+                  <TabsTrigger key={r.id} value={r.id}>
+                    {r.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
+              {biReports.map((r) => (
+                <TabsContent key={r.id} value={r.id} className="mt-0">
+                  <BIReportPanel reportId={r.id} />
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* ── Record transaction dialog ── */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
