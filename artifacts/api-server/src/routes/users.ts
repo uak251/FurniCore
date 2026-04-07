@@ -29,7 +29,8 @@ router.post("/users", authenticate, requireRole("admin"), async (req: AuthReques
     return;
   }
   const passwordHash = await hashPassword(parsed.data.password);
-  const [user] = await db.insert(usersTable).values({ ...parsed.data, passwordHash }).returning();
+  // Admin-created accounts are trusted — skip email verification
+  const [user] = await db.insert(usersTable).values({ ...parsed.data, passwordHash, isVerified: true }).returning();
   await logActivity({ userId: req.user?.id, action: "CREATE", module: "users", description: `Created user ${user.name}`, newData: sanitizeUser(user) });
   res.status(201).json(sanitizeUser(user));
 });

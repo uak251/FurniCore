@@ -12,6 +12,7 @@ import { RoleGuard } from "@/components/RoleGuard";
 
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
+import VerifyEmailPage from "@/pages/verify-email";
 import Dashboard from "@/pages/dashboard";
 import InventoryPage from "@/pages/inventory";
 import ProductsPage from "@/pages/products";
@@ -58,6 +59,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
 
       {/* ── Supplier portal — isolated layout, no internal modules ── */}
       <Route path="/supplier-portal">
