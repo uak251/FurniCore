@@ -72,6 +72,16 @@
       "contactPerson": "Riley Patel",
       "status": "active",
       "rating": 3.9
+    },
+    {
+      "name": "Alvarez Fine Woodworks",
+      "email": "diego.alvarez@furnicore.demo",
+      "phone": "+1 212 555 0108",
+      "address": "340 Commerce Drive, Unit 8, Brooklyn, NY 11232, USA",
+      "contactPerson": "Diego Alvarez",
+      "status": "active",
+      "rating": 4.5,
+      "_note": "Email matches the demo supplier-role user — required for supplier portal identity resolution (req.user.email → suppliers.email)."
     }
   ],
   "quotes": [
@@ -208,6 +218,45 @@
       "approvedAt": "2026-01-08T16:00:00.000Z",
       "paidAt": "2026-01-12T10:00:00.000Z",
       "notes": "Net 30 — settled."
+    },
+    {
+      "seedSlug": "walnut-alvarez-pending",
+      "supplierEmail": "diego.alvarez@furnicore.demo",
+      "description": "American black walnut slabs — 2\" thick, kiln-dried, 180 bd_ft",
+      "quantity": 180,
+      "unitPrice": 11.50,
+      "status": "PENDING",
+      "validUntil": "2026-05-15T23:59:59.000Z",
+      "lockedAt": null,
+      "approvedAt": null,
+      "paidAt": null,
+      "notes": "Awaiting price lock by procurement."
+    },
+    {
+      "seedSlug": "walnut-alvarez-approved",
+      "supplierEmail": "diego.alvarez@furnicore.demo",
+      "description": "American black walnut slabs — premium batch Q1 2026",
+      "quantity": 120,
+      "unitPrice": 12.00,
+      "status": "ADMIN_APPROVED",
+      "validUntil": "2026-04-30T23:59:59.000Z",
+      "lockedAt": "2026-03-10T10:00:00.000Z",
+      "approvedAt": "2026-03-12T09:30:00.000Z",
+      "paidAt": null,
+      "notes": "Approved — awaiting payment disbursement."
+    },
+    {
+      "seedSlug": "walnut-alvarez-paid",
+      "supplierEmail": "diego.alvarez@furnicore.demo",
+      "description": "American black walnut — prior delivery batch Dec 2025",
+      "quantity": 90,
+      "unitPrice": 11.20,
+      "status": "PAID",
+      "validUntil": "2026-01-10T23:59:59.000Z",
+      "lockedAt": "2025-12-01T09:00:00.000Z",
+      "approvedAt": "2025-12-03T14:00:00.000Z",
+      "paidAt": "2025-12-10T10:00:00.000Z",
+      "notes": "Paid in full — historical reference."
     }
   ]
 }

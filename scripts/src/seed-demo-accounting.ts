@@ -19,6 +19,7 @@ import { eq, inArray, like } from "drizzle-orm";
 import {
   db,
   pool,
+  usersTable,
   chartOfAccountsTable,
   journalEntriesTable,
   journalEntryLinesTable,
@@ -68,6 +69,19 @@ function money(n: number): string {
 console.log("\nFurniCore — Seed demo accounting");
 console.log(`  Journal entries: ${data.journalEntries.length}`);
 console.log(`  Cash transactions: ${data.transactions?.length ?? 0}\n`);
+
+/* ── Resolve accountant user ID for created_by attribution ───────────────── */
+
+const ACCOUNTANT_EMAIL = "amira.hassan@furnicore.demo";
+const [accountantRow] = await db
+  .select({ id: usersTable.id })
+  .from(usersTable)
+  .where(eq(usersTable.email, ACCOUNTANT_EMAIL))
+  .limit(1);
+const accountantId = accountantRow?.id ?? null;
+if (!accountantId) {
+  console.log(`  [info] Accountant (${ACCOUNTANT_EMAIL}) not found — journal entries will have createdBy=null. Run seed-demo-users first.`);
+}
 
 const codes = new Set<string>();
 for (const je of data.journalEntries) {
@@ -143,7 +157,7 @@ for (const je of data.journalEntries) {
         status: "posted",
         postedAt,
         notes: je.notes ?? null,
-        createdBy: null,
+        createdBy: accountantId,
       })
       .returning({ id: journalEntriesTable.id });
     journalEntryId = inserted.id;

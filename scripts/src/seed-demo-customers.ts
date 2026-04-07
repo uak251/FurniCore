@@ -115,6 +115,19 @@ console.log(`  Invoices:   ${data.invoices.length}\n`);
 const DEMO_PASSWORD = process.env["DEMO_USER_PASSWORD"] ?? "Demo@123456";
 const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 
+/* ── Resolve staff user IDs for created_by attribution ───────────────────── */
+
+const SALES_MANAGER_EMAIL = "priya.nair@furnicore.demo";
+const [smRow] = await db
+  .select({ id: usersTable.id })
+  .from(usersTable)
+  .where(eq(usersTable.email, SALES_MANAGER_EMAIL))
+  .limit(1);
+const salesManagerId = smRow?.id ?? null;
+if (!salesManagerId) {
+  console.log(`  [info] Sales manager (${SALES_MANAGER_EMAIL}) not found — orders/invoices will have createdBy=null. Run seed-demo-users first.`);
+}
+
 /* ── 1. Upsert customers ─────────────────────────────────────────────────── */
 
 const emailToUserId = new Map<string, number>();
@@ -182,6 +195,7 @@ for (const order of data.orders) {
     taxAmount:         String(order.taxAmount),
     totalAmount:       String(order.totalAmount),
     estimatedDelivery: order.estimatedDelivery ? new Date(order.estimatedDelivery) : null,
+    createdBy:         salesManagerId,
   };
 
   const [existing] = await db
@@ -231,7 +245,7 @@ for (const order of data.orders) {
         message:           u.message,
         status:            u.status ?? null,
         visibleToCustomer: u.visibleToCustomer,
-        createdBy:         null,
+        createdBy:         salesManagerId,
       })),
     );
     console.log(`    → ${order.updates.length} progress update(s)`);
@@ -262,7 +276,7 @@ for (const inv of data.invoices) {
     paymentMethod:    inv.paymentMethod    ?? null,
     paymentReference: inv.paymentReference ?? null,
     notes:            inv.notes            ?? null,
-    createdBy:        null,
+    createdBy:        salesManagerId,
   };
 
   const [existing] = await db

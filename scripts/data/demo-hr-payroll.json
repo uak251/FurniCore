@@ -1,0 +1,303 @@
+{
+  "meta": {
+    "title": "FurniCore demo employees and payroll records",
+    "prerequisite": "seed-demo-users must run first — employees are linked to user accounts via userEmail.",
+    "idempotency": "Employees upserted by email. Payroll records upserted by (employeeEmail + month + year).",
+    "payrollStatuses": ["draft", "approved", "paid"]
+  },
+  "employees": [
+    {
+      "userEmail": "victoria.chen@furnicore.demo",
+      "name": "Victoria Chen",
+      "email": "victoria.chen@furnicore.demo",
+      "phone": "+1 212 555 0101",
+      "department": "Executive",
+      "position": "Chief Executive Officer",
+      "baseSalary": 12000.00,
+      "hireDate": "2020-03-01T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "marcus.webb@furnicore.demo",
+      "name": "Marcus Webb",
+      "email": "marcus.webb@furnicore.demo",
+      "phone": "+1 212 555 0102",
+      "department": "Operations",
+      "position": "Operations Manager",
+      "baseSalary": 8500.00,
+      "hireDate": "2021-06-15T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "nina.okonkwo@furnicore.demo",
+      "name": "Nina Okonkwo",
+      "email": "nina.okonkwo@furnicore.demo",
+      "phone": "+1 212 555 0103",
+      "department": "Warehouse",
+      "position": "Inventory Manager",
+      "baseSalary": 6200.00,
+      "hireDate": "2022-01-10T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "amira.hassan@furnicore.demo",
+      "name": "Amira Hassan",
+      "email": "amira.hassan@furnicore.demo",
+      "phone": "+1 212 555 0104",
+      "department": "Finance",
+      "position": "Senior Accountant",
+      "baseSalary": 7000.00,
+      "hireDate": "2021-09-20T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "priya.nair@furnicore.demo",
+      "name": "Priya Nair",
+      "email": "priya.nair@furnicore.demo",
+      "phone": "+1 212 555 0105",
+      "department": "Sales",
+      "position": "Sales Manager",
+      "baseSalary": 7500.00,
+      "hireDate": "2022-04-05T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "jordan.ellis@furnicore.demo",
+      "name": "Jordan Ellis",
+      "email": "jordan.ellis@furnicore.demo",
+      "phone": "+1 212 555 0106",
+      "department": "Operations",
+      "position": "Production Manager",
+      "baseSalary": 7800.00,
+      "hireDate": "2021-11-01T00:00:00.000Z",
+      "isActive": false
+    },
+    {
+      "userEmail": "sam.rivera@furnicore.demo",
+      "name": "Sam Rivera",
+      "email": "sam.rivera@furnicore.demo",
+      "phone": "+1 212 555 0107",
+      "department": "Production",
+      "position": "Senior Furniture Craftsman",
+      "baseSalary": 4800.00,
+      "hireDate": "2023-02-14T00:00:00.000Z",
+      "isActive": true
+    },
+    {
+      "userEmail": "diego.alvarez@furnicore.demo",
+      "name": "Diego Alvarez",
+      "email": "diego.alvarez@furnicore.demo",
+      "phone": "+1 212 555 0108",
+      "department": "Procurement",
+      "position": "Supplier Relations Manager",
+      "baseSalary": 5500.00,
+      "hireDate": "2022-08-22T00:00:00.000Z",
+      "isActive": true
+    }
+  ],
+  "payroll": [
+    {
+      "employeeEmail": "victoria.chen@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 12000.00, "bonus": 2000.00, "deductions": 1200.00, "netSalary": 12800.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026 — Q4 performance bonus included"
+    },
+    {
+      "employeeEmail": "marcus.webb@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 8500.00, "bonus": 500.00, "deductions": 850.00, "netSalary": 8150.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "nina.okonkwo@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 6200.00, "bonus": 0.00, "deductions": 620.00, "netSalary": 5580.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "amira.hassan@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 7000.00, "bonus": 300.00, "deductions": 700.00, "netSalary": 6600.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "priya.nair@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 7500.00, "bonus": 800.00, "deductions": 750.00, "netSalary": 7550.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026 — sales commission included"
+    },
+    {
+      "employeeEmail": "jordan.ellis@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 7800.00, "bonus": 0.00, "deductions": 780.00, "netSalary": 7020.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "sam.rivera@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 4800.00, "bonus": 200.00, "deductions": 480.00, "netSalary": 4520.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "diego.alvarez@furnicore.demo",
+      "month": 1, "year": 2026,
+      "baseSalary": 5500.00, "bonus": 0.00, "deductions": 550.00, "netSalary": 4950.00,
+      "status": "paid", "paidAt": "2026-02-05T10:00:00.000Z",
+      "notes": "January 2026"
+    },
+    {
+      "employeeEmail": "victoria.chen@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 12000.00, "bonus": 0.00, "deductions": 1200.00, "netSalary": 10800.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "marcus.webb@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 8500.00, "bonus": 0.00, "deductions": 850.00, "netSalary": 7650.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "nina.okonkwo@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 6200.00, "bonus": 0.00, "deductions": 620.00, "netSalary": 5580.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "amira.hassan@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 7000.00, "bonus": 0.00, "deductions": 700.00, "netSalary": 6300.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "priya.nair@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 7500.00, "bonus": 1200.00, "deductions": 750.00, "netSalary": 7950.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026 — commission on Alice Chen dining set sale"
+    },
+    {
+      "employeeEmail": "sam.rivera@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 4800.00, "bonus": 0.00, "deductions": 480.00, "netSalary": 4320.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "diego.alvarez@furnicore.demo",
+      "month": 2, "year": 2026,
+      "baseSalary": 5500.00, "bonus": 0.00, "deductions": 550.00, "netSalary": 4950.00,
+      "status": "paid", "paidAt": "2026-03-05T10:00:00.000Z",
+      "notes": "February 2026"
+    },
+    {
+      "employeeEmail": "victoria.chen@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 12000.00, "bonus": 0.00, "deductions": 1200.00, "netSalary": 10800.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026 — approved, awaiting payment run"
+    },
+    {
+      "employeeEmail": "marcus.webb@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 8500.00, "bonus": 0.00, "deductions": 850.00, "netSalary": 7650.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026"
+    },
+    {
+      "employeeEmail": "nina.okonkwo@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 6200.00, "bonus": 0.00, "deductions": 620.00, "netSalary": 5580.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026"
+    },
+    {
+      "employeeEmail": "amira.hassan@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 7000.00, "bonus": 0.00, "deductions": 700.00, "netSalary": 6300.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026"
+    },
+    {
+      "employeeEmail": "priya.nair@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 7500.00, "bonus": 600.00, "deductions": 750.00, "netSalary": 7350.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026 — commission on Carol Smith TV cabinet"
+    },
+    {
+      "employeeEmail": "sam.rivera@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 4800.00, "bonus": 300.00, "deductions": 480.00, "netSalary": 4620.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026 — QC bonus for dining set pass"
+    },
+    {
+      "employeeEmail": "diego.alvarez@furnicore.demo",
+      "month": 3, "year": 2026,
+      "baseSalary": 5500.00, "bonus": 0.00, "deductions": 550.00, "netSalary": 4950.00,
+      "status": "approved", "paidAt": null,
+      "notes": "March 2026"
+    },
+    {
+      "employeeEmail": "victoria.chen@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 12000.00, "bonus": 0.00, "deductions": 1200.00, "netSalary": 10800.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "marcus.webb@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 8500.00, "bonus": 0.00, "deductions": 850.00, "netSalary": 7650.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "nina.okonkwo@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 6200.00, "bonus": 0.00, "deductions": 620.00, "netSalary": 5580.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "amira.hassan@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 7000.00, "bonus": 0.00, "deductions": 700.00, "netSalary": 6300.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "priya.nair@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 7500.00, "bonus": 0.00, "deductions": 750.00, "netSalary": 6750.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "sam.rivera@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 4800.00, "bonus": 0.00, "deductions": 480.00, "netSalary": 4320.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    },
+    {
+      "employeeEmail": "diego.alvarez@furnicore.demo",
+      "month": 4, "year": 2026,
+      "baseSalary": 5500.00, "bonus": 0.00, "deductions": 550.00, "netSalary": 4950.00,
+      "status": "draft", "paidAt": null,
+      "notes": "April 2026 — draft"
+    }
+  ]
+}

@@ -13,6 +13,8 @@
     "seed-demo-accounting": "tsx --env-file=../.env ./src/seed-demo-accounting.ts",
     "seed-demo-customers": "tsx --env-file=../.env ./src/seed-demo-customers.ts",
     "seed-demo-activity": "tsx --env-file=../.env ./src/seed-demo-activity.ts",
+    "seed-demo-hr-payroll": "tsx --env-file=../.env ./src/seed-demo-hr-payroll.ts",
+    "seed-all-demo": "tsx --env-file=../.env ./src/seed-all-demo.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
