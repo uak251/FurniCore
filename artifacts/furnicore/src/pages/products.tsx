@@ -13,6 +13,7 @@ import { Plus, Package, Search, Pencil, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { BulkImportExport } from "@/components/BulkImportExport";
+import { useCurrency } from "@/lib/currency";
 
 interface ProductForm {
   name: string;
@@ -27,6 +28,7 @@ interface ProductForm {
 
 export default function ProductsPage() {
   const { toast } = useToast();
+  const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
@@ -156,8 +158,8 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 font-medium">{p.name}</td>
                     <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{p.sku}</td>
                     <td className="px-6 py-4 text-muted-foreground">{p.category || "—"}</td>
-                    <td className="px-6 py-4 font-mono">${Number(p.costPrice).toFixed(2)}</td>
-                    <td className="px-6 py-4 font-mono">${Number(p.sellingPrice).toFixed(2)}</td>
+                    <td className="px-6 py-4 font-mono">{formatCurrency(Number(p.costPrice))}</td>
+                    <td className="px-6 py-4 font-mono">{formatCurrency(Number(p.sellingPrice))}</td>
                     <td className="px-6 py-4 font-mono text-green-600">{margin(p)}%</td>
                     <td className="px-6 py-4 font-mono">{Number(p.stockQuantity)}</td>
                     <td className="px-6 py-4">

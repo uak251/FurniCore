@@ -24,6 +24,7 @@ import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
+import { useCurrency } from "@/lib/currency";
 
 interface InventoryFormData {
   name: string;
@@ -38,6 +39,7 @@ const TABLE_ID = "inventory";
 
 export default function InventoryPage() {
   const { toast } = useToast();
+  const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -299,7 +301,7 @@ export default function InventoryPage() {
                             {reorder.toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right font-mono tabular-nums">
-                            ${Number(item.unitCost).toFixed(2)}
+                            {formatCurrency(Number(item.unitCost))}
                           </TableCell>
                           <TableCell>
                             <Badge variant={low ? "destructive" : "secondary"}>

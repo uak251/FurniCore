@@ -19,6 +19,7 @@ import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { PowerBIReportsHub } from "@/components/PowerBIReportsHub";
+import { useCurrency } from "@/lib/currency";
 
 interface TransactionForm {
   type: string;
@@ -107,8 +108,8 @@ export default function AccountingPage() {
     if (safePage !== page) setPage(safePage);
   }, [safePage, page]);
 
-  const fmt = (n: number) =>
-    `$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+  const { format: formatCurrency } = useCurrency();
+  const fmt = (n: number) => formatCurrency(Math.abs(n));
 
   const exportCsv = () => {
     const headers = ["transactionDate", "type", "category", "description", "amount", "status"];
@@ -317,7 +318,7 @@ export default function AccountingPage() {
                                 t.type === "income" ? "text-green-600" : "text-destructive",
                               )}
                             >
-                              {t.type === "expense" ? "−" : "+"}${Number(t.amount).toFixed(2)}
+                              {t.type === "expense" ? "−" : "+"}{formatCurrency(Number(t.amount))}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary" className="capitalize">

@@ -32,16 +32,17 @@ import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "
 import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
+import { useCurrency } from "@/lib/currency";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_ID = "payroll";
 
-const fmt = (n: number) =>
-  `$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 /* ─── Payroll breakdown panel ────────────────────────────────────────────────── */
 
 function BreakdownPanel({ payrollId, notes }: { payrollId: number; notes?: string | null }) {
+  const { format: fmtCur } = useCurrency();
+  const fmt = (n: number) => fmtCur(Math.abs(n));
+
   let bd: PayrollBreakdown | null = null;
   try { if (notes) bd = JSON.parse(notes) as PayrollBreakdown; } catch { /* no-op */ }
 
@@ -148,6 +149,8 @@ function AdjustmentsPanel({
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const { format: fmtCur } = useCurrency();
+  const fmt = (n: number) => fmtCur(Math.abs(n));
   const { data: adjustments = [], isLoading } = usePayrollAdjustments({
     employeeId: payrollRecord.employeeId,
     month:      payrollRecord.month,
@@ -297,6 +300,8 @@ interface GenerateForm { month: number; year: number; }
 
 export default function PayrollPage() {
   const { toast }  = useToast();
+  const { format: fmtCur } = useCurrency();
+  const fmt = (n: number) => fmtCur(Math.abs(n));
   const qc         = useQueryClient();
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState("all");

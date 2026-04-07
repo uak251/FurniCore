@@ -24,7 +24,7 @@ import {
   Settings, Globe, BarChart3, ShieldCheck, Info,
   CheckCircle2, AlertCircle, ExternalLink, RefreshCw,
   DollarSign, Users, Loader2, ChevronDown, ChevronUp,
-  Eye, EyeOff,
+  Eye, EyeOff, Save, KeyRound,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency, CURRENCIES } from "@/lib/currency";
@@ -160,33 +160,189 @@ function GeneralTab() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════
-   TAB 2 — POWER BI
+   TAB 2 — POWER BI (with editable credential fields)
    ════════════════════════════════════════════════════════════════════════════════ */
 
+interface StoredSetting {
+  key: string; value: string; rawValue: string | null;
+  source: "db" | "env" | "unset"; isSecret: boolean; isSet: boolean;
+}
+
+const PBI_CREDENTIAL_KEYS = [
+  { key: "POWERBI_TENANT_ID",    label: "Tenant ID",       hint: "Azure AD tenant ID (UUID)" },
+  { key: "POWERBI_CLIENT_ID",    label: "Client ID",       hint: "Azure AD app client ID (UUID)" },
+  { key: "POWERBI_CLIENT_SECRET",label: "Client Secret",   hint: "Azure AD app client secret (sensitive)", secret: true },
+  { key: "POWERBI_WORKSPACE_ID", label: "Workspace ID",    hint: "Power BI workspace group ID (UUID)" },
+];
+
+const PBI_REPORT_KEYS = [
+  { key: "POWERBI_REPORT_SUPPLIER_LEDGER",    label: "Supplier Ledger report ID" },
+  { key: "POWERBI_REPORT_EXPENSE_INCOME",     label: "Expense vs Income report ID" },
+  { key: "POWERBI_REPORT_TRIAL_BALANCE",      label: "Trial Balance report ID" },
+  { key: "POWERBI_REPORT_PAYROLL_SUMMARY",    label: "Payroll Summary report ID" },
+  { key: "POWERBI_REPORT_PROFIT_MARGIN",      label: "Profit & Loss report ID" },
+  { key: "POWERBI_REPORT_INVENTORY_ANALYSIS", label: "Inventory Analysis report ID" },
+  { key: "POWERBI_REPORT_HR_DASHBOARD",       label: "HR Dashboard report ID" },
+  { key: "POWERBI_REPORT_SALES_OVERVIEW",     label: "Sales Overview report ID" },
+];
+
+interface SettingFieldProps {
+  k: string; label: string; hint?: string; secret?: boolean;
+  value: string;
+  onChange: (key: string, val: string) => void;
+  stored: StoredSetting | undefined;
+  revealed: boolean;
+  onToggleReveal: (key: string) => void;
+  onClear: (key: string) => void;
+}
+
+function SettingField({ k, label, hint, secret, value, onChange, stored, revealed, onToggleReveal, onClear }: SettingFieldProps) {
+  const isSet  = stored?.isSet ?? false;
+  const source = stored?.source ?? "unset";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={k} className="text-sm font-medium">{label}</Label>
+        <div className="flex items-center gap-1.5">
+          {source === "db"    && <Badge className="text-[10px] bg-green-100 text-green-800">DB</Badge>}
+          {source === "env"   && <Badge variant="outline" className="text-[10px]">ENV</Badge>}
+          {source === "unset" && <Badge variant="outline" className="text-[10px] text-muted-foreground">Not set</Badge>}
+          {isSet && source === "db" && (
+            <button onClick={() => onClear(k)} className="text-[10px] text-destructive hover:underline">clear</button>
+          )}
+        </div>
+      </div>
+      <div className="relative">
+        <input
+          id={k}
+          type={secret && !revealed ? "password" : "text"}
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono pr-9 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+          placeholder={isSet ? (secret ? "•••• (saved — enter new value to update)" : "Saved in DB") : hint}
+          value={value}
+          onChange={(e) => onChange(k, e.target.value)}
+        />
+        {secret && (
+          <button type="button" onClick={() => onToggleReveal(k)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+      {hint && !secret && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 function PowerBITab() {
-  const [reports, setReports] = useState<PbiReport[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const { toast } = useToast();
+  const [reports,  setReports]  = useState<PbiReport[]>([]);
+  const [settings, setSettings] = useState<StoredSetting[]>([]);
+  const [values,   setValues]   = useState<Record<string, string>>({});
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [loading,  setLoading]  = useState(false);
+  const [saving,   setSaving]   = useState(false);
   const [showGuide, setShowGuide] = useState(false);
 
-  const fetchReports = useCallback(async () => {
-    setLoading(true); setError(null);
+  const loadAll = useCallback(async () => {
+    setLoading(true);
     try {
-      const json = await apiFetch<{ reports: PbiReport[] }>("/api/powerbi/reports");
-      setReports(json.reports);
+      const [rJson, sJson] = await Promise.all([
+        apiFetch<{ reports: PbiReport[] }>("/api/powerbi/reports").catch(() => ({ reports: [] as PbiReport[] })),
+        apiFetch<{ settings: StoredSetting[] }>("/api/settings"),
+      ]);
+      setReports(rJson.reports);
+      setSettings(sJson.settings);
+      // Pre-fill non-secret fields with their raw values
+      const prefill: Record<string, string> = {};
+      for (const s of sJson.settings) {
+        prefill[s.key] = s.isSecret ? "" : (s.rawValue ?? "");
+      }
+      setValues(prefill);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load reports");
+      toast({ variant: "destructive", title: "Failed to load settings", description: e instanceof Error ? e.message : String(e) });
     } finally { setLoading(false); }
-  }, []);
+  }, [toast]);
 
-  useEffect(() => { fetchReports(); }, [fetchReports]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
-  const configured   = reports.filter((r) => r.configured);
-  const unconfigured = reports.filter((r) => !r.configured);
+  const toggleReveal = (key: string) =>
+    setRevealed((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      // Only send keys that have a value
+      const toSave: Record<string, string> = {};
+      for (const [k, v] of Object.entries(values)) {
+        if (v.trim()) toSave[k] = v.trim();
+      }
+      if (Object.keys(toSave).length === 0) {
+        toast({ title: "Nothing to save", description: "Fill in at least one field." });
+        setSaving(false);
+        return;
+      }
+      await apiFetch("/api/settings/bulk", { method: "POST", body: JSON.stringify({ settings: toSave }) });
+      toast({ title: "Settings saved", description: `${Object.keys(toSave).length} Power BI setting(s) updated. Tokens will refresh automatically.` });
+      await loadAll();
+    } catch (e: unknown) {
+      toast({ variant: "destructive", title: "Save failed", description: e instanceof Error ? e.message : String(e) });
+    } finally { setSaving(false); }
+  };
+
+  const clearSetting = async (key: string) => {
+    try {
+      await apiFetch(`/api/settings/${key}`, { method: "DELETE" });
+      toast({ title: "Setting cleared", description: `${key} removed from DB (env var fallback active if set).` });
+      setValues((v) => ({ ...v, [key]: "" }));
+      await loadAll();
+    } catch { /* swallowed */ }
+  };
+
+  const configured   = reports.filter((r) => r.configured).length;
+  const unconfigured = reports.filter((r) => !r.configured).length;
+
+  function SettingField({ k, label, hint, secret }: { k: string; label: string; hint?: string; secret?: boolean }) {
+    const stored   = settings.find((s) => s.key === k);
+    const isSet    = stored?.isSet ?? false;
+    const source   = stored?.source ?? "unset";
+    const isRev    = revealed.has(k);
+
+    return (
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label htmlFor={k} className="text-sm font-medium">{label}</Label>
+          <div className="flex items-center gap-1.5">
+            {source === "db"  && <Badge className="text-[10px] bg-green-100 text-green-800">DB</Badge>}
+            {source === "env" && <Badge variant="outline" className="text-[10px]">ENV</Badge>}
+            {source === "unset" && <Badge variant="outline" className="text-[10px] text-muted-foreground">Not set</Badge>}
+            {isSet && source === "db" && (
+              <button onClick={() => clearSetting(k)} className="text-[10px] text-destructive hover:underline">clear</button>
+            )}
+          </div>
+        </div>
+        <div className="relative">
+          <input
+            id={k}
+            type={secret && !isRev ? "password" : "text"}
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono pr-9 focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+            placeholder={isSet ? (secret ? "•••• (saved — enter new value to update)" : "Saved in DB") : hint}
+            value={values[k] ?? ""}
+            onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))}
+          />
+          {secret && (
+            <button type="button" onClick={() => toggleReveal(k)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              {isRev ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+        {hint && !secret && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Status overview */}
+      {/* Report status banner */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -194,51 +350,36 @@ function PowerBITab() {
               <BarChart3 className="h-5 w-5 text-muted-foreground" />
               <CardTitle className="text-base">Power BI Integration</CardTitle>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchReports} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
               <RefreshCw className={cn("mr-1.5 h-3.5 w-3.5", loading && "animate-spin")} />
               Refresh
             </Button>
           </div>
-          <CardDescription>
-            Per-module embedded reports from Microsoft Power BI. Each report requires an Azure AD service principal and environment variables.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="space-y-2">{[1,2,3].map(i=><Skeleton key={i} className="h-10 w-full"/>)}</div>
-          ) : error ? (
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4" /> {error}
-            </div>
           ) : (
-            <div className="space-y-4">
-              {/* Summary badges */}
+            <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-300">
-                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />{configured.length} configured
+                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />{configured} report{configured !== 1 ? "s" : ""} configured
                 </Badge>
                 <Badge variant="outline" className="text-muted-foreground">
-                  <AlertCircle className="mr-1 h-3.5 w-3.5" />{unconfigured.length} not configured
+                  <AlertCircle className="mr-1 h-3.5 w-3.5" />{unconfigured} not configured
                 </Badge>
               </div>
-
-              {/* Report list */}
-              <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {reports.map((r) => (
-                  <div key={r.id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium">{r.label}</p>
-                        <Badge variant="outline" className="text-[10px]">{r.module}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{r.description}</p>
+                  <div key={r.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                    <div>
+                      <p className="font-medium">{r.label}</p>
+                      <p className="text-[10px] text-muted-foreground capitalize">{r.module}</p>
                     </div>
                     <Badge className={r.configured
-                      ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-300 shrink-0"
-                      : "bg-muted text-muted-foreground shrink-0"
-                    }>
-                      {r.configured ? "Active" : "Not set"}
-                    </Badge>
+                      ? "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-300"
+                      : "bg-muted text-muted-foreground"
+                    }>{r.configured ? "Active" : "Not set"}</Badge>
                   </div>
                 ))}
               </div>
@@ -247,67 +388,87 @@ function PowerBITab() {
         </CardContent>
       </Card>
 
+      {/* Credential editor */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Azure AD Credentials</CardTitle>
+          </div>
+          <CardDescription>
+            Stored securely in the database. Values entered here override .env variables. Leave blank to keep the existing saved value or use the .env fallback.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {PBI_CREDENTIAL_KEYS.map(({ key: k, label, hint, secret }) => (
+              <SettingField
+                key={k} k={k} label={label} hint={hint} secret={!!secret}
+                value={values[k] ?? ""}
+                onChange={(key, val) => setValues((v) => ({ ...v, [key]: val }))}
+                stored={settings.find((s) => s.key === k)}
+                revealed={revealed.has(k)}
+                onToggleReveal={toggleReveal}
+                onClear={clearSetting}
+              />
+            ))}
+          </div>
+          <Separator />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Report IDs</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PBI_REPORT_KEYS.map(({ key: k, label }) => (
+              <SettingField
+                key={k} k={k} label={label} hint="UUID from Power BI report URL" secret={false}
+                value={values[k] ?? ""}
+                onChange={(key, val) => setValues((v) => ({ ...v, [key]: val }))}
+                stored={settings.find((s) => s.key === k)}
+                revealed={revealed.has(k)}
+                onToggleReveal={toggleReveal}
+                onClear={clearSetting}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t">
+            <p className="text-xs text-muted-foreground">Changes are applied immediately — no server restart required.</p>
+            <Button onClick={handleSave} disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save settings
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Setup guide */}
       <Card className="border-dashed">
         <CardHeader>
-          <button
-            onClick={() => setShowGuide((v) => !v)}
-            className="flex w-full items-center justify-between text-left"
-          >
+          <button onClick={() => setShowGuide((v) => !v)} className="flex w-full items-center justify-between text-left">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Settings className="h-4 w-4 text-muted-foreground" />
-              Power BI Setup Guide
+              <Settings className="h-4 w-4 text-muted-foreground" /> Power BI Setup Guide
             </CardTitle>
             {showGuide ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </CardHeader>
         {showGuide && (
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-4">
             <ol className="space-y-4">
               {[
                 { step: "1", title: "Register Azure AD app", detail: "Azure Portal → App registrations → New registration. Grant Power BI Service → Report.ReadAll (Application) and admin-consent." },
                 { step: "2", title: "Add service principal to workspace", detail: 'Power BI Service → workspace → Settings → Access → add the app as "Member".' },
-                { step: "3", title: "Publish reports", detail: "Build in Power BI Desktop (DirectQuery or Import from PostgreSQL). Publish to the workspace. Copy each report ID from the URL." },
-                { step: "4", title: "Set .env variables", detail: "Add the variables below to your root .env and restart the API server." },
+                { step: "3", title: "Build & publish reports", detail: "Build in Power BI Desktop connecting to your PostgreSQL (DirectQuery or import). Publish to the workspace. Copy the report ID from the URL (the GUID after /reports/)." },
+                { step: "4", title: "Enter credentials above", detail: 'Fill in the Azure AD credentials and report IDs in the form above, then click "Save settings". No restart required.' },
               ].map((s) => (
                 <li key={s.step} className="flex gap-3 text-sm">
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{s.step}</span>
-                  <div>
-                    <p className="font-medium">{s.title}</p>
-                    <p className="text-muted-foreground mt-0.5">{s.detail}</p>
-                  </div>
+                  <div><p className="font-medium">{s.title}</p><p className="text-muted-foreground mt-0.5">{s.detail}</p></div>
                 </li>
               ))}
             </ol>
-
-            <div className="rounded-md bg-muted p-4 font-mono text-xs leading-6">
-              <p className="mb-1 font-semibold text-foreground">.env (root)</p>
-              <pre className="whitespace-pre-wrap text-muted-foreground">{`POWERBI_TENANT_ID=<azure-tenant-id>
-POWERBI_CLIENT_ID=<app-client-id>
-POWERBI_CLIENT_SECRET=<app-client-secret>
-POWERBI_WORKSPACE_ID=<workspace-group-id>
-
-# Report IDs (from Power BI URL)
-POWERBI_REPORT_SUPPLIER_LEDGER=<report-id>
-POWERBI_REPORT_EXPENSE_INCOME=<report-id>
-POWERBI_REPORT_TRIAL_BALANCE=<report-id>
-POWERBI_REPORT_PAYROLL_SUMMARY=<report-id>
-POWERBI_REPORT_PROFIT_MARGIN=<report-id>
-POWERBI_REPORT_INVENTORY_ANALYSIS=<report-id>
-POWERBI_REPORT_HR_DASHBOARD=<report-id>
-POWERBI_REPORT_SALES_OVERVIEW=<report-id>`}</pre>
-            </div>
-
             <div className="flex gap-3">
               <Button variant="outline" size="sm" asChild>
-                <a href="https://learn.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal" target="_blank" rel="noreferrer">
-                  Docs <ExternalLink className="ml-1 h-3 w-3" />
-                </a>
+                <a href="https://learn.microsoft.com/en-us/power-bi/developer/embedded/embed-service-principal" target="_blank" rel="noreferrer">Docs <ExternalLink className="ml-1 h-3 w-3" /></a>
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <a href="https://app.powerbi.com" target="_blank" rel="noreferrer">
-                  Power BI Service <ExternalLink className="ml-1 h-3 w-3" />
-                </a>
+                <a href="https://app.powerbi.com" target="_blank" rel="noreferrer">Power BI Service <ExternalLink className="ml-1 h-3 w-3" /></a>
               </Button>
             </div>
           </CardContent>

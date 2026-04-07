@@ -13,3 +13,4 @@ export * from "./activity_logs";
 export * from "./delivery";
 export * from "./performance";
 export * from "./sales";
+export * from "./settings";

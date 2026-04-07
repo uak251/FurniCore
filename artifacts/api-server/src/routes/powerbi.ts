@@ -28,6 +28,7 @@ import { Router, type IRouter } from "express";
 import { sql, eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
+import { getSetting } from "./settings";
 
 const router: IRouter = Router();
 
@@ -50,7 +51,11 @@ function cacheSet(key: string, value: string, ttlMs: number): void {
 async function getAzureADToken(): Promise<string> {
   const cached = cacheGet("aad");
   if (cached) return cached;
-  const { POWERBI_TENANT_ID, POWERBI_CLIENT_ID, POWERBI_CLIENT_SECRET } = process.env;
+  const [POWERBI_TENANT_ID, POWERBI_CLIENT_ID, POWERBI_CLIENT_SECRET] = await Promise.all([
+    getSetting("POWERBI_TENANT_ID"),
+    getSetting("POWERBI_CLIENT_ID"),
+    getSetting("POWERBI_CLIENT_SECRET"),
+  ]);
   if (!POWERBI_TENANT_ID || !POWERBI_CLIENT_ID || !POWERBI_CLIENT_SECRET)
     throw new Error("Power BI Azure AD credentials not configured (POWERBI_TENANT_ID / CLIENT_ID / CLIENT_SECRET).");
   const resp = await fetch(
@@ -137,9 +142,12 @@ const REPORT_META: Record<ReportId, ReportMeta> = {
   "sales-overview":     { label: "Sales Overview",                  envKey: "POWERBI_REPORT_SALES_OVERVIEW",     allowedRoles: ["admin","manager","sales_manager"], module: "sales",    description: "Revenue by customer, quote conversion, sales pipeline, and period trends." },
 };
 
-function getReportEnv(id: ReportId): { workspaceId: string; reportId: string } | null {
-  const ws  = process.env.POWERBI_WORKSPACE_ID;
-  const rid = process.env[REPORT_META[id].envKey];
+/** Async version — reads from DB first, then env var fallback. */
+async function getReportEnv(id: ReportId): Promise<{ workspaceId: string; reportId: string } | null> {
+  const [ws, rid] = await Promise.all([
+    getSetting("POWERBI_WORKSPACE_ID"),
+    getSetting(REPORT_META[id].envKey),
+  ]);
   return ws && rid ? { workspaceId: ws, reportId: rid } : null;
 }
 
@@ -184,15 +192,15 @@ router.get("/powerbi/reports", authenticate, async (req: AuthRequest, res): Prom
     .where(eq(usersTable.id, req.user.id));
 
   const caller = { role: req.user.role, permissions: dbUser?.permissions };
-  const reports = REPORT_IDS
-    .filter((id) => canAccess(caller, REPORT_META[id]))
-    .map((id) => ({
-      id,
-      label:       REPORT_META[id].label,
-      description: REPORT_META[id].description,
-      module:      REPORT_META[id].module,
-      configured:  getReportEnv(id) !== null,
-    }));
+  const accessibleIds = REPORT_IDS.filter((id) => canAccess(caller, REPORT_META[id]));
+  const configuredFlags = await Promise.all(accessibleIds.map((id) => getReportEnv(id).then((v) => !!v)));
+  const reports = accessibleIds.map((id, i) => ({
+    id,
+    label:       REPORT_META[id].label,
+    description: REPORT_META[id].description,
+    module:      REPORT_META[id].module,
+    configured:  configuredFlags[i],
+  }));
 
   res.json({ reports });
 });
@@ -224,10 +232,10 @@ router.post("/powerbi/embed-token", authenticate, async (req: AuthRequest, res):
     return;
   }
 
-  const env = getReportEnv(reportId as ReportId);
+  const env = await getReportEnv(reportId as ReportId);
   if (!env) {
     res.status(503).json({
-      error:      `This report is not configured. Add ${meta.envKey} and POWERBI_WORKSPACE_ID to your .env file.`,
+      error:      `This report is not configured. Add ${meta.envKey} and POWERBI_WORKSPACE_ID to your .env file (or save them in Settings → Power BI).`,
       reportId,
       configured: false,
     });

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser } from "@workspace/api-client-react";
+import { useListUsers, useCreateUser, useUpdateUser, useDeleteUser, useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,15 +20,24 @@ import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "
 /** Extract a human-readable message from any API error shape. */
 function apiErrorMessage(e: unknown): string {
   if (!e || typeof e !== "object") return "An unexpected error occurred.";
-  // Axios-style: e.response.data.message
+  // ApiError from customFetch: parsed body is in .data (not .response.data)
+  const data = (e as any).data;
+  if (data && typeof data === "object") {
+    if (data.message && typeof data.message === "string") return data.message;
+    if (data.error   && typeof data.error   === "string" && !data.error.startsWith("<!"))
+      return data.error;
+  }
+  // Axios-style fallback
   const resp = (e as any).response?.data;
   if (resp?.message) return String(resp.message);
   if (resp?.error && typeof resp.error === "string" && !resp.error.startsWith("<!"))
     return resp.error;
-  // Plain Error object
-  const msg = (e as any).message ?? "";
-  // Strip HTML if the server returned an error page
-  if (typeof msg === "string" && msg.includes("<!DOCTYPE")) return "Server error — please restart the API server.";
+  // Plain Error.message
+  const msg = String((e as any).message ?? "");
+  if (msg.includes("<!DOCTYPE")) return "Server error — please restart the API server.";
+  // Strip the "HTTP 400 Bad Request: " prefix that ApiError adds
+  const colonIdx = msg.indexOf(": ");
+  if (colonIdx !== -1 && msg.startsWith("HTTP ")) return msg.slice(colonIdx + 2);
   return msg || "An unexpected error occurred.";
 }
 
@@ -76,6 +85,7 @@ export default function UsersPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
+  const { data: me } = useGetCurrentUser();
   const { data: users, isLoading } = useListUsers();
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -331,15 +341,18 @@ export default function UsersPage() {
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="text-destructive hover:text-destructive"
-                                  aria-label={`Deactivate ${u.name}`}
-                                  onClick={() => handleDeactivate(u.id, u.name)}
-                                >
-                                  <UserX className="h-4 w-4" />
-                                </Button>
+                                {/* Hide deactivate for the currently logged-in user */}
+                                {me?.id !== u.id && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive"
+                                    aria-label={`Deactivate ${u.name}`}
+                                    onClick={() => handleDeactivate(u.id, u.name)}
+                                  >
+                                    <UserX className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </>
                             ) : (
                               <Button

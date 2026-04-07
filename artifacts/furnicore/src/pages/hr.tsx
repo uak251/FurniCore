@@ -46,6 +46,7 @@ import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "
 import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
+import { useCurrency } from "@/lib/currency";
 
 /* ─── Shared helpers ─────────────────────────────────────────────────────────── */
 
@@ -65,8 +66,11 @@ function apiErrorMessage(e: unknown): string {
 
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-const fmt = (n: number) =>
-  `$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** useFmt — returns a currency formatter that respects the selected currency. */
+function useFmt() {
+  const { format } = useCurrency();
+  return (n: number) => format(Math.abs(n));
+}
 
 const STATUS_COLORS: Record<string, string> = {
   present:  "bg-green-100 text-green-800",
@@ -154,6 +158,7 @@ function KpiCard({
 /* ═══════════════════════════════════════════════════════════════════════════════ */
 
 function OverviewTab({ onTabChange }: { onTabChange: (t: string) => void }) {
+  const fmt = useFmt();
   const now = new Date();
   const { data: employees }        = useListEmployees();
   const { data: attendanceData }   = useAttendanceSummary(now.getMonth() + 1, now.getFullYear());
@@ -312,6 +317,7 @@ interface AttendanceForm {
 }
 
 function EmployeesTab() {
+  const fmt = useFmt();
   const { toast }  = useToast();
   const qc         = useQueryClient();
   const [search, setSearch]     = useState("");
@@ -907,6 +913,7 @@ interface ReviewForm {
 }
 
 function PerformanceTab() {
+  const fmt = useFmt();
   const { toast }     = useToast();
   const { data: employees } = useListEmployees();
   const [empFilter, setEmpFilter] = useState("all");
