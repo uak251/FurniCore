@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@workspace/api-client-react";
+import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Package, Search, Pencil, Trash2, Upload } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Plus, Package, Search, Pencil, Trash2, Upload, Images } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { useCurrency } from "@/lib/currency";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
 
 interface ProductForm {
   name: string;
@@ -30,10 +32,16 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
+  const { data: me } = useGetCurrentUser();
+  const canManageImages = me?.role === "admin" || me?.role === "manager";
+
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [showBulk, setShowBulk]     = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
+
+  const { data: allImages = [] } = useModuleImages("product");
 
   const { data: products, isLoading } = useListProducts();
   const createProduct = useCreateProduct();
@@ -110,6 +118,10 @@ export default function ProductsPage() {
           <p className="text-muted-foreground">Manage your product catalog and pricing</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowGallery(true)}>
+            <Images className="mr-2 h-4 w-4" />
+            Gallery
+          </Button>
           <Button variant="outline" onClick={() => setShowBulk(true)}>
             <Upload className="mr-2 h-4 w-4" aria-hidden />
             Bulk import/export
@@ -141,6 +153,7 @@ export default function ProductsPage() {
             <table className="w-full text-sm">
               <thead className="border-b">
                 <tr className="text-left text-muted-foreground">
+                  <th className="px-4 py-3 font-medium w-12"></th>
                   <th className="px-6 py-3 font-medium">Name</th>
                   <th className="px-6 py-3 font-medium">SKU</th>
                   <th className="px-6 py-3 font-medium">Category</th>
@@ -155,6 +168,9 @@ export default function ProductsPage() {
               <tbody className="divide-y">
                 {filtered.map((p: any) => (
                   <tr key={p.id} className="hover:bg-muted/40 transition-colors">
+                    <td className="px-4 py-3">
+                      <RecordAvatar entityType="product" entityId={p.id} className="h-10 w-10" />
+                    </td>
                     <td className="px-6 py-4 font-medium">{p.name}</td>
                     <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{p.sku}</td>
                     <td className="px-6 py-4 text-muted-foreground">{p.category || "—"}</td>
@@ -201,50 +217,85 @@ export default function ProductsPage() {
       </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>{editItem ? "Edit Product" : "Add Product"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1">
-                <Label>Product Name</Label>
-                <Input {...register("name", { required: true })} placeholder="e.g. Executive Oak Desk" />
-              </div>
-              <div className="space-y-1">
-                <Label>SKU</Label>
-                <Input {...register("sku", { required: true })} placeholder="DESK-OAK-001" />
-              </div>
-              <div className="space-y-1">
-                <Label>Category</Label>
-                <Input {...register("category")} placeholder="e.g. Desks" />
-              </div>
-              <div className="space-y-1">
-                <Label>Cost Price ($)</Label>
-                <Input type="number" step="0.01" {...register("costPrice", { valueAsNumber: true })} />
-              </div>
-              <div className="space-y-1">
-                <Label>Selling Price ($)</Label>
-                <Input type="number" step="0.01" {...register("sellingPrice", { valueAsNumber: true })} />
-              </div>
-              <div className="space-y-1">
-                <Label>Stock Quantity</Label>
-                <Input type="number" {...register("stockQuantity", { valueAsNumber: true })} />
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <Switch checked={isActive} onCheckedChange={(v) => setValue("isActive", v)} />
-                <Label>Active</Label>
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label>Description</Label>
-                <Input {...register("description")} placeholder="Short product description" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createProduct.isPending || updateProduct.isPending}>Save</Button>
-            </DialogFooter>
-          </form>
+          <Tabs defaultValue="details">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              {editItem && <TabsTrigger value="images">Images</TabsTrigger>}
+            </TabsList>
+
+            <TabsContent value="details">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-1">
+                    <Label>Product Name</Label>
+                    <Input {...register("name", { required: true })} placeholder="e.g. Executive Oak Desk" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>SKU</Label>
+                    <Input {...register("sku", { required: true })} placeholder="DESK-OAK-001" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Category</Label>
+                    <Input {...register("category")} placeholder="e.g. Desks" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Cost Price</Label>
+                    <Input type="number" step="0.01" {...register("costPrice", { valueAsNumber: true })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Selling Price</Label>
+                    <Input type="number" step="0.01" {...register("sellingPrice", { valueAsNumber: true })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Stock Quantity</Label>
+                    <Input type="number" {...register("stockQuantity", { valueAsNumber: true })} />
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Switch checked={isActive} onCheckedChange={(v) => setValue("isActive", v)} />
+                    <Label>Active</Label>
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label>Description</Label>
+                    <Input {...register("description")} placeholder="Short product description" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
+                  <Button type="submit" disabled={createProduct.isPending || updateProduct.isPending}>Save</Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+
+            {editItem && (
+              <TabsContent value="images">
+                <RecordImagePanel
+                  entityType="product"
+                  entityId={editItem.id}
+                  canUpload={canManageImages}
+                  canDelete={canManageImages}
+                />
+              </TabsContent>
+            )}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Module Gallery Dialog */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Product Gallery</DialogTitle>
+          </DialogHeader>
+          <ModuleGallery
+            entityType="product"
+            images={allImages}
+            canDelete={canManageImages}
+            entityLabels={Object.fromEntries((products ?? []).map((p: any) => [p.id, p.name]))}
+          />
         </DialogContent>
       </Dialog>
     </div>

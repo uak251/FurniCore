@@ -26,6 +26,7 @@ import accountsRouter from "./accounts";
 import journalEntriesRouter from "./journal-entries";
 import financialReportsRouter from "./financial-reports";
 import accrualsRouter from "./accruals";
+import imagesRouter from "./images";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(accountsRouter);
 router.use(journalEntriesRouter);
 router.use(financialReportsRouter);
 router.use(accrualsRouter);
+router.use(imagesRouter);
 
 export default router;

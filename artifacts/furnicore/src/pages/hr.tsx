@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Users, ClipboardList, Plus, Pencil, Trash2,
   Star, BarChart3, TrendingUp, CalendarDays, CheckCircle,
-  AlertTriangle, Clock, UserCheck, UserX, Banknote, Upload,
+  AlertTriangle, Clock, UserCheck, UserX, Banknote, Upload, Images,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -47,6 +47,8 @@ import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 import { useCurrency } from "@/lib/currency";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
+import { useGetCurrentUser } from "@workspace/api-client-react";
 
 /* ─── Shared helpers ─────────────────────────────────────────────────────────── */
 
@@ -320,6 +322,9 @@ function EmployeesTab() {
   const fmt = useFmt();
   const { toast }  = useToast();
   const qc         = useQueryClient();
+  const { data: me } = useGetCurrentUser();
+  const canManageImages = me?.role === "admin" || me?.role === "manager";
+
   const [search, setSearch]     = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortKey, setSortKey]   = useState("name");
@@ -329,8 +334,11 @@ function EmployeesTab() {
   const [showEmpDialog, setShowEmpDialog]   = useState(false);
   const [showAttDialog, setShowAttDialog]   = useState(false);
   const [showBulkEmp, setShowBulkEmp]       = useState(false);
+  const [showGallery, setShowGallery]       = useState(false);
   const [editItem, setEditItem]             = useState<any>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+
+  const { data: allImages = [] } = useModuleImages("employee");
 
   const { data: employees, isLoading } = useListEmployees();
   const createEmployee  = useCreateEmployee();
@@ -459,6 +467,9 @@ function EmployeesTab() {
         resultsText={total===0 ? "No matching employees" : `Showing ${from}–${to} of ${total}`}
       >
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowGallery(true)}>
+            <Images className="mr-1.5 h-4 w-4" /> Gallery
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowBulkEmp(true)}>
             <Upload className="mr-1.5 h-4 w-4" aria-hidden /> Bulk import/export
           </Button>
@@ -483,6 +494,7 @@ function EmployeesTab() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col" className="w-12"></TableHead>
                       <TableHead scope="col">Name</TableHead>
                       <TableHead scope="col">Department</TableHead>
                       <TableHead scope="col">Position</TableHead>
@@ -495,6 +507,9 @@ function EmployeesTab() {
                   <TableBody>
                     {pageRows.map((e: any) => (
                       <TableRow key={e.id}>
+                        <TableCell className="px-3 py-2">
+                          <RecordAvatar entityType="employee" entityId={e.id} className="h-9 w-9 rounded-full" />
+                        </TableCell>
                         <TableCell>
                           <p className="font-medium">{e.name}</p>
                           <p className="text-xs text-muted-foreground">{e.email}</p>
@@ -563,48 +578,79 @@ function EmployeesTab() {
 
       {/* Employee dialog */}
       <Dialog open={showEmpDialog} onOpenChange={setShowEmpDialog}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader><DialogTitle>{editItem ? "Edit employee" : "Add employee"}</DialogTitle></DialogHeader>
-          <form onSubmit={empForm.handleSubmit(onSubmitEmployee)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="emp-name">Full name *</Label>
-                <Input id="emp-name" {...empForm.register("name", { required: true })} placeholder="Alice Johnson" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-email">Email</Label>
-                <Input id="emp-email" type="email" {...empForm.register("email")} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-phone">Phone</Label>
-                <Input id="emp-phone" {...empForm.register("phone")} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-dept">Department</Label>
-                <Input id="emp-dept" {...empForm.register("department")} placeholder="Manufacturing" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-pos">Position</Label>
-                <Input id="emp-pos" {...empForm.register("position")} placeholder="Senior Craftsman" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-sal">Annual salary ($)</Label>
-                <Input id="emp-sal" type="number" {...empForm.register("baseSalary", { valueAsNumber: true })} />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="emp-hire">Hire date</Label>
-                <Input id="emp-hire" type="date" {...empForm.register("hireDate")} />
-              </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <Switch id="emp-active" checked={empForm.watch("isActive")} onCheckedChange={(v) => empForm.setValue("isActive", v)} />
-                <Label htmlFor="emp-active">Active employee</Label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowEmpDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending}>Save</Button>
-            </DialogFooter>
-          </form>
+          <Tabs defaultValue="details">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              {editItem && <TabsTrigger value="images">Photo</TabsTrigger>}
+            </TabsList>
+            <TabsContent value="details">
+              <form onSubmit={empForm.handleSubmit(onSubmitEmployee)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor="emp-name">Full name *</Label>
+                    <Input id="emp-name" {...empForm.register("name", { required: true })} placeholder="Alice Johnson" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-email">Email</Label>
+                    <Input id="emp-email" type="email" {...empForm.register("email")} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-phone">Phone</Label>
+                    <Input id="emp-phone" {...empForm.register("phone")} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-dept">Department</Label>
+                    <Input id="emp-dept" {...empForm.register("department")} placeholder="Manufacturing" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-pos">Position</Label>
+                    <Input id="emp-pos" {...empForm.register("position")} placeholder="Senior Craftsman" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-sal">Annual salary</Label>
+                    <Input id="emp-sal" type="number" {...empForm.register("baseSalary", { valueAsNumber: true })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="emp-hire">Hire date</Label>
+                    <Input id="emp-hire" type="date" {...empForm.register("hireDate")} />
+                  </div>
+                  <div className="col-span-2 flex items-center gap-2">
+                    <Switch id="emp-active" checked={empForm.watch("isActive")} onCheckedChange={(v) => empForm.setValue("isActive", v)} />
+                    <Label htmlFor="emp-active">Active employee</Label>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" type="button" onClick={() => setShowEmpDialog(false)}>Cancel</Button>
+                  <Button type="submit" disabled={createEmployee.isPending || updateEmployee.isPending}>Save</Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+            {editItem && (
+              <TabsContent value="images">
+                <RecordImagePanel
+                  entityType="employee"
+                  entityId={editItem.id}
+                  canUpload={canManageImages}
+                  canDelete={canManageImages}
+                />
+              </TabsContent>
+            )}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee gallery */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Employee Photo Gallery</DialogTitle></DialogHeader>
+          <ModuleGallery
+            entityType="employee"
+            images={allImages}
+            canDelete={canManageImages}
+            entityLabels={Object.fromEntries((employees ?? []).map((e: any) => [e.id, e.name]))}
+          />
         </DialogContent>
       </Dialog>
 

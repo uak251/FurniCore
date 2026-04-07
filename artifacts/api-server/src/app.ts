@@ -1,8 +1,16 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import { mkdirSync } from "fs";
+import { join } from "path";
+import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = join(__filename, "..");
+const UPLOADS_ROOT = join(__dirname, "..", "uploads");
+mkdirSync(UPLOADS_ROOT, { recursive: true });
 
 const app: Express = express();
 
@@ -28,6 +36,9 @@ app.use(
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded images as static assets at /uploads/*
+app.use("/uploads", express.static(UPLOADS_ROOT, { maxAge: "1d", etag: true }));
 
 app.use("/api", router);
 

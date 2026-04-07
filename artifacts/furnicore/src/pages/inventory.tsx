@@ -5,6 +5,7 @@ import {
   useCreateInventoryItem,
   useUpdateInventoryItem,
   useDeleteInventoryItem,
+  useGetCurrentUser,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertTriangle, Plus, Package, Pencil, Trash2, Upload } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AlertTriangle, Plus, Package, Pencil, Trash2, Upload, Images } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
@@ -25,6 +27,7 @@ import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 import { useCurrency } from "@/lib/currency";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
 
 interface InventoryFormData {
   name: string;
@@ -41,6 +44,9 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
+  const { data: me } = useGetCurrentUser();
+  const canManageImages = me?.role === "admin" || me?.role === "manager";
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState("name");
@@ -49,7 +55,10 @@ export default function InventoryPage() {
   const [pageSize, setPageSize] = useState(10);
   const [showDialog, setShowDialog] = useState(false);
   const [showBulk, setShowBulk]     = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
+
+  const { data: allImages = [] } = useModuleImages("inventory");
 
   const { data: inventory, isLoading } = useListInventory();
   const { data: lowStock } = useGetLowStockItems();
@@ -185,13 +194,14 @@ export default function InventoryPage() {
           <p className="text-muted-foreground">Manage raw materials and stock levels</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowGallery(true)}>
+            <Images className="mr-2 h-4 w-4" />Gallery
+          </Button>
           <Button variant="outline" onClick={() => setShowBulk(true)}>
-            <Upload className="mr-2 h-4 w-4" aria-hidden />
-            Bulk import/export
+            <Upload className="mr-2 h-4 w-4" aria-hidden />Bulk import/export
           </Button>
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden />
-            Add item
+            <Plus className="mr-2 h-4 w-4" aria-hidden />Add item
           </Button>
         </div>
       </div>
@@ -264,6 +274,7 @@ export default function InventoryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead scope="col" className="w-12"></TableHead>
                       <TableHead scope="col">Name</TableHead>
                       <TableHead scope="col">Type</TableHead>
                       <TableHead scope="col">Unit</TableHead>
@@ -289,6 +300,9 @@ export default function InventoryPage() {
                       const low = qty <= reorder;
                       return (
                         <TableRow key={item.id}>
+                          <TableCell className="px-3 py-2">
+                            <RecordAvatar entityType="inventory" entityId={item.id} className="h-9 w-9" />
+                          </TableCell>
                           <TableCell className="font-medium">{item.name}</TableCell>
                           <TableCell className="capitalize text-muted-foreground">
                             {String(item.type ?? "").replace(/_/g, " ")}
@@ -368,76 +382,84 @@ export default function InventoryPage() {
       </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>{editItem ? "Edit inventory item" : "Add inventory item"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="inv-name">Name</Label>
-                <Input id="inv-name" {...register("name", { required: true })} placeholder="Item name" />
-              </div>
-              <div className="space-y-1">
-                <Label>Type</Label>
-                <Controller
-                  name="type"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="raw_material">Raw material</SelectItem>
-                        <SelectItem value="finished_goods">Finished goods</SelectItem>
-                        <SelectItem value="work_in_progress">Work in progress</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
+          <Tabs defaultValue="details">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              {editItem && <TabsTrigger value="images">Images</TabsTrigger>}
+            </TabsList>
+
+            <TabsContent value="details">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor="inv-name">Name</Label>
+                    <Input id="inv-name" {...register("name", { required: true })} placeholder="Item name" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Type</Label>
+                    <Controller name="type" control={control} render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="raw_material">Raw material</SelectItem>
+                          <SelectItem value="finished_goods">Finished goods</SelectItem>
+                          <SelectItem value="work_in_progress">Work in progress</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="inv-unit">Unit</Label>
+                    <Input id="inv-unit" {...register("unit", { required: true })} placeholder="e.g. kg, units" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="inv-qty">Quantity</Label>
+                    <Input id="inv-qty" type="number" step="0.01" {...register("quantity", { valueAsNumber: true })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="inv-reorder">Reorder level</Label>
+                    <Input id="inv-reorder" type="number" step="0.01" {...register("reorderLevel", { valueAsNumber: true })} />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label htmlFor="inv-cost">Unit cost</Label>
+                    <Input id="inv-cost" type="number" step="0.01" {...register("unitCost", { valueAsNumber: true })} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>Cancel</Button>
+                  <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>Save</Button>
+                </DialogFooter>
+              </form>
+            </TabsContent>
+
+            {editItem && (
+              <TabsContent value="images">
+                <RecordImagePanel
+                  entityType="inventory"
+                  entityId={editItem.id}
+                  canUpload={canManageImages}
+                  canDelete={canManageImages}
                 />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="inv-unit">Unit</Label>
-                <Input id="inv-unit" {...register("unit", { required: true })} placeholder="e.g. kg, units" />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="inv-qty">Quantity</Label>
-                <Input
-                  id="inv-qty"
-                  type="number"
-                  step="0.01"
-                  {...register("quantity", { valueAsNumber: true })}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="inv-reorder">Reorder level</Label>
-                <Input
-                  id="inv-reorder"
-                  type="number"
-                  step="0.01"
-                  {...register("reorderLevel", { valueAsNumber: true })}
-                />
-              </div>
-              <div className="col-span-2 space-y-1">
-                <Label htmlFor="inv-cost">Unit cost ($)</Label>
-                <Input
-                  id="inv-cost"
-                  type="number"
-                  step="0.01"
-                  {...register("unitCost", { valueAsNumber: true })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setShowDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
-                Save
-              </Button>
-            </DialogFooter>
-          </form>
+              </TabsContent>
+            )}
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Module Gallery */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Raw Materials Gallery</DialogTitle></DialogHeader>
+          <ModuleGallery
+            entityType="inventory"
+            images={allImages}
+            canDelete={canManageImages}
+            entityLabels={Object.fromEntries((inventory ?? []).map((i: any) => [i.id, i.name]))}
+          />
         </DialogContent>
       </Dialog>
 

@@ -1,0 +1,52 @@
+/**
+ * Multer upload middleware for record images.
+ *
+ * Files are stored at  <project-root>/uploads/<entityType>/<uuid>.<ext>
+ * and served statically at  /uploads/...
+ *
+ * Constraints:
+ *   - Max file size : 8 MB
+ *   - Allowed types : image/jpeg, image/png, image/webp, image/gif
+ *   - Max files per request : 10
+ */
+
+import multer, { type StorageEngine } from "multer";
+import { type Request } from "express";
+import { mkdirSync } from "fs";
+import { join, extname } from "path";
+import { v4 as uuidv4 } from "uuid";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = join(__filename, "..");
+
+/** Root of the on-disk uploads directory (two levels above src/middlewares) */
+export const UPLOADS_ROOT = join(__dirname, "..", "..", "uploads");
+
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg","image/jpg","image/png","image/webp","image/gif"]);
+const MAX_SIZE_BYTES      = 8 * 1024 * 1024; // 8 MB
+
+const storage: StorageEngine = multer.diskStorage({
+  destination(req: Request, _file, cb) {
+    const rawEntity = req.params["entityType"];
+    const entity = (Array.isArray(rawEntity) ? rawEntity[0] : rawEntity ?? "misc").replace(/[^a-zA-Z0-9_-]/g, "");
+    const dir = join(UPLOADS_ROOT, entity);
+    mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename(_req, file, cb) {
+    const ext = extname(file.originalname).toLowerCase() || ".jpg";
+    cb(null, `${uuidv4()}${ext}`);
+  },
+});
+
+function fileFilter(_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) {
+  if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Unsupported file type: ${file.mimetype}. Allowed: jpeg, png, webp, gif.`));
+  }
+}
+
+export const uploadSingle = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES } }).single("image");
+export const uploadMulti  = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES, files: 10 } }).array("images", 10);

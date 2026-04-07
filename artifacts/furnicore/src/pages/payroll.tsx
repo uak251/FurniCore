@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useListPayroll, useGeneratePayroll, useApprovePayroll, useListEmployees } from "@workspace/api-client-react";
+import { useListPayroll, useGeneratePayroll, useApprovePayroll, useListEmployees, useGetCurrentUser } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   usePayrollAdjustments,
@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Banknote, CheckCircle, Plus, ChevronDown, ChevronUp, RefreshCw,
-  TrendingUp, TrendingDown, AlertTriangle, Clock, Trash2, Info, Upload,
+  TrendingUp, TrendingDown, AlertTriangle, Clock, Trash2, Info, Upload, Images,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -33,6 +33,8 @@ import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 import { useCurrency } from "@/lib/currency";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_ID = "payroll";
@@ -303,6 +305,9 @@ export default function PayrollPage() {
   const { format: fmtCur } = useCurrency();
   const fmt = (n: number) => fmtCur(Math.abs(n));
   const qc         = useQueryClient();
+  const { data: me } = useGetCurrentUser();
+  const canManageImages = me?.role === "admin" || me?.role === "manager";
+
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState("all");
   const [sortKey, setSortKey]             = useState("employeeName");
@@ -311,10 +316,14 @@ export default function PayrollPage() {
   const [pageSize, setPageSize]           = useState(10);
   const [showGenDialog, setShowGenDialog] = useState(false);
   const [showBulk, setShowBulk]           = useState(false);
+  const [showGallery, setShowGallery]     = useState(false);
   const [expandedId, setExpandedId]       = useState<number | null>(null);
+  const [imagesPayrollId, setImagesPayrollId] = useState<number | null>(null);
   const [adjRecord, setAdjRecord]         = useState<any | null>(null);
   const [filterMonth, setFilterMonth]     = useState<string>("all");
   const [filterYear, setFilterYear]       = useState<string>(String(new Date().getFullYear()));
+
+  const { data: allImages = [] } = useModuleImages("payroll");
 
   const { data: payroll, isLoading } = useListPayroll();
   const { data: employees }          = useListEmployees();
@@ -408,6 +417,9 @@ export default function PayrollPage() {
           <p className="text-muted-foreground">Generate payroll with transparent attendance penalties and bonuses</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowGallery(true)}>
+            <Images className="mr-2 h-4 w-4" /> Gallery
+          </Button>
           <Button variant="outline" onClick={() => setShowBulk(true)}>
             <Upload className="mr-2 h-4 w-4" aria-hidden /> Bulk import/export
           </Button>
@@ -486,6 +498,7 @@ export default function PayrollPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead scope="col" className="w-8" />
+                      <TableHead scope="col" className="w-12"></TableHead>
                       <TableHead scope="col">Employee</TableHead>
                       <TableHead scope="col">Period</TableHead>
                       <TableHead scope="col" className="text-right">Monthly Base</TableHead>
@@ -519,6 +532,9 @@ export default function PayrollPage() {
                                   : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
                               </Button>
                             </TableCell>
+                            <TableCell className="px-3 py-2">
+                              <RecordAvatar entityType="payroll" entityId={p.id} className="h-9 w-9" />
+                            </TableCell>
                             <TableCell className="font-medium">
                               {p.employeeName || `Employee #${p.employeeId}`}
                             </TableCell>
@@ -547,17 +563,15 @@ export default function PayrollPage() {
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
-                                <Button
-                                  size="sm" variant="outline"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => setAdjRecord(p)}
-                                >
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setAdjRecord(p)}>
                                   Adjustments
+                                </Button>
+                                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setImagesPayrollId(p.id)}>
+                                  <Images className="mr-1 h-3.5 w-3.5" aria-hidden />Docs
                                 </Button>
                                 {p.status !== "approved" && (
                                   <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => handleApprove(p.id)}>
-                                    <CheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden />
-                                    Approve
+                                    <CheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden />Approve
                                   </Button>
                                 )}
                               </div>
@@ -652,6 +666,36 @@ export default function PayrollPage() {
           {adjRecord && (
             <AdjustmentsPanel payrollRecord={adjRecord} onClose={() => setAdjRecord(null)} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Payroll record images dialog */}
+      <Dialog open={imagesPayrollId !== null} onOpenChange={(v) => { if (!v) setImagesPayrollId(null); }}>
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Documents / Images — Payroll Record #{imagesPayrollId}</DialogTitle>
+          </DialogHeader>
+          {imagesPayrollId !== null && (
+            <RecordImagePanel
+              entityType="payroll"
+              entityId={imagesPayrollId}
+              canUpload={canManageImages}
+              canDelete={canManageImages}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Module gallery */}
+      <Dialog open={showGallery} onOpenChange={setShowGallery}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Payroll Documents Gallery</DialogTitle></DialogHeader>
+          <ModuleGallery
+            entityType="payroll"
+            images={allImages}
+            canDelete={canManageImages}
+            entityLabels={Object.fromEntries((payroll ?? []).map((p: any) => [p.id, `${p.employeeName ?? `#${p.employeeId}`} — ${MONTHS[(p.month ?? 1) - 1]} ${p.year}`]))}
+          />
         </DialogContent>
       </Dialog>
 
