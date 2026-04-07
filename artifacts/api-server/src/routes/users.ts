@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction } from "express";
 import { eq, like, or, ilike } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DeleteUserParams, ListUsersQueryParams } from "@workspace/api-zod";
@@ -22,17 +22,52 @@ router.get("/users", authenticate, async (req: AuthRequest, res): Promise<void> 
   res.json(users.map(sanitizeUser));
 });
 
-router.post("/users", authenticate, requireRole("admin"), async (req: AuthRequest, res): Promise<void> => {
+router.post("/users", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const parsed = CreateUserBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
     return;
   }
-  const passwordHash = await hashPassword(parsed.data.password);
-  // Admin-created accounts are trusted — skip email verification
-  const [user] = await db.insert(usersTable).values({ ...parsed.data, passwordHash, isVerified: true }).returning();
-  await logActivity({ userId: req.user?.id, action: "CREATE", module: "users", description: `Created user ${user.name}`, newData: sanitizeUser(user) });
-  res.status(201).json(sanitizeUser(user));
+
+  try {
+    // Check for duplicate email before attempting the insert
+    const [dup] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, parsed.data.email));
+
+    if (dup) {
+      res.status(409).json({ error: "EMAIL_ALREADY_EXISTS", message: "A user with this email already exists." });
+      return;
+    }
+
+    const passwordHash = await hashPassword(parsed.data.password);
+
+    // Be explicit — never spread the full body into the DB insert.
+    const [user] = await db
+      .insert(usersTable)
+      .values({
+        name:        parsed.data.name,
+        email:       parsed.data.email,
+        passwordHash,
+        role:        parsed.data.role,
+        isActive:    true,
+        isVerified:  true,   // Admin-created accounts skip email verification
+      })
+      .returning();
+
+    await logActivity({
+      userId:      req.user?.id,
+      action:      "CREATE",
+      module:      "users",
+      description: `Created user ${user.name} (${user.role})`,
+      newData:     sanitizeUser(user),
+    });
+
+    res.status(201).json(sanitizeUser(user));
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get("/users/:id", authenticate, async (req, res): Promise<void> => {
@@ -43,25 +78,43 @@ router.get("/users/:id", authenticate, async (req, res): Promise<void> => {
   res.json(sanitizeUser(user));
 });
 
-router.patch("/users/:id", authenticate, requireRole("admin"), async (req: AuthRequest, res): Promise<void> => {
+router.patch("/users/:id", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const params = UpdateUserParams.safeParse(req.params);
-  if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
+  if (!params.success) { res.status(400).json({ error: "INVALID_ID", message: "Invalid user id." }); return; }
   const parsed = UpdateUserBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [old] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
-  const [user] = await db.update(usersTable).set(parsed.data).where(eq(usersTable.id, params.data.id)).returning();
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  await logActivity({ userId: req.user?.id, action: "UPDATE", module: "users", description: `Updated user ${user.name}`, oldData: sanitizeUser(old), newData: sanitizeUser(user) });
-  res.json(sanitizeUser(user));
+  if (!parsed.success) { res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message }); return; }
+
+  try {
+    const [old] = await db.select().from(usersTable).where(eq(usersTable.id, params.data.id));
+    if (!old) { res.status(404).json({ error: "USER_NOT_FOUND", message: "User not found." }); return; }
+
+    // Only update fields that were actually provided
+    const updates: Partial<typeof usersTable.$inferInsert> = {};
+    if (parsed.data.name     !== undefined) updates.name     = parsed.data.name;
+    if (parsed.data.email    !== undefined) updates.email    = parsed.data.email;
+    if (parsed.data.role     !== undefined) updates.role     = parsed.data.role;
+    if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+
+    const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, params.data.id)).returning();
+    await logActivity({ userId: req.user?.id, action: "UPDATE", module: "users", description: `Updated user ${user.name}`, oldData: sanitizeUser(old), newData: sanitizeUser(user) });
+    res.json(sanitizeUser(user));
+  } catch (err) {
+    next(err);
+  }
 });
 
-router.delete("/users/:id", authenticate, requireRole("admin"), async (req: AuthRequest, res): Promise<void> => {
+router.delete("/users/:id", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
   const params = DeleteUserParams.safeParse(req.params);
-  if (!params.success) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [user] = await db.delete(usersTable).where(eq(usersTable.id, params.data.id)).returning();
-  if (!user) { res.status(404).json({ error: "User not found" }); return; }
-  await logActivity({ userId: req.user?.id, action: "DELETE", module: "users", description: `Deleted user ${user.name}` });
-  res.sendStatus(204);
+  if (!params.success) { res.status(400).json({ error: "INVALID_ID", message: "Invalid user id." }); return; }
+
+  try {
+    const [user] = await db.delete(usersTable).where(eq(usersTable.id, params.data.id)).returning();
+    if (!user) { res.status(404).json({ error: "USER_NOT_FOUND", message: "User not found." }); return; }
+    await logActivity({ userId: req.user?.id, action: "DELETE", module: "users", description: `Deleted user ${user.name}` });
+    res.sendStatus(204);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

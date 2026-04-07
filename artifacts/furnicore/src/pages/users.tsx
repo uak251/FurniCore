@@ -17,20 +17,41 @@ import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 
+/** Extract a human-readable message from any API error shape. */
+function apiErrorMessage(e: unknown): string {
+  if (!e || typeof e !== "object") return "An unexpected error occurred.";
+  // Axios-style: e.response.data.message
+  const resp = (e as any).response?.data;
+  if (resp?.message) return String(resp.message);
+  if (resp?.error && typeof resp.error === "string" && !resp.error.startsWith("<!"))
+    return resp.error;
+  // Plain Error object
+  const msg = (e as any).message ?? "";
+  // Strip HTML if the server returned an error page
+  if (typeof msg === "string" && msg.includes("<!DOCTYPE")) return "Server error — please restart the API server.";
+  return msg || "An unexpected error occurred.";
+}
+
 const ROLE_COLORS: Record<string, string> = {
-  admin:    "destructive",
-  manager:  "default",
-  accounts: "default",
-  employee: "secondary",
-  supplier: "outline",
+  admin:         "destructive",
+  manager:       "default",
+  sales_manager: "default",
+  accounts:      "default",
+  employee:      "secondary",
+  worker:        "secondary",
+  supplier:      "outline",
+  customer:      "outline",
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  admin:    "Admin",
-  manager:  "Manager",
-  accounts: "Accounts",
-  employee: "Employee",
-  supplier: "Supplier",
+  admin:         "Admin",
+  manager:       "Manager",
+  sales_manager: "Sales Manager",
+  accounts:      "Accounts",
+  employee:      "Employee",
+  worker:        "Worker",
+  supplier:      "Supplier",
+  customer:      "Customer",
 };
 
 interface UserForm {
@@ -148,8 +169,8 @@ export default function UsersPage() {
       }
       invalidate();
       setShowDialog(false);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: "destructive", title: "Error", description: apiErrorMessage(e) });
     }
   };
 
@@ -159,8 +180,8 @@ export default function UsersPage() {
       await deleteUser.mutateAsync({ id });
       toast({ title: "User deleted" });
       invalidate();
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: "destructive", title: "Error", description: apiErrorMessage(e) });
     }
   };
 
