@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Hammer, Loader2, MailCheck, RefreshCw } from "lucide-react";
+import { setAuthToken } from "@/lib/auth";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -57,7 +58,13 @@ async function registerUser(data: { name: string; email: string; password: strin
   });
   const json = await res.json();
   if (!res.ok) throw { status: res.status, data: json };
-  return json as { message: string; email: string; requiresVerification: boolean };
+  return json as {
+    message:              string;
+    email:                string;
+    requiresVerification: boolean;
+    accessToken?:         string;
+    refreshToken?:        string;
+  };
 }
 
 async function resendVerification(email: string) {
@@ -152,6 +159,7 @@ function VerifyEmailPrompt({ email }: { email: string }) {
 
 export default function Signup() {
   const { toast } = useToast();
+  const [, navigate]  = useLocation();
   const [verifyEmail, setVerifyEmail] = useState<string | null>(null);
   const [submitting,  setSubmitting]  = useState(false);
 
@@ -169,15 +177,20 @@ export default function Signup() {
         password: values.password,
       });
 
-      if (response.requiresVerification) {
-        setVerifyEmail(response.email);
+      if (!response.requiresVerification && response.accessToken) {
+        // Dev mode: account is auto-verified — log the user in immediately.
+        setAuthToken(response.accessToken);
+        navigate("/");
+        return;
       }
+
+      // Email verification required.
+      setVerifyEmail(response.email);
     } catch (err: any) {
-      const serverError = err?.data?.error ?? "";
+      const serverError = err?.data?.error   ?? "";
       const serverMsg   = err?.data?.message ?? "";
 
       if (serverError === "EMAIL_ALREADY_REGISTERED_UNVERIFIED") {
-        // Show the verify prompt so they can resend
         setVerifyEmail(values.email);
         toast({
           title:       "Account exists but isn't verified",
@@ -186,10 +199,19 @@ export default function Signup() {
         return;
       }
 
+      if (serverError === "EMAIL_ALREADY_REGISTERED") {
+        toast({
+          variant:     "destructive",
+          title:       "Email already in use",
+          description: "An account with this email already exists. Try signing in instead.",
+        });
+        return;
+      }
+
       toast({
         variant:     "destructive",
         title:       "Registration failed",
-        description: serverMsg || err?.data?.error || "Something went wrong. Please try again.",
+        description: serverMsg || "Something went wrong. Please try again.",
       });
     } finally {
       setSubmitting(false);
@@ -205,7 +227,7 @@ export default function Signup() {
             <Hammer className="h-6 w-6 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">FurniCore</h1>
-          <p className="text-muted-foreground mt-2">Precision ERP for Manufacturing</p>
+          <p className="text-muted-foreground mt-2">Customer Portal</p>
         </div>
 
         {/* Verify-email state OR registration form */}
@@ -214,8 +236,8 @@ export default function Signup() {
         ) : (
           <Card className="border-border/40 shadow-xl">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl">Create Account</CardTitle>
-              <CardDescription>Fill in your details to get started</CardDescription>
+              <CardTitle className="text-2xl">Create Customer Account</CardTitle>
+              <CardDescription>Register to browse products and track your orders</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -280,17 +302,24 @@ export default function Signup() {
                     {submitting ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account…</>
                     ) : (
-                      "Create Account"
+                      "Create Customer Account"
                     )}
                   </Button>
                 </form>
               </Form>
 
               <p className="text-center text-sm text-muted-foreground mt-6">
-                Already have an account?{" "}
+                Already have a customer account?{" "}
                 <Link href="/login" className="text-primary font-medium hover:underline">
                   Sign in
                 </Link>
+              </p>
+              <p className="text-center text-xs text-muted-foreground mt-2">
+                Staff &amp; partners:{" "}
+                <Link href="/login" className="text-primary hover:underline">
+                  Sign in here
+                </Link>{" "}
+                — accounts are managed by your administrator.
               </p>
             </CardContent>
           </Card>

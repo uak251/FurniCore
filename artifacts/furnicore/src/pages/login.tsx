@@ -228,9 +228,9 @@ export default function Login() {
         </Card>
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          Don&apos;t have an account?{" "}
+          Customer?{" "}
           <Link href="/signup" className="text-primary font-medium hover:underline">
-            Sign up
+            Create a customer account →
           </Link>
         </p>
       </div>

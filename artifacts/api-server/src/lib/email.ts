@@ -25,7 +25,7 @@ const {
   EMAIL_ENABLED = "true",
 } = process.env;
 
-const emailEnabled = EMAIL_ENABLED !== "false" && SMTP_USER !== "" && SMTP_PASS !== "";
+export const emailEnabled = EMAIL_ENABLED !== "false" && SMTP_USER !== "" && SMTP_PASS !== "";
 
 /** Lazily-created transporter — only instantiated when email is actually enabled. */
 function createTransporter() {

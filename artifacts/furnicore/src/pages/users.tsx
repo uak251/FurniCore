@@ -118,7 +118,7 @@ export default function UsersPage() {
 
   const openCreate = () => {
     setEditItem(null);
-    reset({ name: "", email: "", password: "", role: "employee" });
+    reset({ name: "", email: "", password: "", role: "manager" });
     setShowDialog(true);
   };
 
@@ -171,8 +171,8 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">User management</h1>
-          <p className="text-muted-foreground">Manage system users and roles</p>
+          <h1 className="text-3xl font-bold tracking-tight">Master Admin Portal</h1>
+          <p className="text-muted-foreground">Create, manage, and assign roles for all system users</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" aria-hidden />
@@ -190,12 +190,15 @@ export default function UsersPage() {
         filterValue={roleFilter}
         onFilterChange={setRoleFilter}
         filterOptions={[
-          { value: "all",      label: "All roles" },
-          { value: "admin",    label: "Admin" },
-          { value: "manager",  label: "Manager" },
-          { value: "accounts", label: "Accounts" },
-          { value: "employee", label: "Employee" },
-          { value: "supplier", label: "Supplier" },
+          { value: "all",           label: "All roles" },
+          { value: "admin",         label: "Admin" },
+          { value: "manager",       label: "Manager" },
+          { value: "sales_manager", label: "Sales Manager" },
+          { value: "accounts",      label: "Accounts" },
+          { value: "employee",      label: "Employee" },
+          { value: "worker",        label: "Worker" },
+          { value: "supplier",      label: "Supplier" },
+          { value: "customer",      label: "Customer" },
         ]}
         sortKey={sortKey}
         onSortKeyChange={setSortKey}
@@ -343,9 +346,12 @@ export default function UsersPage() {
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="sales_manager">Sales Manager</SelectItem>
                         <SelectItem value="accounts">Accounts</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
+                        <SelectItem value="worker">Worker</SelectItem>
                         <SelectItem value="supplier">Supplier</SelectItem>
+                        <SelectItem value="customer">Customer</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
