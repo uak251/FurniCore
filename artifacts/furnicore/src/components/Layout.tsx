@@ -19,6 +19,7 @@ import {
   UserCircle,
   Menu,
   ShoppingCart,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -72,7 +73,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/hr",         label: "HR",         icon: Users,    roles: ["admin", "manager"] },
       { href: "/payroll",    label: "Payroll",    icon: Banknote, roles: ["admin", "accountant"] },
-      { href: "/accounting", label: "Accounting", icon: Receipt,  roles: ["admin", "accountant", "manager"] },
+      { href: "/accounting",         label: "Accounting",         icon: Receipt,   roles: ["admin", "accountant", "manager"] },
+      { href: "/chart-of-accounts", label: "Chart of Accounts",  icon: BookOpen,  roles: ["admin", "accountant"] },
     ],
   },
   {

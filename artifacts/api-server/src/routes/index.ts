@@ -22,6 +22,10 @@ import salesManagerRouter from "./sales-manager";
 import customerPortalRouter from "./customer-portal";
 import bulkRouter from "./bulk";
 import settingsRouter from "./settings";
+import accountsRouter from "./accounts";
+import journalEntriesRouter from "./journal-entries";
+import financialReportsRouter from "./financial-reports";
+import accrualsRouter from "./accruals";
 
 const router: IRouter = Router();
 
@@ -48,5 +52,9 @@ router.use(salesManagerRouter);
 router.use(customerPortalRouter);
 router.use(bulkRouter);
 router.use(settingsRouter);
+router.use(accountsRouter);
+router.use(journalEntriesRouter);
+router.use(financialReportsRouter);
+router.use(accrualsRouter);
 
 export default router;

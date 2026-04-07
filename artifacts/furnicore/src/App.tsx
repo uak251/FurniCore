@@ -32,6 +32,7 @@ import WorkerPortalPage from "@/pages/worker-portal";
 import CustomerPortalPage from "@/pages/customer-portal";
 import SalesPage from "@/pages/sales";
 import NotFound from "@/pages/not-found";
+import ChartOfAccountsPage from "@/pages/chart-of-accounts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -136,6 +137,13 @@ function Router() {
               <Route path="/payroll">
                 <RoleGuard allowedRoles={["admin", "accountant"]}>
                   <PayrollPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Chart of Accounts: admin / accountant ── */}
+              <Route path="/chart-of-accounts">
+                <RoleGuard allowedRoles={["admin", "accountant"]}>
+                  <ChartOfAccountsPage />
                 </RoleGuard>
               </Route>
 

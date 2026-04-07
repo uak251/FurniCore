@@ -52,6 +52,8 @@ interface PowerBIReport {
   on: (event: string, handler: (e: unknown) => void) => void;
 }
 
+
+
 // ─── SDK loader ───────────────────────────────────────────────────────────────
 
 let sdkPromise: Promise<void> | null = null;

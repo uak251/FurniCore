@@ -4,6 +4,7 @@ import { db, transactionsTable, suppliersTable } from "@workspace/db";
 import { CreateTransactionBody, ListTransactionsQueryParams, GetTransactionParams } from "@workspace/api-zod";
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
 import { logActivity } from "../lib/activityLogger";
+import { autoCreateJournalEntry } from "./journal-entries";
 
 const router: IRouter = Router();
 
@@ -35,14 +36,41 @@ router.get("/transactions", authenticate, async (req, res): Promise<void> => {
 router.post("/transactions", authenticate, async (req: AuthRequest, res): Promise<void> => {
   const parsed = CreateTransactionBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  // Accept optional double-entry fields alongside the standard body
+  const { debitAccountId, creditAccountId } = req.body as { debitAccountId?: number; creditAccountId?: number };
+
   const [transaction] = await db.insert(transactionsTable).values({
     ...parsed.data,
     amount: String(parsed.data.amount),
     transactionDate: new Date(parsed.data.transactionDate),
     supplierId: parsed.data.supplierId ?? null,
     reference: parsed.data.reference ?? null,
+    accountId: debitAccountId ?? null,
   }).returning();
-  const enriched = await toTransaction(transaction);
+
+  let journalEntryId: number | undefined;
+
+  // If account mapping provided, auto-create a posted JE
+  if (debitAccountId && creditAccountId) {
+    const txDate = new Date(parsed.data.transactionDate).toISOString().split("T")[0];
+    journalEntryId = await autoCreateJournalEntry({
+      date:            txDate,
+      description:     parsed.data.description,
+      referenceType:   "transaction",
+      referenceId:     transaction.id,
+      debitAccountId,
+      creditAccountId,
+      amount:          Number(parsed.data.amount),
+      createdBy:       req.user?.id,
+    });
+    // Link the JE back to the transaction
+    await db.update(transactionsTable)
+      .set({ journalEntryId })
+      .where(eq(transactionsTable.id, transaction.id));
+  }
+
+  const enriched = await toTransaction({ ...transaction, journalEntryId: journalEntryId ?? null });
   await logActivity({ userId: req.user?.id, action: "CREATE", module: "accounting", description: `Created transaction: ${transaction.description}`, newData: enriched });
   res.status(201).json(enriched);
 });

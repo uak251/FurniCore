@@ -11,6 +11,10 @@ export const transactionsTable = pgTable("transactions", {
   description: text("description").notNull(),
   reference: varchar("reference", { length: 100 }),
   supplierId: integer("supplier_id").references(() => suppliersTable.id),
+  /** FK → chart_of_accounts.id (debit side when income; credit side when expense) */
+  accountId: integer("account_id"),
+  /** FK → journal_entries.id — auto-created JE for this cash transaction */
+  journalEntryId: integer("journal_entry_id"),
   status: varchar("status", { length: 50 }).notNull().default("completed"),
   transactionDate: timestamp("transaction_date", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

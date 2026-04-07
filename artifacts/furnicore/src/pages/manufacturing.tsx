@@ -801,7 +801,7 @@ export default function ManufacturingPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+        <div>
         <h1 className="text-3xl font-bold tracking-tight">Production Manager</h1>
         <p className="text-muted-foreground">Orders · Tasks · Quality control · Material tracking</p>
       </div>
@@ -856,7 +856,7 @@ export default function ManufacturingPage() {
             )}
           </div>
 
-          <TableToolbar
+      <TableToolbar
             id={ORDER_TABLE_ID}
             entityLabel="orders"
             searchValue={orderSearch}
@@ -992,26 +992,26 @@ export default function ManufacturingPage() {
 
           <TableToolbar
             id={TASK_TABLE_ID}
-            entityLabel="tasks"
+        entityLabel="tasks"
             searchValue={taskSearch}
             onSearchChange={setTaskSearch}
-            searchPlaceholder="Search by title or description…"
-            filterLabel="Status"
+        searchPlaceholder="Search by title or description…"
+        filterLabel="Status"
             filterValue={taskStatus}
             onFilterChange={setTaskStatus}
-            filterOptions={[
+        filterOptions={[
               { value: "all",         label: "All" },
               { value: "pending",     label: "Pending" },
-              { value: "in_progress", label: "In progress" },
+          { value: "in_progress", label: "In progress" },
               { value: "completed",   label: "Completed" },
               { value: "on_hold",     label: "On hold" },
-            ]}
+        ]}
             sortKey={taskSort}
             onSortKeyChange={setTaskSort}
-            sortOptions={[
+        sortOptions={[
               { value: "title",    label: "Title" },
               { value: "status",   label: "Status" },
-              { value: "priority", label: "Priority" },
+          { value: "priority", label: "Priority" },
               { value: "progress", label: "Progress" },
               { value: "dueDate",  label: "Due date" },
             ]}
@@ -1021,59 +1021,59 @@ export default function ManufacturingPage() {
             onPageSizeChange={setTaskPageSize}
             onExportCsv={exportTaskCsv}
             exportDisabled={sortedTasks.length === 0}
-            resultsText={
+        resultsText={
               taskTotal === 0
-                ? "No matching tasks"
+            ? "No matching tasks"
                 : `Showing ${(safeTaskPage - 1) * taskPageSize + 1}–${Math.min(safeTaskPage * taskPageSize, taskTotal)} of ${taskTotal}`
             }
           />
 
           {tasksLoading ? (
-            <div className="space-y-3">
+        <div className="space-y-3">
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
-            </div>
+        </div>
           ) : taskRows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Hammer className="mb-3 h-10 w-10" />
-              <p>No tasks match your filters</p>
-            </div>
-          ) : (
-            <>
+          <p>No tasks match your filters</p>
+        </div>
+      ) : (
+        <>
               <div className="space-y-3">
                 {(taskRows as any[]).map((t) => {
                   const s = TASK_STATUS[t.status] ?? { label: t.status, variant: "secondary" };
                   const taskQcCount = (qcAll as QcRemark[]).filter((r) => r.taskId === t.id).length;
-                  return (
+              return (
                     <Card key={t.id}>
-                      <CardContent className="p-5">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <CardContent className="p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
                               <h2 className="text-base font-semibold">{t.title}</h2>
                               <Badge variant={s.variant as any}>{s.label}</Badge>
                               <Badge
                                 variant={PRIORITY_VARIANT[t.priority] as any}
                                 className="capitalize"
                               >
-                                {t.priority}
-                              </Badge>
+                              {t.priority}
+                            </Badge>
                               {taskQcCount > 0 && (
                                 <Badge variant="secondary" className="gap-1">
                                   <FlaskConical className="h-3 w-3" />
                                   {taskQcCount} QC
                                 </Badge>
                               )}
-                            </div>
-                            {t.description && (
-                              <p className="mb-3 text-sm text-muted-foreground">{t.description}</p>
-                            )}
-                            <div className="space-y-1.5">
+                          </div>
+                          {t.description && (
+                            <p className="mb-3 text-sm text-muted-foreground">{t.description}</p>
+                          )}
+                          <div className="space-y-1.5">
                               <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>Progress</span>
+                              <span>Progress</span>
                                 <span>{t.progress}%</span>
-                              </div>
-                              <Progress value={Number(t.progress)} className="h-2" />
                             </div>
+                              <Progress value={Number(t.progress)} className="h-2" />
+                          </div>
                             <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
                               {t.assigneeName && (
                                 <span className="flex items-center gap-1">
@@ -1089,47 +1089,47 @@ export default function ManufacturingPage() {
                                   Due {new Date(t.dueDate).toLocaleDateString()}
                                 </time>
                               )}
-                            </div>
                           </div>
+                        </div>
                           <div className="flex shrink-0 gap-1 self-end sm:self-start">
-                            <Button
-                              size="icon"
-                              variant="ghost"
+                          <Button
+                            size="icon"
+                            variant="ghost"
                               title="View details / QC / materials"
                               onClick={() => setDetailTask(t)}
-                            >
+                          >
                               <Eye className="h-4 w-4" />
                             </Button>
                             {canManage && (
                               <>
                                 <Button size="icon" variant="ghost" onClick={() => openEditTask(t)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="text-destructive"
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive"
                                   onClick={() => handleDeleteTask(t.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                               </>
                             )}
-                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-              <TablePaginationBar
+                      </div>
+                    </CardContent>
+                  </Card>
+              );
+            })}
+          </div>
+          <TablePaginationBar
                 id={TASK_TABLE_ID}
                 page={safeTaskPage}
                 totalPages={taskTotalPages}
                 onPageChange={setTaskPage}
-              />
-            </>
-          )}
+          />
+        </>
+      )}
         </TabsContent>
 
         {/* ════════ QUALITY CONTROL TAB ════════ */}
@@ -1308,29 +1308,29 @@ export default function ManufacturingPage() {
               <div className="space-y-1">
                 <Label>Status</Label>
                 <Controller name="status" control={taskForm.control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="on_hold">On hold</SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <SelectContent>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="in_progress">In progress</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="on_hold">On hold</SelectItem>
+                      </SelectContent>
+                    </Select>
                 )} />
               </div>
               <div className="space-y-1">
                 <Label>Priority</Label>
                 <Controller name="priority" control={taskForm.control} render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                    <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="critical">Critical</SelectItem>
+                      </SelectContent>
+                    </Select>
                 )} />
               </div>
               <div className="space-y-1">
