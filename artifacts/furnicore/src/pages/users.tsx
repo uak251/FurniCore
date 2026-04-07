@@ -87,7 +87,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, roleFilter, sortKey, sortDir, pageSize]);
+  }, [search, roleFilter, sortKey, sortDir, pageSize, showInactive]);
 
   const rows = users ?? [];
 
