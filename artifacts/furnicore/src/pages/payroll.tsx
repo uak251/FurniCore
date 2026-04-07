@@ -31,6 +31,7 @@ import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
+import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_ID = "payroll";
@@ -648,6 +649,13 @@ export default function PayrollPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Payroll Analytics panel ──────────────────────────────────── */}
+      <ModuleAnalyticsPanel
+        module="payroll"
+        reportId="payroll-summary"
+        title="Payroll Analytics Dashboard"
+      />
     </div>
   );
 }

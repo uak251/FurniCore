@@ -23,6 +23,7 @@ import { TableToolbar } from "@/components/data-table/TableToolbar";
 import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { BulkImportExport } from "@/components/BulkImportExport";
+import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 
 interface InventoryFormData {
   name: string;
@@ -437,6 +438,13 @@ export default function InventoryPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Analytics panel ─────────────────────────────────────────── */}
+      <ModuleAnalyticsPanel
+        module="inventory"
+        reportId="inventory-analysis"
+        title="Inventory Analytics"
+      />
     </div>
   );
 }

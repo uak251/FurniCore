@@ -36,7 +36,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Users, ClipboardList, Plus, Pencil, Trash2,
   Star, BarChart3, TrendingUp, CalendarDays, CheckCircle,
-  AlertTriangle, Clock, UserCheck, UserX, Banknote,
+  AlertTriangle, Clock, UserCheck, UserX, Banknote, Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
@@ -45,6 +45,7 @@ import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
+import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 
 /* ─── Shared helpers ─────────────────────────────────────────────────────────── */
 
@@ -1204,6 +1205,13 @@ export default function HRPage() {
         <TabsContent value="attendance"  className="mt-4"><AttendanceTab /></TabsContent>
         <TabsContent value="performance" className="mt-4"><PerformanceTab /></TabsContent>
       </Tabs>
+
+      {/* ── HR Analytics panel ────────────────────────────────────────── */}
+      <ModuleAnalyticsPanel
+        module="hr"
+        reportId="hr-dashboard"
+        title="HR Analytics Dashboard"
+      />
     </div>
   );
 }

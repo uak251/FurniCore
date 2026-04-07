@@ -39,7 +39,7 @@ interface LayoutProps {
  * Role access matrix:
  *  admin    — all modules
  *  manager  — all except Users & Settings management
- *  accounts — finance modules (Suppliers, Quotes, Payroll, Accounting)
+ *  accountant — finance modules (Suppliers, Quotes, Payroll, Accounting)
  *  employee — core ops (Dashboard, Inventory, Products, Manufacturing, Notifications)
  *  supplier — isolated portal only (/supplier-portal); auto-redirected before reaching this layout
  */
@@ -61,8 +61,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/inventory",      label: "Inventory",      icon: Boxes,  badge: "lowStock" },
       { href: "/products",       label: "Products",       icon: Package },
-      { href: "/suppliers",      label: "Suppliers",      icon: Truck,  roles: ["admin", "manager", "accounts"] },
-      { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accounts"] },
+      { href: "/suppliers",      label: "Suppliers",      icon: Truck,  roles: ["admin", "manager", "accountant"] },
+      { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accountant"] },
       { href: "/manufacturing",  label: "Manufacturing",  icon: Hammer },
       { href: "/sales",          label: "Sales",          icon: ShoppingCart, roles: ["admin", "manager", "sales_manager"] },
     ],
@@ -71,8 +71,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     label: "People & finance",
     items: [
       { href: "/hr",         label: "HR",         icon: Users,    roles: ["admin", "manager"] },
-      { href: "/payroll",    label: "Payroll",    icon: Banknote, roles: ["admin", "accounts"] },
-      { href: "/accounting", label: "Accounting", icon: Receipt,  roles: ["admin", "accounts", "manager"] },
+      { href: "/payroll",    label: "Payroll",    icon: Banknote, roles: ["admin", "accountant"] },
+      { href: "/accounting", label: "Accounting", icon: Receipt,  roles: ["admin", "accountant", "manager"] },
     ],
   },
   {

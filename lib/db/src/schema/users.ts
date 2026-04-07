@@ -20,6 +20,8 @@ export const usersTable = pgTable("users", {
   /** UTC expiry of emailVerifyToken — mirrors the JWT exp claim for fast DB queries. */
   emailVerifyExpiry: timestamp("email_verify_expiry", { withTimezone: true }),
   refreshToken: text("refresh_token"),
+  /** JSON array of extra module permissions granted by admin, e.g. '["hr","payroll"]' */
+  permissions: text("permissions"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

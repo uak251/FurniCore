@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { Search, Download, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ export interface TableToolbarProps {
   exportDisabled?: boolean;
   resultsText: string;
   className?: string;
+  /** Extra action buttons rendered to the right of "Export CSV" */
+  children?: ReactNode;
 }
 
 export function TableToolbar({
@@ -62,6 +65,7 @@ export function TableToolbar({
   exportDisabled,
   resultsText,
   className,
+  children,
 }: TableToolbarProps) {
   const searchId = `${id}-search`;
   const hasFilter = Boolean(filterOptions?.length && onFilterChange);
@@ -178,6 +182,7 @@ export function TableToolbar({
               Export CSV
             </Button>
           )}
+          {children}
         </div>
       </div>
 

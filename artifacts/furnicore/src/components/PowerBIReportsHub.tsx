@@ -44,7 +44,7 @@ import { cn } from "@/lib/utils";
 
 // ─── Access gate ─────────────────────────────────────────────────────────────
 
-const BI_ROLES = ["admin", "accounts"];
+const BI_ROLES = ["admin", "accountant"];
 
 // ─── Report definitions ───────────────────────────────────────────────────────
 

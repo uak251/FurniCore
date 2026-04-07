@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CurrencyProvider } from "@/lib/currency";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
@@ -47,7 +48,7 @@ const queryClient = new QueryClient({
  *
  *  admin    → all routes
  *  manager  → all except /users and /settings
- *  accounts → finance routes only
+ *  accountant → finance routes only
  *  employee → core ops (dashboard, inventory, products, manufacturing, notifications)
  *  supplier → /supplier-portal only (isolated shell, no internal nav)
  *  worker   → /worker-portal only  (isolated shell, no internal nav)
@@ -107,12 +108,12 @@ function Router() {
 
               {/* ── Suppliers & Quotes: internal staff only ── */}
               <Route path="/suppliers">
-                <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
+                <RoleGuard allowedRoles={["admin", "manager", "accountant"]}>
                   <SuppliersPage />
                 </RoleGuard>
               </Route>
               <Route path="/quotes">
-                <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
+                <RoleGuard allowedRoles={["admin", "manager", "accountant"]}>
                   <QuotesPage />
                 </RoleGuard>
               </Route>
@@ -131,16 +132,16 @@ function Router() {
                 </RoleGuard>
               </Route>
 
-              {/* ── Payroll: admin / accounts ── */}
+              {/* ── Payroll: admin / accountant ── */}
               <Route path="/payroll">
-                <RoleGuard allowedRoles={["admin", "accounts"]}>
+                <RoleGuard allowedRoles={["admin", "accountant"]}>
                   <PayrollPage />
                 </RoleGuard>
               </Route>
 
-              {/* ── Accounting: admin / accounts / manager ── */}
+              {/* ── Accounting: admin / accountant / manager ── */}
               <Route path="/accounting">
-                <RoleGuard allowedRoles={["admin", "accounts", "manager"]}>
+                <RoleGuard allowedRoles={["admin", "accountant", "manager"]}>
                   <AccountingPage />
                 </RoleGuard>
               </Route>
@@ -178,12 +179,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <CurrencyProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </CurrencyProvider>
     </QueryClientProvider>
   );
 }

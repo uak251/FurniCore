@@ -36,7 +36,7 @@ const ROLE_COLORS: Record<string, string> = {
   admin:         "destructive",
   manager:       "default",
   sales_manager: "default",
-  accounts:      "default",
+  accountant:    "default",
   employee:      "secondary",
   worker:        "secondary",
   supplier:      "outline",
@@ -47,7 +47,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin:         "Admin",
   manager:       "Manager",
   sales_manager: "Sales Manager",
-  accounts:      "Accounts",
+  accountant:    "Accountant",
   employee:      "Employee",
   worker:        "Worker",
   supplier:      "Supplier",
@@ -238,7 +238,7 @@ export default function UsersPage() {
           { value: "admin",         label: "Admin" },
           { value: "manager",       label: "Manager" },
           { value: "sales_manager", label: "Sales Manager" },
-          { value: "accounts",      label: "Accounts" },
+          { value: "accountant",     label: "Accountant" },
           { value: "employee",      label: "Employee" },
           { value: "worker",        label: "Worker" },
           { value: "supplier",      label: "Supplier" },
@@ -411,7 +411,7 @@ export default function UsersPage() {
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
                         <SelectItem value="sales_manager">Sales Manager</SelectItem>
-                        <SelectItem value="accounts">Accounts</SelectItem>
+                        <SelectItem value="accountant">Accountant</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
                         <SelectItem value="worker">Worker</SelectItem>
                         <SelectItem value="supplier">Supplier</SelectItem>

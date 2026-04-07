@@ -142,4 +142,30 @@ router.delete("/users/:id", authenticate, requireRole("admin"), async (req: Auth
   }
 });
 
+/* ── GET /users/:id/permissions — return extra module permissions ── */
+router.get("/users/:id/permissions", authenticate, requireRole("admin"), async (req, res, next: NextFunction): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    const [user] = await db.select({ id: usersTable.id, name: usersTable.name, permissions: usersTable.permissions }).from(usersTable).where(eq(usersTable.id, id));
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    const perms = user.permissions ? JSON.parse(user.permissions) : [];
+    res.json({ userId: user.id, name: user.name, permissions: perms });
+  } catch (err) { next(err); }
+});
+
+/* ── PATCH /users/:id/permissions — set extra module permissions (admin) ── */
+router.patch("/users/:id/permissions", authenticate, requireRole("admin"), async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { permissions } = req.body as { permissions?: string[] };
+  if (!Array.isArray(permissions)) { res.status(400).json({ error: "permissions must be an array of module strings" }); return; }
+  try {
+    const [user] = await db.update(usersTable).set({ permissions: JSON.stringify(permissions) }).where(eq(usersTable.id, id)).returning();
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    await logActivity({ userId: req.user?.id, action: "UPDATE", module: "users", description: `Updated permissions for ${user.name}: [${permissions.join(", ")}]` });
+    res.json({ userId: user.id, name: user.name, permissions });
+  } catch (err) { next(err); }
+});
+
 export default router;
