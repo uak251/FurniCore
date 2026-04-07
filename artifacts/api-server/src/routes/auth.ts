@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type NextFunction } from "express";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
@@ -50,114 +50,127 @@ function sanitize(user: typeof usersTable.$inferSelect) {
    Creates a new employee account, sends a verification email, and returns
    a "pending verification" response — NO tokens are issued yet.
    ═══════════════════════════════════════════════════════════════════════════ */
-router.post("/auth/register", async (req, res): Promise<void> => {
+router.post("/auth/register", async (req, res, next: NextFunction): Promise<void> => {
   const parsed = RegisterBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
     return;
   }
   const { name, email, password } = parsed.data;
 
-  const [existing] = await db
-    .select({ id: usersTable.id, isVerified: usersTable.isVerified })
-    .from(usersTable)
-    .where(eq(usersTable.email, email));
+  try {
+    const [existing] = await db
+      .select({ id: usersTable.id, role: usersTable.role, isVerified: usersTable.isVerified })
+      .from(usersTable)
+      .where(eq(usersTable.email, email));
 
-  if (existing) {
-    if (!existing.isVerified) {
+    if (existing) {
+      // Staff/non-customer account — self-registration is not allowed for this email.
+      if (existing.role !== "customer") {
+        res.status(409).json({
+          error:   "EMAIL_IS_STAFF_ACCOUNT",
+          message:
+            "This email address is already registered to a staff account. " +
+            "Please sign in directly, or use a different email address to create a customer account.",
+        });
+        return;
+      }
+
+      if (!existing.isVerified) {
+        res.status(409).json({
+          error:   "EMAIL_ALREADY_REGISTERED_UNVERIFIED",
+          message:
+            "A customer account with this email exists but has not been verified. " +
+            "Please use the 'Resend verification email' option.",
+        });
+        return;
+      }
+
       res.status(409).json({
-        error: "EMAIL_ALREADY_REGISTERED_UNVERIFIED",
-        message:
-          "An account with this email exists but has not been verified. " +
-          "Please use the 'Resend verification email' option.",
+        error:   "EMAIL_ALREADY_REGISTERED",
+        message: "A customer account with this email already exists. Try signing in instead.",
       });
-    } else {
-      res.status(409).json({ error: "EMAIL_ALREADY_REGISTERED", message: "An account with this email already exists." });
+      return;
     }
-    return;
-  }
 
-  const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(password);
 
-  // When email is disabled (dev/staging), auto-verify so accounts are immediately usable.
-  if (!emailEnabled) {
+    // When email is disabled (dev/staging), auto-verify so accounts are immediately usable.
+    if (!emailEnabled) {
+      const [user] = await db
+        .insert(usersTable)
+        .values({ name, email, passwordHash, role: "customer", isActive: true, isVerified: true })
+        .returning();
+
+      await logActivity({
+        userId:      user.id,
+        action:      "REGISTER",
+        module:      "auth",
+        description: `${user.name} registered as customer (auto-verified, email disabled)`,
+      });
+
+      const accessToken  = generateAccessToken({ id: user.id, email: user.email, role: user.role });
+      const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
+      await db.update(usersTable).set({ refreshToken }).where(eq(usersTable.id, user.id));
+
+      res.status(201).json({
+        message:              "Account created successfully! You are now signed in.",
+        email:                user.email,
+        requiresVerification: false,
+        accessToken,
+        refreshToken,
+        user:                 sanitize(user),
+      });
+      return;
+    }
+
+    // Email is enabled: create unverified account and send verification link.
+    const verifyExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
+
     const [user] = await db
       .insert(usersTable)
       .values({
         name,
         email,
         passwordHash,
-        role:       "customer",
-        isActive:   true,
-        isVerified: true,
+        role:              "customer",
+        isActive:          true,
+        isVerified:        false,
+        emailVerifyToken:  null,
+        emailVerifyExpiry: verifyExpiry,
       })
       .returning();
+
+    const realToken  = generateEmailVerifyToken({ id: user.id, email: user.email });
+    const realExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
+    await db.update(usersTable)
+      .set({ emailVerifyToken: realToken, emailVerifyExpiry: realExpiry })
+      .where(eq(usersTable.id, user.id));
+
+    try {
+      await sendVerificationEmail(user.email, user.name, realToken);
+    } catch (mailErr) {
+      console.error("[auth/register] Failed to send verification email:", mailErr);
+    }
 
     await logActivity({
       userId:      user.id,
       action:      "REGISTER",
       module:      "auth",
-      description: `${user.name} registered as customer (auto-verified, email disabled)`,
+      description: `${user.name} registered as customer (pending email verification)`,
     });
-
-    const accessToken  = generateAccessToken({ id: user.id, email: user.email, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
-    await db.update(usersTable).set({ refreshToken }).where(eq(usersTable.id, user.id));
 
     res.status(201).json({
-      message:              "Account created successfully!",
+      message:
+        "Account created! A verification link has been sent to your email address. " +
+        "Please check your inbox (and spam folder) and click the link to activate your account.",
       email:                user.email,
-      requiresVerification: false,
-      accessToken,
-      refreshToken,
-      user:                 sanitize(user),
+      requiresVerification: true,
     });
-    return;
-  }
 
-  // Email is enabled: create unverified account and send verification link.
-  const verifyExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
-
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      name,
-      email,
-      passwordHash,
-      role:              "customer",
-      isActive:          true,
-      isVerified:        false,
-      emailVerifyToken:  null,
-      emailVerifyExpiry: verifyExpiry,
-    })
-    .returning();
-
-  const realToken  = generateEmailVerifyToken({ id: user.id, email: user.email });
-  const realExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
-  await db.update(usersTable)
-    .set({ emailVerifyToken: realToken, emailVerifyExpiry: realExpiry })
-    .where(eq(usersTable.id, user.id));
-
-  try {
-    await sendVerificationEmail(user.email, user.name, realToken);
   } catch (err) {
-    console.error("[auth/register] Failed to send verification email:", err);
+    next(err);
   }
-
-  await logActivity({
-    userId:      user.id,
-    action:      "REGISTER",
-    module:      "auth",
-    description: `${user.name} registered as customer (pending email verification)`,
-  });
-
-  res.status(201).json({
-    message:
-      "Account created! We've sent a verification link to your email address. " +
-      "Please check your inbox (and spam folder) and click the link to activate your account.",
-    email:                user.email,
-    requiresVerification: true,
-  });
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -56,6 +56,16 @@ async function registerUser(data: { name: string; email: string; password: strin
     headers: { "Content-Type": "application/json" },
     body:    JSON.stringify(data),
   });
+
+  // Guard: if the server returned HTML (no error handler) parse it gracefully.
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    throw {
+      status: res.status,
+      data: { error: "SERVER_ERROR", message: "Server error — please try again or check the server logs." },
+    };
+  }
+
   const json = await res.json();
   if (!res.ok) throw { status: res.status, data: json };
   return json as {
@@ -193,8 +203,19 @@ export default function Signup() {
       if (serverError === "EMAIL_ALREADY_REGISTERED_UNVERIFIED") {
         setVerifyEmail(values.email);
         toast({
-          title:       "Account exists but isn't verified",
+          title:       "Account not yet verified",
           description: "Use the button below to resend the verification link.",
+        });
+        return;
+      }
+
+      if (serverError === "EMAIL_IS_STAFF_ACCOUNT") {
+        toast({
+          variant:     "destructive",
+          title:       "Email belongs to a staff account",
+          description:
+            "This email is already registered as a staff member. " +
+            "Please sign in directly or use a different email address.",
         });
         return;
       }
@@ -202,8 +223,8 @@ export default function Signup() {
       if (serverError === "EMAIL_ALREADY_REGISTERED") {
         toast({
           variant:     "destructive",
-          title:       "Email already in use",
-          description: "An account with this email already exists. Try signing in instead.",
+          title:       "Email already registered",
+          description: "A customer account with this email already exists. Try signing in instead.",
         });
         return;
       }
