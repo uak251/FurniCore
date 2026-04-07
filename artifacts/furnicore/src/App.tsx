@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
+import { RoleGuard } from "@/components/RoleGuard";
 
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
@@ -32,29 +33,87 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Role access matrix — mirrors the nav filter in Layout.tsx.
+ * Both must stay in sync when roles change.
+ *
+ *  admin    → all routes
+ *  manager  → all except /users and /settings
+ *  accounts → finance routes only
+ *  employee → core ops (dashboard, inventory, products, manufacturing, notifications)
+ *  supplier → dashboard + quotes
+ */
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
-      
+
       <Route>
         <ProtectedRoute>
           <Layout>
             <Switch>
+              {/* ── Accessible to all authenticated roles ── */}
               <Route path="/" component={Dashboard} />
               <Route path="/inventory" component={InventoryPage} />
               <Route path="/products" component={ProductsPage} />
-              <Route path="/suppliers" component={SuppliersPage} />
-              <Route path="/quotes" component={QuotesPage} />
               <Route path="/manufacturing" component={ManufacturingPage} />
-              <Route path="/hr" component={HRPage} />
-              <Route path="/payroll" component={PayrollPage} />
-              <Route path="/accounting" component={AccountingPage} />
               <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/activity" component={ActivityPage} />
-              <Route path="/users" component={UsersPage} />
-              <Route path="/settings" component={SettingsPage} />
+
+              {/* ── Suppliers & Quotes: admin / manager / accounts / supplier ── */}
+              <Route path="/suppliers">
+                <RoleGuard allowedRoles={["admin", "manager", "accounts"]}>
+                  <SuppliersPage />
+                </RoleGuard>
+              </Route>
+              <Route path="/quotes">
+                <RoleGuard allowedRoles={["admin", "manager", "accounts", "supplier"]}>
+                  <QuotesPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── HR: admin / manager ── */}
+              <Route path="/hr">
+                <RoleGuard allowedRoles={["admin", "manager"]}>
+                  <HRPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Payroll: admin / accounts ── */}
+              <Route path="/payroll">
+                <RoleGuard allowedRoles={["admin", "accounts"]}>
+                  <PayrollPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Accounting: admin / accounts / manager ── */}
+              <Route path="/accounting">
+                <RoleGuard allowedRoles={["admin", "accounts", "manager"]}>
+                  <AccountingPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Activity log: admin / manager ── */}
+              <Route path="/activity">
+                <RoleGuard allowedRoles={["admin", "manager"]}>
+                  <ActivityPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── User management: admin only ── */}
+              <Route path="/users">
+                <RoleGuard allowedRoles={["admin"]}>
+                  <UsersPage />
+                </RoleGuard>
+              </Route>
+
+              {/* ── Settings: admin only ── */}
+              <Route path="/settings">
+                <RoleGuard allowedRoles={["admin"]}>
+                  <SettingsPage />
+                </RoleGuard>
+              </Route>
+
               <Route component={NotFound} />
             </Switch>
           </Layout>

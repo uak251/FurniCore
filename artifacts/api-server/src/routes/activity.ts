@@ -2,11 +2,11 @@ import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, activityLogsTable, usersTable } from "@workspace/db";
 import { ListActivityLogsQueryParams } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
+import { authenticate, requireRole } from "../middlewares/authenticate";
 
 const router: IRouter = Router();
 
-router.get("/activity-logs", authenticate, async (req, res): Promise<void> => {
+router.get("/activity-logs", authenticate, requireRole("admin", "manager"), async (req, res): Promise<void> => {
   const params = ListActivityLogsQueryParams.safeParse(req.query);
   const limit = (params.success && params.data.limit) ? Number(params.data.limit) : 50;
 

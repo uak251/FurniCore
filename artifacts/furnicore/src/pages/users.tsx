@@ -18,10 +18,19 @@ import { TablePaginationBar } from "@/components/data-table/TablePaginationBar";
 import { filterAndSortRows, paginateRows, exportRowsToCsv, type SortDir } from "@/lib/table-helpers";
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: "destructive",
-  manager: "default",
+  admin:    "destructive",
+  manager:  "default",
+  accounts: "default",
   employee: "secondary",
   supplier: "outline",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  admin:    "Admin",
+  manager:  "Manager",
+  accounts: "Accounts",
+  employee: "Employee",
+  supplier: "Supplier",
 };
 
 interface UserForm {
@@ -181,9 +190,10 @@ export default function UsersPage() {
         filterValue={roleFilter}
         onFilterChange={setRoleFilter}
         filterOptions={[
-          { value: "all", label: "All roles" },
-          { value: "admin", label: "Admin" },
-          { value: "manager", label: "Manager" },
+          { value: "all",      label: "All roles" },
+          { value: "admin",    label: "Admin" },
+          { value: "manager",  label: "Manager" },
+          { value: "accounts", label: "Accounts" },
           { value: "employee", label: "Employee" },
           { value: "supplier", label: "Supplier" },
         ]}
@@ -251,7 +261,7 @@ export default function UsersPage() {
                         <TableCell className="text-muted-foreground">{u.email}</TableCell>
                         <TableCell>
                           <Badge variant={ROLE_COLORS[u.role] as any} className="capitalize">
-                            {u.role}
+                            {ROLE_LABELS[u.role] ?? u.role}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -333,6 +343,7 @@ export default function UsersPage() {
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
                         <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="accounts">Accounts</SelectItem>
                         <SelectItem value="employee">Employee</SelectItem>
                         <SelectItem value="supplier">Supplier</SelectItem>
                       </SelectContent>

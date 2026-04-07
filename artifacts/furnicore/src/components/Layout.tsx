@@ -31,7 +31,24 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-type NavItem = { href: string; label: string; icon: LucideIcon; badge?: "lowStock" };
+/**
+ * roles: if defined, item is only shown to users whose role is in this list.
+ *        if undefined, item is visible to all authenticated users.
+ *
+ * Role access matrix:
+ *  admin    — all modules
+ *  manager  — all except Users & Settings management
+ *  accounts — finance modules (Suppliers, Quotes, Payroll, Accounting)
+ *  employee — core ops (Dashboard, Inventory, Products, Manufacturing, Notifications)
+ *  supplier — Dashboard + Quotes only
+ */
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: "lowStock";
+  roles?: string[];
+};
 
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
@@ -41,28 +58,28 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Operations",
     items: [
-      { href: "/inventory", label: "Inventory", icon: Boxes, badge: "lowStock" },
-      { href: "/products", label: "Products", icon: Package },
-      { href: "/suppliers", label: "Suppliers", icon: Truck },
-      { href: "/quotes", label: "Quotes", icon: FileText },
-      { href: "/manufacturing", label: "Manufacturing", icon: Hammer },
+      { href: "/inventory",      label: "Inventory",      icon: Boxes,  badge: "lowStock" },
+      { href: "/products",       label: "Products",       icon: Package },
+      { href: "/suppliers",      label: "Suppliers",      icon: Truck,  roles: ["admin", "manager", "accounts"] },
+      { href: "/quotes",         label: "Quotes",         icon: FileText, roles: ["admin", "manager", "accounts", "supplier"] },
+      { href: "/manufacturing",  label: "Manufacturing",  icon: Hammer },
     ],
   },
   {
     label: "People & finance",
     items: [
-      { href: "/hr", label: "HR", icon: Users },
-      { href: "/payroll", label: "Payroll", icon: Banknote },
-      { href: "/accounting", label: "Accounting", icon: Receipt },
+      { href: "/hr",         label: "HR",         icon: Users,    roles: ["admin", "manager"] },
+      { href: "/payroll",    label: "Payroll",    icon: Banknote, roles: ["admin", "accounts"] },
+      { href: "/accounting", label: "Accounting", icon: Receipt,  roles: ["admin", "accounts", "manager"] },
     ],
   },
   {
     label: "System",
     items: [
       { href: "/notifications", label: "Notifications", icon: Bell },
-      { href: "/activity", label: "Activity", icon: Activity },
-      { href: "/users", label: "Users", icon: UserCircle },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/activity",      label: "Activity",      icon: Activity,   roles: ["admin", "manager"] },
+      { href: "/users",         label: "Users",         icon: UserCircle, roles: ["admin"] },
+      { href: "/settings",      label: "Settings",      icon: Settings,   roles: ["admin"] },
     ],
   },
 ];
@@ -70,60 +87,69 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 function NavLinks({
   onNavigate,
   lowStockCount,
+  userRole,
   className,
 }: {
   onNavigate?: () => void;
   lowStockCount: number;
+  userRole: string;
   className?: string;
 }) {
   const [location] = useLocation();
 
   return (
     <nav className={cn("flex flex-col gap-6", className)} aria-label="Main">
-      {NAV_GROUPS.map((group) => (
-        <div key={group.label}>
-          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-            {group.label}
-          </p>
-          <div className="space-y-0.5">
-            {group.items.map((item) => {
-              const isActive =
-                location === item.href ||
-                (item.href !== "/" && location.startsWith(item.href));
-              const showLowBadge =
-                item.badge === "lowStock" && lowStockCount > 0;
-              return (
-                <Link key={item.href} href={item.href} onClick={onNavigate}>
-                  <div
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {showLowBadge && (
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums",
-                          isActive
-                            ? "bg-primary-foreground/20 text-primary-foreground"
-                            : "bg-destructive text-destructive-foreground",
-                        )}
-                        title={`${lowStockCount} items at or below reorder level`}
-                      >
-                        {lowStockCount > 99 ? "99+" : lowStockCount}
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
+      {NAV_GROUPS.map((group) => {
+        // Filter items the current role is allowed to see
+        const visibleItems = group.items.filter(
+          (item) => !item.roles || item.roles.includes(userRole),
+        );
+        if (visibleItems.length === 0) return null;
+
+        return (
+          <div key={group.label}>
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {visibleItems.map((item) => {
+                const isActive =
+                  location === item.href ||
+                  (item.href !== "/" && location.startsWith(item.href));
+                const showLowBadge = item.badge === "lowStock" && lowStockCount > 0;
+                return (
+                  <Link key={item.href} href={item.href} onClick={onNavigate}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {showLowBadge && (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums",
+                            isActive
+                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              : "bg-destructive text-destructive-foreground",
+                          )}
+                          title={`${lowStockCount} items at or below reorder level`}
+                        >
+                          {lowStockCount > 99 ? "99+" : lowStockCount}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </nav>
   );
 }
@@ -137,6 +163,7 @@ export function Layout({ children }: LayoutProps) {
     query: { queryKey: getGetDashboardSummaryQueryKey() },
   });
   const lowStockCount = summary?.lowStockCount ?? 0;
+  const userRole = user?.role ?? "";
 
   useEffect(() => {
     setMobileOpen(false);
@@ -164,7 +191,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-4">
-          <NavLinks lowStockCount={lowStockCount} />
+          <NavLinks lowStockCount={lowStockCount} userRole={userRole} />
         </div>
 
         <div className="border-t p-4">
@@ -218,6 +245,7 @@ export function Layout({ children }: LayoutProps) {
                 <div className="flex-1 overflow-y-auto px-3 py-4">
                   <NavLinks
                     lowStockCount={lowStockCount}
+                    userRole={userRole}
                     onNavigate={() => setMobileOpen(false)}
                   />
                 </div>
