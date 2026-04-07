@@ -5,22 +5,19 @@
  * Each individual script is still idempotent, so re-running is safe.
  *
  * Execution order (hard dependency chain):
- *   1. seed-admin            — bootstrap admin@furnicore.com
- *   2. seed-demo-users       — 9 portal role accounts (admin, manager, accountant …)
- *   3. seed-demo-catalog     — inventory raw materials + finished products
- *   4. seed-demo-suppliers   — 9 suppliers + quotes (incl. diego.alvarez portal user)
- *   5. seed-demo-hr-payroll  — employees + Jan–Apr 2026 payroll (needs users)
- *   6. seed-demo-manufacturing — manufacturing tasks + production orders + QC remarks
- *   7. seed-demo-accounting  — posted journal entries + cash transactions
- *                              ⚠ Requires chart of accounts to exist.
- *                              POST /accounts/seed as admin BEFORE running this script,
- *                              or pass --skip-accounting to skip this step.
- *   8. seed-demo-customers   — customer accounts, orders, invoices, payments
- *   9. seed-demo-activity    — activity logs + notifications
+ *   1. seed-admin              — bootstrap admin@furnicore.com
+ *   2. seed-demo-users         — 9 portal role accounts (admin, manager, accountant …)
+ *   3. seed-chart-of-accounts  — 24 standard GL accounts (required before accounting)
+ *   4. seed-demo-catalog       — inventory raw materials + finished products
+ *   5. seed-demo-suppliers     — 9 suppliers + quotes (incl. diego.alvarez portal user)
+ *   6. seed-demo-hr-payroll    — employees + Jan–Apr 2026 payroll (needs users)
+ *   7. seed-demo-manufacturing — manufacturing tasks + production orders + QC remarks
+ *   8. seed-demo-accounting    — posted journal entries + cash transactions
+ *   9. seed-demo-customers     — customer accounts, orders, invoices, payments
+ *  10. seed-demo-activity      — activity logs + notifications
  *
  * Usage:
  *   pnpm --filter @workspace/scripts seed-all-demo
- *   pnpm --filter @workspace/scripts seed-all-demo -- --skip-accounting
  *
  * DATABASE_URL: ../.env
  */
@@ -33,21 +30,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root      = join(__dirname, "..");
 const envFile   = join(root, "../.env");
 
-const SKIP_ACCOUNTING = process.argv.includes("--skip-accounting");
-
-const ALL_SCRIPTS = [
-  { name: "seed-admin",             file: "seed-admin.ts",             required: true  },
-  { name: "seed-demo-users",        file: "seed-demo-users.ts",        required: true  },
-  { name: "seed-demo-catalog",      file: "seed-demo-catalog.ts",      required: true  },
-  { name: "seed-demo-suppliers",    file: "seed-demo-suppliers.ts",    required: true  },
-  { name: "seed-demo-hr-payroll",   file: "seed-demo-hr-payroll.ts",   required: true  },
-  { name: "seed-demo-manufacturing",file: "seed-demo-manufacturing.ts",required: true  },
-  { name: "seed-demo-accounting",   file: "seed-demo-accounting.ts",   required: !SKIP_ACCOUNTING },
-  { name: "seed-demo-customers",    file: "seed-demo-customers.ts",    required: true  },
-  { name: "seed-demo-activity",     file: "seed-demo-activity.ts",     required: true  },
+const scripts = [
+  { name: "seed-admin",              file: "seed-admin.ts"              },
+  { name: "seed-demo-users",         file: "seed-demo-users.ts"         },
+  { name: "seed-chart-of-accounts",  file: "seed-chart-of-accounts.ts"  },
+  { name: "seed-demo-catalog",       file: "seed-demo-catalog.ts"       },
+  { name: "seed-demo-suppliers",     file: "seed-demo-suppliers.ts"     },
+  { name: "seed-demo-hr-payroll",    file: "seed-demo-hr-payroll.ts"    },
+  { name: "seed-demo-manufacturing", file: "seed-demo-manufacturing.ts" },
+  { name: "seed-demo-accounting",    file: "seed-demo-accounting.ts"    },
+  { name: "seed-demo-customers",     file: "seed-demo-customers.ts"     },
+  { name: "seed-demo-activity",      file: "seed-demo-activity.ts"      },
 ];
-
-const scripts = ALL_SCRIPTS.filter((s) => s.required);
 
 const RESET  = "\x1b[0m";
 const BOLD   = "\x1b[1m";
@@ -62,10 +56,6 @@ console.log(`\n${BOLD}${CYAN}╔════════════════
 console.log(`${BOLD}${CYAN}║   FurniCore — Master Demo Seed            ║${RESET}`);
 console.log(`${BOLD}${CYAN}╚══════════════════════════════════════════╝${RESET}\n`);
 console.log(`  Scripts to run : ${scripts.length}`);
-if (SKIP_ACCOUNTING) {
-  console.log(`  ${YELLOW}--skip-accounting flag set — skipping seed-demo-accounting${RESET}`);
-  console.log(`  ${YELLOW}Remember: POST /accounts/seed then run seed-demo-accounting separately.${RESET}`);
-}
 console.log();
 
 const results: { name: string; status: "ok" | "skipped" | "error"; ms: number }[] = [];
