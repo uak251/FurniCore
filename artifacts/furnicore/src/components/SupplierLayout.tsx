@@ -7,12 +7,14 @@
  */
 
 import { type ReactNode } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLogout, useGetCurrentUser } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
 import { Hammer, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/NotificationBell";
+import { ThemeSwitcher } from "@/components/dashboard/ThemeSwitcher";
 
 interface SupplierLayoutProps {
   children: ReactNode;
@@ -52,7 +54,12 @@ export function SupplierLayout({ children }: SupplierLayoutProps) {
         </div>
 
         {/* User identity + logout */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex" asChild>
+            <Link href="/supplier-portal/preferences">Appearance</Link>
+          </Button>
+          <ThemeSwitcher />
+          <NotificationBell />
           {user && (
             <div className="hidden items-center gap-2 sm:flex">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">

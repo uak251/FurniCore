@@ -28,6 +28,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Separator } from "@/components/ui/separator";
+import { ThemeSwitcher } from "@/components/dashboard/ThemeSwitcher";
+import { DashboardActivityRail } from "@/components/dashboard/DashboardActivityRail";
 
 interface LayoutProps {
   children: ReactNode;
@@ -93,13 +95,17 @@ function NavLinks({
   lowStockCount,
   userRole,
   className,
+  surface = "sidebar",
 }: {
   onNavigate?: () => void;
   lowStockCount: number;
   userRole: string;
   className?: string;
+  /** Gradient sidebar (doc.track) vs light mobile sheet */
+  surface?: "sidebar" | "sheet";
 }) {
   const [location] = useLocation();
+  const isSidebar = surface === "sidebar";
 
   return (
     <nav className={cn("flex flex-col gap-6", className)} aria-label="Main">
@@ -112,10 +118,15 @@ function NavLinks({
 
         return (
           <div key={group.label}>
-            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            <p
+              className={cn(
+                "mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider",
+                isSidebar ? "text-sidebar-foreground/45" : "text-muted-foreground/80",
+              )}
+            >
               {group.label}
             </p>
-            <div className="space-y-0.5">
+            <div className="space-y-1">
               {visibleItems.map((item) => {
                 const isActive =
                   location === item.href ||
@@ -125,10 +136,15 @@ function NavLinks({
                   <Link key={item.href} href={item.href} onClick={onNavigate}>
                     <div
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors cursor-pointer",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                        isSidebar &&
+                          (isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_0_0_1px_hsl(var(--sidebar-primary)/0.35)]"
+                            : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"),
+                        !isSidebar &&
+                          (isActive
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"),
                       )}
                     >
                       <item.icon className="h-4 w-4 shrink-0" aria-hidden />
@@ -138,7 +154,9 @@ function NavLinks({
                           className={cn(
                             "rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums",
                             isActive
-                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              ? isSidebar
+                                ? "bg-sidebar-primary-foreground/20 text-sidebar-primary-foreground"
+                                : "bg-primary-foreground/20 text-primary-foreground"
                               : "bg-destructive text-destructive-foreground",
                           )}
                           title={`${lowStockCount} items at or below reorder level`}
@@ -190,37 +208,41 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card md:flex">
-        <div className="flex h-14 items-center border-b px-6">
-          <div className="flex items-center gap-2 text-xl font-bold tracking-tight text-primary">
-            <Hammer className="h-6 w-6 shrink-0" aria-hidden />
+    <div className="flex h-screen overflow-hidden bg-background">
+      <aside className="relative hidden w-[17rem] shrink-0 flex-col border-r border-white/10 bg-gradient-to-b from-[hsl(var(--dashboard-sidebar-from))] to-[hsl(var(--dashboard-sidebar-to))] text-sidebar-foreground shadow-[4px_0_24px_-8px_rgba(0,0,0,0.2)] md:flex">
+        <div className="flex h-16 items-center border-b border-white/10 px-5">
+          <div className="flex items-center gap-2.5 text-lg font-bold tracking-tight text-sidebar-primary-foreground">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary/90 text-sidebar-primary-foreground shadow-md">
+              <Hammer className="h-5 w-5" aria-hidden />
+            </div>
             <span>FurniCore</span>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-4">
-          <NavLinks lowStockCount={lowStockCount} userRole={userRole} />
+          <NavLinks lowStockCount={lowStockCount} userRole={userRole} surface="sidebar" />
         </div>
 
-        <div className="border-t p-4">
-          <div className="mb-4 flex items-center gap-3 px-2">
+        <div className="border-t border-white/10 p-4">
+          <div className="mb-4 flex items-center gap-3 px-1">
             <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground ring-2 ring-sidebar-primary/40"
               aria-hidden
             >
               {user?.name?.charAt(0).toUpperCase() || "U"}
             </div>
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium leading-none">{user?.name}</span>
-              <span className="mt-1 block truncate text-xs capitalize text-muted-foreground">
+              <span className="block truncate text-sm font-medium leading-none text-sidebar-foreground">
+                {user?.name}
+              </span>
+              <span className="mt-1 block truncate text-xs capitalize text-sidebar-foreground/65">
                 {user?.role}
               </span>
             </div>
           </div>
           <Button
-            variant="outline"
-            className="w-full justify-start text-muted-foreground"
+            variant="secondary"
+            className="w-full justify-start border border-white/15 bg-sidebar-accent/80 text-sidebar-foreground hover:bg-sidebar-accent"
             onClick={handleLogout}
           >
             <LogOut className="mr-2 h-4 w-4" aria-hidden />
@@ -229,59 +251,74 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-card/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-card/80 md:px-6">
-          <div className="flex min-w-0 items-center gap-3 md:hidden">
-            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="shrink-0"
-                  aria-label="Open main menu"
-                >
-                  <Menu className="h-4 w-4" aria-hidden />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="flex w-[min(100vw-2rem,20rem)] flex-col p-0">
-                <SheetHeader className="border-b px-6 py-4 text-left">
-                  <SheetTitle className="flex items-center gap-2 text-primary">
-                    <Hammer className="h-5 w-5" aria-hidden />
-                    FurniCore
-                  </SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 overflow-y-auto px-3 py-4">
-                  <NavLinks
-                    lowStockCount={lowStockCount}
-                    userRole={userRole}
-                    onNavigate={() => setMobileOpen(false)}
-                  />
-                </div>
-                <Separator />
-                <div className="p-4">
-                  <p className="mb-2 truncate text-sm font-medium">{user?.name}</p>
-                  <Button variant="outline" className="w-full" onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+      <div className="flex min-w-0 flex-1 overflow-hidden">
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-[hsl(var(--dashboard-header-blur))]/90 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-[hsl(var(--dashboard-header-blur))]/75 md:h-16 md:px-6">
+            <div className="flex min-w-0 items-center gap-3 md:hidden">
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label="Open main menu"
+                  >
+                    <Menu className="h-4 w-4" aria-hidden />
                   </Button>
-                </div>
-              </SheetContent>
-            </Sheet>
-            <span className="truncate font-semibold text-primary">FurniCore</span>
+                </SheetTrigger>
+                <SheetContent side="left" className="flex w-[min(100vw-2rem,20rem)] flex-col p-0">
+                  <SheetHeader className="border-b px-6 py-4 text-left">
+                    <SheetTitle className="flex items-center gap-2 text-primary">
+                      <Hammer className="h-5 w-5" aria-hidden />
+                      FurniCore
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="flex-1 overflow-y-auto px-3 py-4">
+                    <NavLinks
+                      lowStockCount={lowStockCount}
+                      userRole={userRole}
+                      surface="sheet"
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                  </div>
+                  <Separator />
+                  <div className="p-4">
+                    <p className="mb-2 truncate text-sm font-medium">{user?.name}</p>
+                    <Button variant="outline" className="w-full" onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Log out
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <span className="truncate font-semibold text-primary">FurniCore</span>
+            </div>
+
+            <div className="hidden min-w-0 flex-1 md:block">
+              <p className="truncate text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">Welcome back</span>
+                {user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button variant="ghost" size="sm" className="hidden text-muted-foreground sm:inline-flex" asChild>
+                <Link href="/preferences">Appearance</Link>
+              </Button>
+              <ThemeSwitcher />
+              <NotificationBell />
+            </div>
+          </header>
+
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-8">
+              <div className="mx-auto max-w-7xl">{children}</div>
+            </div>
+            <DashboardActivityRail />
           </div>
-
-          <div className="hidden flex-1 md:block" aria-hidden />
-
-          <div className="flex items-center gap-2">
-            <NotificationBell />
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

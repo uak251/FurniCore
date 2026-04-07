@@ -15,12 +15,16 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * @summary Register
+ * @summary Register a new account
  */
+export const registerBodyNameMin = 2;
+
+export const registerBodyPasswordMin = 8;
+
 export const RegisterBody = zod.object({
-  name: zod.string().min(2),
+  name: zod.string().min(registerBodyNameMin),
   email: zod.string().email(),
-  password: zod.string().min(8),
+  password: zod.string().min(registerBodyPasswordMin),
 });
 
 /**
@@ -40,6 +44,11 @@ export const LoginResponse = zod.object({
     email: zod.string(),
     role: zod.string(),
     isActive: zod.boolean(),
+    isVerified: zod.boolean().optional(),
+    dashboardTheme: zod
+      .string()
+      .nullish()
+      .describe("Selected theme id; null means use portal default"),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   }),
@@ -61,6 +70,11 @@ export const RefreshTokenResponse = zod.object({
     email: zod.string(),
     role: zod.string(),
     isActive: zod.boolean(),
+    isVerified: zod.boolean().optional(),
+    dashboardTheme: zod
+      .string()
+      .nullish()
+      .describe("Selected theme id; null means use portal default"),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   }),
@@ -82,8 +96,71 @@ export const GetCurrentUserResponse = zod.object({
   email: zod.string(),
   role: zod.string(),
   isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+});
+
+/**
+ * @summary Set personal dashboard theme
+ */
+export const PatchCurrentUserThemeBody = zod.object({
+  themeId: zod
+    .string()
+    .nullable()
+    .describe("Theme id from catalog, or null to use portal default"),
+});
+
+export const PatchCurrentUserThemeResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary List available dashboard themes
+ */
+export const GetDashboardThemeCatalogResponse = zod.object({
+  themes: zod
+    .array(
+      zod.object({
+        id: zod.string().optional(),
+        label: zod.string().optional(),
+        description: zod.string().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Portal default themes (role → theme id)
+ */
+export const GetDashboardThemeDefaultsResponse = zod.object({
+  defaults: zod.record(zod.string(), zod.string()).optional(),
+});
+
+/**
+ * @summary Set portal default themes (admin only)
+ */
+export const PutDashboardThemeDefaultsBody = zod.object({
+  defaults: zod.record(zod.string(), zod.string()),
+});
+
+export const PutDashboardThemeDefaultsResponse = zod.object({
+  defaults: zod.record(zod.string(), zod.string()).optional(),
 });
 
 /**
@@ -100,6 +177,11 @@ export const ListUsersResponseItem = zod.object({
   email: zod.string(),
   role: zod.string(),
   isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -128,6 +210,11 @@ export const GetUserResponse = zod.object({
   email: zod.string(),
   role: zod.string(),
   isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -152,6 +239,11 @@ export const UpdateUserResponse = zod.object({
   email: zod.string(),
   role: zod.string(),
   isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });

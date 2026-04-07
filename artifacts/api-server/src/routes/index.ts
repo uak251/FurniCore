@@ -27,10 +27,12 @@ import journalEntriesRouter from "./journal-entries";
 import financialReportsRouter from "./financial-reports";
 import accrualsRouter from "./accruals";
 import imagesRouter from "./images";
+import dashboardThemesRouter from "./dashboard-themes";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(dashboardThemesRouter);
 router.use(authRouter);
 router.use(usersRouter);
 router.use(productsRouter);

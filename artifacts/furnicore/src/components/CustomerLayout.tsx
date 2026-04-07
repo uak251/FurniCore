@@ -3,12 +3,14 @@
  * No internal ERP navigation. Customers only see their own data.
  */
 import { type ReactNode } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useLogout, useGetCurrentUser } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
 import { Hammer, LogOut, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { NotificationBell } from "@/components/NotificationBell";
+import { ThemeSwitcher } from "@/components/dashboard/ThemeSwitcher";
 
 export function CustomerLayout({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
@@ -32,7 +34,12 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
             <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">Customer Portal</Badge>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex" asChild>
+            <Link href="/customer-portal/preferences">Appearance</Link>
+          </Button>
+          <ThemeSwitcher />
+          <NotificationBell />
           {user && (
             <div className="hidden items-center gap-2 sm:flex">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">

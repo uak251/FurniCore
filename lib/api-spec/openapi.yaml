@@ -158,6 +158,79 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /auth/me/theme:
+    patch:
+      operationId: patchCurrentUserTheme
+      tags: [auth]
+      summary: Set personal dashboard theme
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchThemeBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /dashboard-themes/catalog:
+    get:
+      operationId: getDashboardThemeCatalog
+      tags: [dashboard-themes]
+      summary: List available dashboard themes
+      responses:
+        "200":
+          description: Theme catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  themes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DashboardThemeInfo"
+
+  /dashboard-themes/defaults:
+    get:
+      operationId: getDashboardThemeDefaults
+      tags: [dashboard-themes]
+      summary: Portal default themes (role → theme id)
+      responses:
+        "200":
+          description: Defaults map
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardThemeDefaultsResponse"
+    put:
+      operationId: putDashboardThemeDefaults
+      tags: [dashboard-themes]
+      summary: Set portal default themes (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PutDashboardThemeDefaultsBody"
+      responses:
+        "200":
+          description: Saved defaults
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardThemeDefaultsResponse"
+
   # USERS
   /users:
     get:
@@ -1378,6 +1451,11 @@ components:
           type: string
         isActive:
           type: boolean
+        isVerified:
+          type: boolean
+        dashboardTheme:
+          type: ["string", "null"]
+          description: Selected theme id; null means use portal default
         createdAt:
           type: string
         updatedAt:
@@ -1390,6 +1468,40 @@ components:
         - isActive
         - createdAt
         - updatedAt
+
+    PatchThemeBody:
+      type: object
+      properties:
+        themeId:
+          type: ["string", "null"]
+          description: Theme id from catalog, or null to use portal default
+      required:
+        - themeId
+
+    DashboardThemeInfo:
+      type: object
+      properties:
+        id: { type: string }
+        label: { type: string }
+        description: { type: string }
+
+    DashboardThemeDefaultsResponse:
+      type: object
+      properties:
+        defaults:
+          type: object
+          additionalProperties:
+            type: string
+
+    PutDashboardThemeDefaultsBody:
+      type: object
+      properties:
+        defaults:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+        - defaults
 
     CreateUserBody:
       type: object

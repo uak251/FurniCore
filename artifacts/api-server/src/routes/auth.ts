@@ -16,6 +16,7 @@ import {
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
 import { logActivity } from "../lib/activityLogger";
 import { sendVerificationEmail, emailEnabled } from "../lib/email";
+import { THEME_IDS, type ThemeId } from "../lib/themeCatalog";
 
 const router: IRouter = Router();
 
@@ -34,14 +35,15 @@ const VerifyEmailQuery = z.object({
 /** Sanitized user object safe to send to clients (no hashes or tokens). */
 function sanitize(user: typeof usersTable.$inferSelect) {
   return {
-    id:         user.id,
-    name:       user.name,
-    email:      user.email,
-    role:       user.role,
-    isActive:   user.isActive,
-    isVerified: user.isVerified,
-    createdAt:  user.createdAt,
-    updatedAt:  user.updatedAt,
+    id:               user.id,
+    name:             user.name,
+    email:            user.email,
+    role:             user.role,
+    isActive:         user.isActive,
+    isVerified:       user.isVerified,
+    dashboardTheme:   user.dashboardTheme ?? null,
+    createdAt:        user.createdAt,
+    updatedAt:        user.updatedAt,
   };
 }
 
@@ -381,6 +383,35 @@ router.get("/auth/me", authenticate, async (req: AuthRequest, res): Promise<void
     return;
   }
   res.json(sanitize(user));
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PATCH /auth/me/theme  — user picks personal dashboard theme (persisted)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PatchThemeBody = z.object({
+  themeId: z
+    .string()
+    .nullable()
+    .refine((v) => v === null || (THEME_IDS as readonly string[]).includes(v), { message: "Invalid theme id" }),
+});
+
+router.patch("/auth/me/theme", authenticate, async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
+  const parsed = PatchThemeBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
+    return;
+  }
+  const themeId = parsed.data.themeId;
+  try {
+    const [user] = await db
+      .update(usersTable)
+      .set({ dashboardTheme: themeId === null ? null : (themeId as ThemeId) })
+      .where(eq(usersTable.id, req.user!.id))
+      .returning();
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+    await logActivity({ userId: req.user?.id, action: "UPDATE", module: "preferences", description: `Set dashboard theme to ${themeId ?? "portal default"}` });
+    res.json(sanitize(user));
+  } catch (err) { next(err); }
 });
 
 export default router;

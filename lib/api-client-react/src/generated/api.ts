@@ -30,10 +30,12 @@ import type {
   CreateTransactionBody,
   CreateUserBody,
   DashboardSummary,
+  DashboardThemeDefaultsResponse,
   Employee,
   ErrorResponse,
   FinancialSummary,
   GeneratePayrollBody,
+  GetDashboardThemeCatalog200,
   GetEmployeeAttendanceParams,
   GetFinancialSummaryParams,
   HealthStatus,
@@ -50,16 +52,18 @@ import type {
   ListTransactionsParams,
   ListUsersParams,
   LoginBody,
-  RegisterBody,
   ManufacturingOverview,
   ManufacturingTask,
   MessageResponse,
   Notification,
+  PatchThemeBody,
   PayrollRecord,
   PendingApprovals,
   Product,
   ProductCosting,
+  PutDashboardThemeDefaultsBody,
   RefreshBody,
+  RegisterBody,
   Supplier,
   SupplierQuote,
   Transaction,
@@ -158,7 +162,7 @@ export function useHealthCheck<
 }
 
 /**
- * @summary Register
+ * @summary Register a new account
  */
 export const getRegisterUrl = () => {
   return `/api/auth/register`;
@@ -207,18 +211,21 @@ export const getRegisterMutationOptions = <
     { data: BodyType<RegisterBody> }
   > = (props) => {
     const { data } = props ?? {};
+
     return register(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type RegisterMutationResult = NonNullable<Awaited<ReturnType<typeof register>>>;
+export type RegisterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof register>>
+>;
 export type RegisterMutationBody = BodyType<RegisterBody>;
 export type RegisterMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Register
+ * @summary Register a new account
  */
 export const useRegister = <
   TError = ErrorType<ErrorResponse>,
@@ -565,6 +572,340 @@ export function useGetCurrentUser<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Set personal dashboard theme
+ */
+export const getPatchCurrentUserThemeUrl = () => {
+  return `/api/auth/me/theme`;
+};
+
+export const patchCurrentUserTheme = async (
+  patchThemeBody: PatchThemeBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getPatchCurrentUserThemeUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchThemeBody),
+  });
+};
+
+export const getPatchCurrentUserThemeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCurrentUserTheme>>,
+    TError,
+    { data: BodyType<PatchThemeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchCurrentUserTheme>>,
+  TError,
+  { data: BodyType<PatchThemeBody> },
+  TContext
+> => {
+  const mutationKey = ["patchCurrentUserTheme"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchCurrentUserTheme>>,
+    { data: BodyType<PatchThemeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchCurrentUserTheme(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchCurrentUserThemeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchCurrentUserTheme>>
+>;
+export type PatchCurrentUserThemeMutationBody = BodyType<PatchThemeBody>;
+export type PatchCurrentUserThemeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Set personal dashboard theme
+ */
+export const usePatchCurrentUserTheme = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCurrentUserTheme>>,
+    TError,
+    { data: BodyType<PatchThemeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchCurrentUserTheme>>,
+  TError,
+  { data: BodyType<PatchThemeBody> },
+  TContext
+> => {
+  return useMutation(getPatchCurrentUserThemeMutationOptions(options));
+};
+
+/**
+ * @summary List available dashboard themes
+ */
+export const getGetDashboardThemeCatalogUrl = () => {
+  return `/api/dashboard-themes/catalog`;
+};
+
+export const getDashboardThemeCatalog = async (
+  options?: RequestInit,
+): Promise<GetDashboardThemeCatalog200> => {
+  return customFetch<GetDashboardThemeCatalog200>(
+    getGetDashboardThemeCatalogUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDashboardThemeCatalogQueryKey = () => {
+  return [`/api/dashboard-themes/catalog`] as const;
+};
+
+export const getGetDashboardThemeCatalogQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardThemeCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardThemeCatalogQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardThemeCatalog>>
+  > = ({ signal }) => getDashboardThemeCatalog({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeCatalog>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardThemeCatalogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardThemeCatalog>>
+>;
+export type GetDashboardThemeCatalogQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List available dashboard themes
+ */
+
+export function useGetDashboardThemeCatalog<
+  TData = Awaited<ReturnType<typeof getDashboardThemeCatalog>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeCatalog>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardThemeCatalogQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Portal default themes (role → theme id)
+ */
+export const getGetDashboardThemeDefaultsUrl = () => {
+  return `/api/dashboard-themes/defaults`;
+};
+
+export const getDashboardThemeDefaults = async (
+  options?: RequestInit,
+): Promise<DashboardThemeDefaultsResponse> => {
+  return customFetch<DashboardThemeDefaultsResponse>(
+    getGetDashboardThemeDefaultsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetDashboardThemeDefaultsQueryKey = () => {
+  return [`/api/dashboard-themes/defaults`] as const;
+};
+
+export const getGetDashboardThemeDefaultsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDashboardThemeDefaults>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeDefaults>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDashboardThemeDefaultsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDashboardThemeDefaults>>
+  > = ({ signal }) => getDashboardThemeDefaults({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeDefaults>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDashboardThemeDefaultsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDashboardThemeDefaults>>
+>;
+export type GetDashboardThemeDefaultsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Portal default themes (role → theme id)
+ */
+
+export function useGetDashboardThemeDefaults<
+  TData = Awaited<ReturnType<typeof getDashboardThemeDefaults>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getDashboardThemeDefaults>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDashboardThemeDefaultsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set portal default themes (admin only)
+ */
+export const getPutDashboardThemeDefaultsUrl = () => {
+  return `/api/dashboard-themes/defaults`;
+};
+
+export const putDashboardThemeDefaults = async (
+  putDashboardThemeDefaultsBody: PutDashboardThemeDefaultsBody,
+  options?: RequestInit,
+): Promise<DashboardThemeDefaultsResponse> => {
+  return customFetch<DashboardThemeDefaultsResponse>(
+    getPutDashboardThemeDefaultsUrl(),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(putDashboardThemeDefaultsBody),
+    },
+  );
+};
+
+export const getPutDashboardThemeDefaultsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putDashboardThemeDefaults>>,
+    TError,
+    { data: BodyType<PutDashboardThemeDefaultsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof putDashboardThemeDefaults>>,
+  TError,
+  { data: BodyType<PutDashboardThemeDefaultsBody> },
+  TContext
+> => {
+  const mutationKey = ["putDashboardThemeDefaults"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof putDashboardThemeDefaults>>,
+    { data: BodyType<PutDashboardThemeDefaultsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return putDashboardThemeDefaults(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PutDashboardThemeDefaultsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof putDashboardThemeDefaults>>
+>;
+export type PutDashboardThemeDefaultsMutationBody =
+  BodyType<PutDashboardThemeDefaultsBody>;
+export type PutDashboardThemeDefaultsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Set portal default themes (admin only)
+ */
+export const usePutDashboardThemeDefaults = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof putDashboardThemeDefaults>>,
+    TError,
+    { data: BodyType<PutDashboardThemeDefaultsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof putDashboardThemeDefaults>>,
+  TError,
+  { data: BodyType<PutDashboardThemeDefaultsBody> },
+  TContext
+> => {
+  return useMutation(getPutDashboardThemeDefaultsMutationOptions(options));
+};
 
 /**
  * @summary List all users

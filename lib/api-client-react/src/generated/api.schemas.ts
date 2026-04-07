@@ -18,8 +18,10 @@ export interface MessageResponse {
 }
 
 export interface RegisterBody {
+  /** @minLength 2 */
   name: string;
   email: string;
+  /** @minLength 8 */
   password: string;
 }
 
@@ -38,6 +40,12 @@ export interface User {
   email: string;
   role: string;
   isActive: boolean;
+  isVerified?: boolean;
+  /**
+   * Selected theme id; null means use portal default
+   * @nullable
+   */
+  dashboardTheme?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +54,32 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   user: User;
+}
+
+export interface PatchThemeBody {
+  /**
+   * Theme id from catalog, or null to use portal default
+   * @nullable
+   */
+  themeId: string | null;
+}
+
+export interface DashboardThemeInfo {
+  id?: string;
+  label?: string;
+  description?: string;
+}
+
+export type DashboardThemeDefaultsResponseDefaults = { [key: string]: string };
+
+export interface DashboardThemeDefaultsResponse {
+  defaults?: DashboardThemeDefaultsResponseDefaults;
+}
+
+export type PutDashboardThemeDefaultsBodyDefaults = { [key: string]: string };
+
+export interface PutDashboardThemeDefaultsBody {
+  defaults: PutDashboardThemeDefaultsBodyDefaults;
 }
 
 export interface CreateUserBody {
@@ -477,6 +511,10 @@ export interface ManufacturingOverview {
   averageProgress: number;
   tasksByStatus: ManufacturingOverviewTasksByStatusItem[];
 }
+
+export type GetDashboardThemeCatalog200 = {
+  themes?: DashboardThemeInfo[];
+};
 
 export type ListUsersParams = {
   role?: string;

@@ -22,6 +22,8 @@ export const usersTable = pgTable("users", {
   refreshToken: text("refresh_token"),
   /** JSON array of extra module permissions granted by admin, e.g. '["hr","payroll"]' */
   permissions: text("permissions"),
+  /** Dashboard UI theme id (e.g. indigo-clinical); null = use portal default from app_settings */
+  dashboardTheme: varchar("dashboard_theme", { length: 64 }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

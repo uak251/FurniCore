@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CurrencyProvider } from "@/lib/currency";
+import { DashboardThemeProvider } from "@/context/DashboardThemeProvider";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/Layout";
@@ -27,6 +28,7 @@ import NotificationsPage from "@/pages/notifications";
 import ActivityPage from "@/pages/activity";
 import UsersPage from "@/pages/users";
 import SettingsPage from "@/pages/settings";
+import PreferencesPage from "@/pages/preferences";
 import SupplierPortalPage from "@/pages/supplier-portal";
 import WorkerPortalPage from "@/pages/worker-portal";
 import CustomerPortalPage from "@/pages/customer-portal";
@@ -62,6 +64,36 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/verify-email" component={VerifyEmailPage} />
+
+      <Route path="/supplier-portal/preferences">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["supplier"]}>
+            <SupplierLayout>
+              <PreferencesPage />
+            </SupplierLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/worker-portal/preferences">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["worker"]}>
+            <WorkerLayout>
+              <PreferencesPage />
+            </WorkerLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/customer-portal/preferences">
+        <ProtectedRoute>
+          <RoleGuard allowedRoles={["customer"]}>
+            <CustomerLayout>
+              <PreferencesPage />
+            </CustomerLayout>
+          </RoleGuard>
+        </ProtectedRoute>
+      </Route>
 
       {/* ── Supplier portal — isolated layout, no internal modules ── */}
       <Route path="/supplier-portal">
@@ -175,6 +207,8 @@ function Router() {
                 </RoleGuard>
               </Route>
 
+              <Route path="/preferences" component={PreferencesPage} />
+
               <Route component={NotFound} />
             </Switch>
           </Layout>
@@ -187,14 +221,16 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <CurrencyProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
-      </CurrencyProvider>
+      <DashboardThemeProvider>
+        <CurrencyProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </CurrencyProvider>
+      </DashboardThemeProvider>
     </QueryClientProvider>
   );
 }

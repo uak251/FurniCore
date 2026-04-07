@@ -5,11 +5,20 @@
  *  1. General      — Currency selector, date format
  *  2. Power BI     — Report status + setup guide
  *  3. Access Control — Per-user extra-module permission delegation (admin)
- *  4. About        — Version / env info
+ *  4. Portal themes — Default dashboard theme per role (admin)
+ *  5. About        — Version / env info
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { useGetCurrentUser } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetCurrentUser,
+  useGetDashboardThemeCatalog,
+  useGetDashboardThemeDefaults,
+  usePutDashboardThemeDefaults,
+  getGetDashboardThemeDefaultsQueryKey,
+  type DashboardThemeInfo,
+} from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import {
-  Settings, Globe, BarChart3, ShieldCheck, Info,
+  Settings, Globe, BarChart3, ShieldCheck, Info, Palette,
   CheckCircle2, AlertCircle, ExternalLink, RefreshCw,
   DollarSign, Users, Loader2, ChevronDown, ChevronUp,
   Eye, EyeOff, Save, KeyRound,
@@ -707,6 +716,114 @@ function AboutTab() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════
+   TAB — PORTAL THEME DEFAULTS (admin only, RBAC on API)
+   ════════════════════════════════════════════════════════════════════════════════ */
+
+const PORTAL_THEME_ROLES: { key: string; label: string }[] = [
+  { key: "admin", label: "Admin" },
+  { key: "manager", label: "Production / operations (manager)" },
+  { key: "accountant", label: "Accountant" },
+  { key: "employee", label: "Inventory & staff (employee)" },
+  { key: "sales_manager", label: "Sales manager" },
+  { key: "supplier", label: "Supplier portal" },
+  { key: "worker", label: "Worker portal" },
+  { key: "customer", label: "Customer portal" },
+];
+
+function PortalThemesTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: catalog, isLoading: catLoading } = useGetDashboardThemeCatalog();
+  const { data: defRes, isLoading: defLoading } = useGetDashboardThemeDefaults();
+  const putDefaults = usePutDashboardThemeDefaults();
+  const themes = catalog?.themes ?? [];
+  const defaults = defRes?.defaults ?? {};
+
+  const [local, setLocal] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (defRes?.defaults) setLocal({ ...defRes.defaults });
+  }, [defRes?.defaults]);
+
+  const handleSave = async () => {
+    try {
+      await putDefaults.mutateAsync({ data: { defaults: local } });
+      await qc.invalidateQueries({ queryKey: getGetDashboardThemeDefaultsQueryKey() });
+      toast({ title: "Portal themes updated", description: "Defaults apply when users clear personal overrides." });
+    } catch (e: unknown) {
+      toast({
+        title: "Could not save",
+        description: e instanceof Error ? e.message : "Unknown error",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const baseline = defRes?.defaults as Record<string, string> | undefined;
+  const dirty =
+    !!baseline &&
+    PORTAL_THEME_ROLES.some((r) => (local[r.key] ?? baseline[r.key]) !== baseline[r.key]);
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Default dashboard theme per portal</CardTitle>
+          </div>
+          <CardDescription>
+            When a user has not set a personal theme, these defaults apply by role. Individual users can still
+            override from the header palette or Appearance page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(catLoading || defLoading) && (
+            <div className="flex justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          )}
+          <div className="space-y-3">
+            {PORTAL_THEME_ROLES.map((row) => (
+              <div
+                key={row.key}
+                className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <Label className="text-sm sm:min-w-[14rem]">{row.label}</Label>
+                <Select
+                  value={local[row.key] ?? defaults[row.key] ?? ""}
+                  onValueChange={(v) => setLocal((s) => ({ ...s, [row.key]: v }))}
+                  disabled={catLoading || defLoading}
+                >
+                  <SelectTrigger className="w-full sm:max-w-md">
+                    <SelectValue placeholder="Theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {themes
+                      .filter((t: DashboardThemeInfo): t is DashboardThemeInfo & { id: string } => Boolean(t.id))
+                      .map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button onClick={handleSave} disabled={putDefaults.isPending || !dirty}>
+              {putDefaults.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save defaults
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════════
    MAIN PAGE
    ════════════════════════════════════════════════════════════════════════════════ */
 
@@ -729,6 +846,9 @@ export default function SettingsPage() {
           {me?.role === "admin" && (
             <TabsTrigger value="access" className="gap-1.5"><ShieldCheck className="h-4 w-4" /> Access Control</TabsTrigger>
           )}
+          {me?.role === "admin" && (
+            <TabsTrigger value="themes" className="gap-1.5"><Palette className="h-4 w-4" /> Portal themes</TabsTrigger>
+          )}
           <TabsTrigger value="about"    className="gap-1.5"><Info     className="h-4 w-4" /> About</TabsTrigger>
         </TabsList>
 
@@ -736,6 +856,9 @@ export default function SettingsPage() {
         <TabsContent value="powerbi"  className="mt-6"><PowerBITab /></TabsContent>
         {me?.role === "admin" && (
           <TabsContent value="access" className="mt-6"><AccessControlTab /></TabsContent>
+        )}
+        {me?.role === "admin" && (
+          <TabsContent value="themes" className="mt-6"><PortalThemesTab /></TabsContent>
         )}
         <TabsContent value="about"    className="mt-6"><AboutTab /></TabsContent>
       </Tabs>

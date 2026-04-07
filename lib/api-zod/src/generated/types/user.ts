@@ -12,6 +12,12 @@ export interface User {
   email: string;
   role: string;
   isActive: boolean;
+  isVerified?: boolean;
+  /**
+   * Selected theme id; null means use portal default
+   * @nullable
+   */
+  dashboardTheme?: string | null;
   createdAt: string;
   updatedAt: string;
 }
