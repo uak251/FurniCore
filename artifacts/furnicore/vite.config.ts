@@ -1,11 +1,20 @@
-import { config as loadEnv } from "dotenv";
+import { config as dotenvConfig } from "dotenv";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-loadEnv({ path: `${import.meta.dirname}/.env` });
+/**
+ * Load repo root `.env` then `artifacts/furnicore/.env` (local overrides).
+ * Ensures `VITE_API_URL` applies when set only at the monorepo root so the dev
+ * proxy and `import.meta.env.VITE_API_URL` match the running API (avoids 404s
+ * from proxying to the wrong host).
+ */
+const furnicoreDir = import.meta.dirname;
+const repoRootEnv = path.resolve(furnicoreDir, "..", "..");
+dotenvConfig({ path: path.join(repoRootEnv, ".env") });
+dotenvConfig({ path: path.join(furnicoreDir, ".env"), override: true });
 
 const apiUrl = process.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -77,6 +86,12 @@ export default defineConfig({
         target: apiUrl,
         changeOrigin: true,
       },
+      // Socket.io (low-stock alerts) when the client uses same-origin in dev
+      "/socket.io": {
+        target: apiUrl,
+        changeOrigin: true,
+        ws: true,
+      },
     },
     fs: {
       strict: true,
@@ -90,6 +105,7 @@ export default defineConfig({
     proxy: {
       "/api": { target: apiUrl, changeOrigin: true },
       "/uploads": { target: apiUrl, changeOrigin: true },
+      "/socket.io": { target: apiUrl, changeOrigin: true, ws: true },
     },
   },
 });

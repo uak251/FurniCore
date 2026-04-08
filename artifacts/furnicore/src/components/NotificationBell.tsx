@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, AlertTriangle, Info, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { socket, connectSocket, disconnectSocket } from "@/lib/socket";
+import { socket, connectSocket } from "@/lib/socket";
 import type { LowStockPayload } from "@/lib/socket";
 
 const TYPE_ICONS: Record<string, typeof Info> = {
@@ -51,7 +51,6 @@ export function NotificationBell() {
 
     return () => {
       socket.off("low-stock", handleLowStock);
-      disconnectSocket();
     };
   }, [queryClient, toast]);
 

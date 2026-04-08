@@ -8,7 +8,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAuthToken } from "@/lib/auth";
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+import { apiOriginPrefix } from "@/lib/api-base";
+
+const API = apiOriginPrefix();
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}/api${path}`, {

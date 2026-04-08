@@ -1,8 +1,10 @@
 /**
  * Multer upload middleware for record images.
  *
- * Files are stored at  <project-root>/uploads/<entityType>/<uuid>.<ext>
- * and served statically at  /uploads/...
+ * Default: files on disk under the api-server uploads/ folder per entityType,
+ * served by Express at /uploads/... — URLs persisted in PostgreSQL (`record_images`, Drizzle).
+ * Optional cloud storage (e.g. AWS S3) can be added by swapping storage engine and storing
+ * public URLs in `record_images.url` instead of /uploads paths.
  *
  * Constraints:
  *   - Max file size : 8 MB

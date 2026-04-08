@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { apiOriginPrefix } from "@/lib/api-base";
 
 /* ─── Validation ─────────────────────────────────────────────────────────── */
 
@@ -48,7 +49,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 
 /* ─── Direct API helpers (avoids generated-client type conflicts) ─────────── */
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API = apiOriginPrefix();
 
 async function registerUser(data: { name: string; email: string; password: string }) {
   const res = await fetch(`${API}/api/auth/register`, {

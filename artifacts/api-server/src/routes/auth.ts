@@ -14,6 +14,8 @@ import {
   EMAIL_VERIFY_EXPIRY_MS,
 } from "../lib/auth";
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
+import { revokeAccessToken } from "../lib/tokenBlacklist";
+import { logger } from "../lib/logger";
 import { logActivity } from "../lib/activityLogger";
 import { sendVerificationEmail, emailEnabled } from "../lib/email";
 import { THEME_IDS, type ThemeId } from "../lib/themeCatalog";
@@ -367,6 +369,15 @@ router.post("/auth/refresh", async (req, res): Promise<void> => {
    POST /auth/logout
    ═══════════════════════════════════════════════════════════════════════════ */
 router.post("/auth/logout", authenticate, async (req: AuthRequest, res): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const rawAccess = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+  if (req.user && rawAccess) {
+    try {
+      await revokeAccessToken(rawAccess, req.user.id, "logout");
+    } catch (err) {
+      logger.error({ err, userId: req.user.id }, "logout_token_blacklist_failed");
+    }
+  }
   if (req.user) {
     await db.update(usersTable).set({ refreshToken: null }).where(eq(usersTable.id, req.user.id));
   }

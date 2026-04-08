@@ -26,8 +26,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAuthToken } from "@/lib/auth";
+import { apiOriginPrefix } from "@/lib/api-base";
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API_BASE = apiOriginPrefix();
 
 /* ─── Types ────────────────────────────────────────────────────────────────── */
 

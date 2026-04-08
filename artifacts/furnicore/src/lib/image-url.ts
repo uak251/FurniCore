@@ -1,9 +1,11 @@
 /**
  * Resolve stored paths like `/uploads/product/uuid.jpg` for <img src>.
- * When VITE_API_URL points at the API host (e.g. dev cross-origin), prefix it
- * so assets load from the Express static handler instead of the Vite dev server.
+ * In production, prefix with the API origin when the app and API differ. In dev,
+ * same-origin relative paths hit the Vite proxy for `/uploads`.
  */
-const API_ORIGIN = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+import { apiOriginPrefix } from "./api-base";
+
+const API_ORIGIN = apiOriginPrefix();
 
 export function resolvePublicAssetUrl(url: string | null | undefined): string {
   if (url == null || url === "") return "";

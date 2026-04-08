@@ -1,5 +1,8 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { verifyToken, type AccessTokenPayload } from "./verifyToken";
+
+export { verifyToken, TokenVerificationError, type AccessTokenPayload } from "./verifyToken";
 
 const ACCESS_SECRET  = process.env.SESSION_SECRET || "furnicore_access_secret_2024";
 const REFRESH_SECRET = (process.env.SESSION_SECRET || "furnicore_refresh_secret_2024") + "_refresh";
@@ -31,8 +34,8 @@ export function generateRefreshToken(payload: { id: number; email: string }): st
   return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRY });
 }
 
-export function verifyAccessToken(token: string): { id: number; email: string; role: string } {
-  return jwt.verify(token, ACCESS_SECRET) as { id: number; email: string; role: string };
+export function verifyAccessToken(token: string): AccessTokenPayload {
+  return verifyToken(token);
 }
 
 export function verifyRefreshToken(token: string): { id: number; email: string } {

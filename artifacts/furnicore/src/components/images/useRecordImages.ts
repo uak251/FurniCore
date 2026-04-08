@@ -1,15 +1,14 @@
 /**
  * React Query hooks for the record-images API.
  *
- * All requests send Authorization: Bearer (required by the API). Optional
- * VITE_API_URL prefixes paths when the UI and API run on different origins.
+ * Uses the same `customFetch` + `setBaseUrl` as generated API hooks so URLs match
+ * (avoids HTTP 404 when VITE_API_URL mistakenly includes `/api` — which would
+ * produce `/api/api/images/...`).
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthToken } from "@/lib/auth";
-
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+import { customFetch } from "@workspace/api-client-react";
 
 export type EntityType = "product" | "inventory" | "employee" | "payroll" | "supplier";
 
@@ -28,35 +27,27 @@ export interface RecordImage {
   createdAt: string | null;
 }
 
-function resolveApiPath(path: string): string {
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  if (API_BASE) return `${API_BASE}${path}`;
-  return path;
-}
-
-function mergeAuthHeaders(init?: HeadersInit): Headers {
-  const h = new Headers(init);
-  const token = getAuthToken();
-  if (token) h.set("Authorization", `Bearer ${token}`);
-  return h;
+/**
+ * Inventory bulk upload — must match Express route in `api-server/src/routes/images.ts`:
+ * `router.post("/images/inventory/:id/bulk", …)` under `app.use("/api", router)`.
+ * Full URL: `POST /api/images/inventory/:id/bulk` — multipart field name `images` (Multer `uploadMulti`).
+ */
+export function getInventoryBulkImageUploadApiPath(inventoryItemId: number): string {
+  return `/api/images/inventory/${inventoryItemId}/bulk`;
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = resolveApiPath(path);
   const isFormData =
     typeof FormData !== "undefined" && init?.body != null && init.body instanceof FormData;
-  const headers = mergeAuthHeaders(init?.headers);
-  /* multipart/form-data must set boundary automatically — never send application/json */
+  const headers = new Headers(init?.headers);
   if (isFormData) {
     headers.delete("Content-Type");
   }
-  const r = await fetch(url, { credentials: "include", ...init, headers });
-  if (!r.ok) {
-    const e = await r.json().catch(() => ({})) as { message?: string; error?: string };
-    const msg = e.message ?? e.error ?? `HTTP ${r.status}`;
-    throw new Error(msg);
-  }
-  return r.json() as Promise<T>;
+  return customFetch<T>(path, {
+    ...init,
+    headers,
+    responseType: "json",
+  });
 }
 
 /* ── hooks ───────────────────────────────────────────────────────────────── */
@@ -99,10 +90,15 @@ export function useBulkUploadImages(entityType: EntityType, entityId: number) {
   const { toast } = useToast();
   return useMutation<RecordImage[], Error, FormData>({
     mutationFn: (form) =>
-      apiFetch(`/api/images/${entityType}/${entityId}/bulk`, {
-        method: "POST",
-        body: form,
-      }),
+      apiFetch(
+        entityType === "inventory"
+          ? getInventoryBulkImageUploadApiPath(entityId)
+          : `/api/images/${entityType}/${entityId}/bulk`,
+        {
+          method: "POST",
+          body: form,
+        },
+      ),
     onSuccess: (imgs) => {
       qc.invalidateQueries({ queryKey: ["images", entityType, entityId] });
       qc.invalidateQueries({ queryKey: ["images", entityType] });

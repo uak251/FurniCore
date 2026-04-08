@@ -15,8 +15,9 @@ import { Plus, BookOpen, Pencil, ToggleLeft, ToggleRight, Sprout, Search, Downlo
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useCurrency } from "@/lib/currency";
 import { getAuthToken } from "@/lib/auth";
+import { apiOriginPrefix } from "@/lib/api-base";
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+const API_BASE = apiOriginPrefix();
 
 function apiUrl(path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;

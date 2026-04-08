@@ -44,6 +44,13 @@ vi.mock("@workspace/db", () => {
   };
 });
 
+vi.mock("../lib/tokenBlacklist", () => ({
+  hashToken: (t: string) => `hash:${t.length}`,
+  isTokenBlacklisted: vi.fn().mockResolvedValue(false),
+  revokeAccessToken: vi.fn().mockResolvedValue(undefined),
+  purgeExpiredBlacklistRows: vi.fn().mockResolvedValue(0),
+}));
+
 /* ── suppress pino so tests don't spawn worker threads ── */
 vi.mock("pino", () => ({
   default: () => ({

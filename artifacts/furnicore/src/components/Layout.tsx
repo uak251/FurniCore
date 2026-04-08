@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useLogout, useGetCurrentUser, useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
+import { disconnectSocket } from "@/lib/socket";
 import {
   LayoutDashboard,
   Package,
@@ -202,6 +203,7 @@ export function Layout({ children }: LayoutProps) {
     } catch {
       // Ignore errors on logout
     } finally {
+      disconnectSocket();
       removeAuthToken();
       setLocation("/login");
     }

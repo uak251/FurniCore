@@ -32,8 +32,9 @@ import { PowerBIEmbed, PowerBIEmbedLoading, PowerBIUnconfigured, PowerBIEmbedErr
 import { useCurrency } from "@/lib/currency";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { apiOriginPrefix } from "@/lib/api-base";
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API_BASE = apiOriginPrefix();
 
 async function fetchNative<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

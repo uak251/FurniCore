@@ -29,6 +29,7 @@ import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 import { useCurrency } from "@/lib/currency";
 import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
+import { apiOriginPrefix } from "@/lib/api-base";
 
 interface InventoryFormData {
   name: string;
@@ -46,7 +47,8 @@ export default function InventoryPage() {
   const { format: formatCurrency } = useCurrency();
   const queryClient = useQueryClient();
   const { data: me } = useGetCurrentUser();
-  const canManageImages = me?.role === "admin" || me?.role === "manager";
+  const canManageImages =
+    me?.role === "admin" || me?.role === "manager" || me?.role === "inventory_manager";
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -59,9 +61,9 @@ export default function InventoryPage() {
   const [showGallery, setShowGallery] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
 
-  const { data: allImages = [] } = useModuleImages("inventory");
+  const { data: allImages = [], isLoading: galleryImagesLoading } = useModuleImages("inventory");
 
-  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+  const API_BASE = apiOriginPrefix();
   const { data: valuation } = useQuery({
     queryKey: ["inventory-valuation"],
     queryFn: async () => {
@@ -481,12 +483,13 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Module Gallery — filtered to raw_material items only */}
+      {/* Module Gallery — raw materials only. Bulk uploads: POST /api/images/inventory/:id/bulk (field `images`) — see useBulkUploadImages + getInventoryBulkImageUploadApiPath in useRecordImages.ts */}
       <Dialog open={showGallery} onOpenChange={setShowGallery}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Raw Materials Gallery</DialogTitle></DialogHeader>
           <ModuleGallery
             entityType="inventory"
+            isLoading={galleryImagesLoading}
             images={allImages.filter((img: any) =>
               (inventory ?? []).find((i: any) => i.id === img.entityId && i.type === "raw_material")
             )}

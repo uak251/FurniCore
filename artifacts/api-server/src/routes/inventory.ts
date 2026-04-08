@@ -4,7 +4,7 @@ import { db, inventoryTable, suppliersTable, appSettingsTable } from "@workspace
 import { CreateInventoryItemBody, UpdateInventoryItemBody, GetInventoryItemParams, UpdateInventoryItemParams, DeleteInventoryItemParams, ListInventoryQueryParams } from "@workspace/api-zod";
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
 import { logActivity } from "../lib/activityLogger";
-import { emitLowStockAlert } from "../lib/socket";
+import { notifyLowStockStakeholders } from "../lib/inventoryAlerts";
 
 const router: IRouter = Router();
 
@@ -78,6 +78,14 @@ router.post("/inventory", authenticate, async (req: AuthRequest, res): Promise<v
   }).returning();
   const enriched = await enrichItem(item);
   await logActivity({ userId: req.user?.id, action: "CREATE", module: "inventory", description: `Created inventory item ${item.name}`, newData: enriched });
+  if (enriched.isLowStock) {
+    await notifyLowStockStakeholders({
+      id: enriched.id,
+      name: enriched.name,
+      quantity: enriched.quantity,
+      reorderLevel: enriched.reorderLevel,
+    });
+  }
   res.status(201).json(enriched);
 });
 
@@ -105,7 +113,7 @@ router.patch("/inventory/:id", authenticate, async (req: AuthRequest, res): Prom
   await logActivity({ userId: req.user?.id, action: "UPDATE", module: "inventory", description: `Updated inventory item ${item.name}`, oldData: await enrichItem(old), newData: enriched });
 
   if (enriched.isLowStock) {
-    emitLowStockAlert({
+    await notifyLowStockStakeholders({
       id: enriched.id,
       name: enriched.name,
       quantity: enriched.quantity,

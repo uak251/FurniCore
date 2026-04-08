@@ -10,6 +10,7 @@ import { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useLogout, useGetCurrentUser } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
+import { disconnectSocket } from "@/lib/socket";
 import { Hammer, LogOut, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export function SupplierLayout({ children }: SupplierLayoutProps) {
     } catch {
       // ignore
     } finally {
+      disconnectSocket();
       removeAuthToken();
       setLocation("/login");
     }

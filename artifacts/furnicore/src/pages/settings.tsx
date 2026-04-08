@@ -39,8 +39,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useCurrency, CURRENCIES } from "@/lib/currency";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { apiOriginPrefix } from "@/lib/api-base";
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API_BASE = apiOriginPrefix();
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -77,7 +78,8 @@ const MODULE_PERMISSIONS = [
    TAB 1 — GENERAL
    ════════════════════════════════════════════════════════════════════════════════ */
 
-const VALUATION_METHODS = [
+/** Exported for regression tests (General tab inventory valuation options). */
+export const VALUATION_METHODS = [
   { value: "FIFO", label: "FIFO — First In, First Out" },
   { value: "LIFO", label: "LIFO — Last In, First Out" },
   { value: "WAC",  label: "WAC — Weighted Average Cost" },

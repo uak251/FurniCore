@@ -26,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { apiOriginPrefix } from "@/lib/api-base";
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
@@ -38,7 +39,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   }
 }
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API = apiOriginPrefix();
 
 async function resendVerification(email: string) {
   const res = await fetch(`${API}/api/auth/resend-verification`, {

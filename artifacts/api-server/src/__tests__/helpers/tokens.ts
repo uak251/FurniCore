@@ -11,12 +11,14 @@ const ACCESS_SECRET = "furnicore_access_secret_2024";
 export const ALL_ROLES = [
   "admin",
   "manager",
+  "accountant",
   "accounts",
   "employee",
   "supplier",
   "worker",
   "customer",
   "sales_manager",
+  "inventory_manager",
 ] as const;
 
 export type Role = (typeof ALL_ROLES)[number];

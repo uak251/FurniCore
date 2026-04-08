@@ -6,6 +6,7 @@ import { type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useLogout, useGetCurrentUser } from "@workspace/api-client-react";
 import { removeAuthToken } from "@/lib/auth";
+import { disconnectSocket } from "@/lib/socket";
 import { Hammer, LogOut, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
 
   const handleLogout = async () => {
     try { await logout.mutateAsync(); } catch { /* ignore */ }
-    finally { removeAuthToken(); setLocation("/login"); }
+    finally { disconnectSocket(); removeAuthToken(); setLocation("/login"); }
   };
 
   return (

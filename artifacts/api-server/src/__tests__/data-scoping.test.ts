@@ -20,6 +20,14 @@ vi.mock("@workspace/db", async () => {
   return { db: mockDb, ...TABLE_STUBS };
 });
 
+/** Avoid consuming db.select mock chains before route handlers (authenticate blacklist check). */
+vi.mock("../lib/tokenBlacklist", () => ({
+  hashToken: (t: string) => `hash:${t.length}`,
+  isTokenBlacklisted: vi.fn().mockResolvedValue(false),
+  revokeAccessToken: vi.fn().mockResolvedValue(undefined),
+  purgeExpiredBlacklistRows: vi.fn().mockResolvedValue(0),
+}));
+
 vi.mock("pino", () => ({
   default: () => ({
     info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(),

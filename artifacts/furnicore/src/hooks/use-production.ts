@@ -9,7 +9,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAuthToken } from "@/lib/auth";
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+import { apiOriginPrefix } from "@/lib/api-base";
+
+const API = apiOriginPrefix();
 
 // ─── Shared fetch util ────────────────────────────────────────────────────────
 

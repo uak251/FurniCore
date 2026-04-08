@@ -5,6 +5,7 @@
  *
  * UPLOAD:
  *   POST /images/:entityType/:entityId          — single image  (multipart/form-data, field "image")
+ *   POST /images/inventory/:id/bulk              — inventory-only alias for bulk upload (same as below)
  *   POST /images/:entityType/:entityId/bulk     — up to 10 images (field "images")
  *
  * LIST:
@@ -18,11 +19,16 @@
  *   PATCH  /images/:id/sort-order               — update sortOrder (set primary)
  *
  * RBAC:
- *   Upload / delete : admin, manager
+ *   Upload / delete : admin, manager, accountant, sales_manager, inventory_manager
  *   View            : any authenticated user
+ *
+ * Storage: local disk under uploads/<entityType>/ (see middlewares/upload.ts). DB: record_images (Drizzle).
+ *
+ * Mount: `app.use("/api", router)` in app.ts → public paths are prefixed with /api
+ * (e.g. POST /api/images/inventory/:id/bulk).
  */
 
-import { Router, type IRouter, type NextFunction, type Request, type RequestHandler } from "express";
+import { Router, type IRouter, type NextFunction, type Request, type Response, type RequestHandler } from "express";
 import { eq, and, asc } from "drizzle-orm";
 import { unlink } from "fs/promises";
 import { join } from "path";
@@ -37,7 +43,7 @@ const router: IRouter = Router();
 const VALID_ENTITY_TYPES = new Set(["product", "inventory", "employee", "payroll", "supplier"]);
 
 /** Who may upload / delete / reorder images (view is any authenticated user). */
-const IMAGE_EDIT_ROLES = ["admin", "manager", "accountant", "sales_manager"] as const;
+const IMAGE_EDIT_ROLES = ["admin", "manager", "accountant", "sales_manager", "inventory_manager"] as const;
 
 /** Wraps a Multer middleware so that MulterError and fileFilter rejections return 400 JSON instead of 500. */
 function runUpload(mw: RequestHandler): RequestHandler {
@@ -68,6 +74,59 @@ function publicUrl(entityType: string, filename: string): string {
   return `/uploads/${entityType}/${filename}`;
 }
 
+/** Shared handler after Multer — inserts rows into PostgreSQL (`record_images`). */
+async function bulkUploadHandler(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  const { entityType, entityId } = req.params as { entityType: string; entityId: string };
+  const parsedEntityId = parseInt(entityId, 10);
+  if (isNaN(parsedEntityId)) {
+    res.status(400).json({ error: "INVALID_ID", message: "entityId must be a positive integer." });
+    return;
+  }
+  const files = ((req as any).files ?? []) as Express.Multer.File[];
+  if (!files.length) {
+    res.status(400).json({ error: "NO_FILES", message: "No image files received." });
+    return;
+  }
+
+  try {
+    const inserted = await db.insert(recordImagesTable).values(
+      files.map((f, idx) => ({
+        entityType,
+        entityId: parsedEntityId,
+        filename:     f.filename,
+        originalName: f.originalname,
+        mimeType:     f.mimetype,
+        sizeBytes:    f.size,
+        url:          publicUrl(entityType, f.filename),
+        sortOrder:    idx,
+        uploadedBy:   req.user?.id,
+      })),
+    ).returning();
+    await logActivity({
+      userId: req.user?.id,
+      action: "CREATE",
+      module: "images",
+      description: `Bulk-uploaded ${inserted.length} images for ${entityType} #${parsedEntityId}`,
+    });
+    res.status(201).json(inserted);
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Maps `POST /images/inventory/:id/bulk` → `entityType` + `entityId` expected by Multer `destination`
+ * and by `bulkUploadHandler`. Runs **before** `runUpload(uploadMulti)` so `req.params.entityType`
+ * is `"inventory"` when Multer writes to `uploads/inventory/`. `:id` is the inventory row PK (same as
+ * generic route’s `:entityId`).
+ */
+function aliasInventoryBulkParams(req: Request, _res: Response, next: NextFunction): void {
+  const id = (req.params as { id: string }).id;
+  (req.params as Record<string, string | undefined>).entityType = "inventory";
+  (req.params as Record<string, string | undefined>).entityId = id;
+  next();
+}
+
 /* ── GET /images/:entityType/:entityId ────────────────────────────────────── */
 router.get("/images/:entityType/:entityId", authenticate, async (req, res, next: NextFunction): Promise<void> => {
   if (!validateEntityType(req, res)) return;
@@ -91,6 +150,28 @@ router.get("/images/:entityType", authenticate, async (req, res, next: NextFunct
     res.json(rows);
   } catch (err) { next(err); }
 });
+
+/* ── POST bulk (register before single-file POST so paths like …/inventory/25/bulk always match) ─ */
+
+/* ── POST /images/inventory/:id/bulk — inventory bulk (alias; Multer MIME: jpeg/png/gif/webp) ─ */
+router.post(
+  "/images/inventory/:id/bulk",
+  authenticate,
+  requireRole(...IMAGE_EDIT_ROLES),
+  aliasInventoryBulkParams,
+  runUpload(uploadMulti),
+  bulkUploadHandler,
+);
+
+/* ── POST /images/:entityType/:entityId/bulk — multi-upload (all entity types) ─ */
+router.post(
+  "/images/:entityType/:entityId/bulk",
+  authenticate,
+  requireRole(...IMAGE_EDIT_ROLES),
+  (req, res, next) => { if (!validateEntityType(req, res)) return; next(); },
+  runUpload(uploadMulti),
+  bulkUploadHandler,
+);
 
 /* ── POST /images/:entityType/:entityId — single upload ──────────────────── */
 router.post(
@@ -120,37 +201,6 @@ router.post(
       }).returning();
       await logActivity({ userId: (req as AuthRequest).user?.id, action: "CREATE", module: "images", description: `Uploaded image for ${entityType} #${entityId}: ${file.originalname}` });
       res.status(201).json(row);
-    } catch (err) { next(err); }
-  }
-);
-
-/* ── POST /images/:entityType/:entityId/bulk — multi-upload ──────────────── */
-router.post(
-  "/images/:entityType/:entityId/bulk",
-  authenticate,
-  requireRole(...IMAGE_EDIT_ROLES),
-  (req, res, next) => { if (!validateEntityType(req, res)) return; next(); },
-  runUpload(uploadMulti),
-  async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
-    const { entityType, entityId } = req.params as any;
-    const files = ((req as any).files ?? []) as Express.Multer.File[];
-    if (!files.length) { res.status(400).json({ error: "NO_FILES" }); return; }
-
-    try {
-      const inserted = await db.insert(recordImagesTable).values(
-        files.map((f, idx) => ({
-          entityType, entityId: parseInt(entityId, 10),
-          filename:     f.filename,
-          originalName: f.originalname,
-          mimeType:     f.mimetype,
-          sizeBytes:    f.size,
-          url:          publicUrl(entityType, f.filename),
-          sortOrder:    idx,
-          uploadedBy:   req.user?.id,
-        }))
-      ).returning();
-      await logActivity({ userId: req.user?.id, action: "CREATE", module: "images", description: `Bulk-uploaded ${inserted.length} images for ${entityType} #${entityId}` });
-      res.status(201).json(inserted);
     } catch (err) { next(err); }
   }
 );

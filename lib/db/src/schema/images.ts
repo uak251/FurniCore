@@ -7,6 +7,9 @@ import { pgTable, serial, varchar, integer, text, timestamp } from "drizzle-orm/
  *
  * url  : publicly-accessible path, e.g. /uploads/products/uuid.jpg
  * sortOrder : 0 = primary / cover image
+ *
+ * (Prisma equivalent: model RecordImage { id Int @id @default(autoincrement()) … })
+ * This project uses Drizzle; uploads are inserted from Express + Multer routes.
  */
 export const recordImagesTable = pgTable("record_images", {
   id:           serial("id").primaryKey(),

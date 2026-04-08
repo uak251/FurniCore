@@ -15,10 +15,11 @@ import { Hammer, Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { apiOriginPrefix } from "@/lib/api-base";
 
 /* ─── API helpers ─────────────────────────────────────────────────────────── */
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+const API = apiOriginPrefix();
 
 async function verifyEmail(token: string): Promise<{ message: string }> {
   const res = await fetch(`${API}/api/auth/verify-email?token=${encodeURIComponent(token)}`);

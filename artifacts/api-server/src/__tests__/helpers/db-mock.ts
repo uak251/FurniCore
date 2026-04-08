@@ -81,4 +81,7 @@ export const TABLE_STUBS = {
   qcRemarksTable:           {},
   productionTable:          {},
   hrTable:                  {},
+  recordImagesTable:        {},
+  appSettingsTable:         {},
+  tokenBlacklistTable:      {},
 } as const;

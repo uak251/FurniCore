@@ -1,13 +1,17 @@
 /**
  * Unit tests for the authenticate and requireRole middlewares.
  *
- * These tests are pure — no Express app, no DB, no HTTP.
- * We create mock Request/Response/NextFunction objects and call
- * the middleware functions directly.
+ * We mock the token blacklist so no DB is required.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Response, NextFunction } from "express";
+
+vi.mock("../lib/tokenBlacklist", () => ({
+  hashToken: (t: string) => `hash:${t.slice(-8)}`,
+  isTokenBlacklisted: vi.fn().mockResolvedValue(false),
+}));
+
 import { authenticate, requireRole, type AuthRequest } from "../middlewares/authenticate";
 import { makeToken, tokens } from "./helpers/tokens";
 
@@ -16,6 +20,9 @@ import { makeToken, tokens } from "./helpers/tokens";
 function mockReq(authHeader?: string): AuthRequest {
   return {
     headers: authHeader ? { authorization: authHeader } : {},
+    path: "/test",
+    method: "GET",
+    socket: { remoteAddress: "127.0.0.1" },
   } as unknown as AuthRequest;
 }
 
@@ -40,46 +47,58 @@ beforeEach(() => {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 describe("authenticate middleware", () => {
-  it("returns 401 when Authorization header is missing", () => {
+  it("returns 401 NO_TOKEN when Authorization header is missing", async () => {
     const req = mockReq();
     const res = mockRes();
-    authenticate(req, res, next);
+    await authenticate(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "NO_TOKEN" }),
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when header does not start with 'Bearer '", () => {
+  it("returns 401 NO_TOKEN when header does not start with 'Bearer '", async () => {
     const req = mockReq("Basic abc123");
     const res = mockRes();
-    authenticate(req, res, next);
+    await authenticate(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "NO_TOKEN" }),
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 for a malformed JWT token", () => {
+  it("returns 401 INVALID_TOKEN for a malformed JWT token", async () => {
     const req = mockReq("Bearer this.is.not.a.valid.jwt");
     const res = mockRes();
-    authenticate(req, res, next);
+    await authenticate(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "INVALID_TOKEN" }),
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it("returns 401 for a JWT signed with the wrong secret", () => {
+  it("returns 401 INVALID_TOKEN for a JWT signed with the wrong secret", async () => {
     const badToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ4QHguY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjk5OTk5OTk5OTl9.badSignature";
     const req = mockReq(`Bearer ${badToken}`);
     const res = mockRes();
-    authenticate(req, res, next);
+    await authenticate(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "INVALID_TOKEN" }),
+    );
     expect(next).not.toHaveBeenCalled();
   });
 
   it.each(["admin", "manager", "worker", "supplier", "customer"] as const)(
     "accepts a valid %s token and populates req.user",
-    (role) => {
+    async (role) => {
       const token = makeToken(role, 42, `${role}@example.com`);
       const req   = mockReq(`Bearer ${token}`);
       const res   = mockRes();
-      authenticate(req, res, next);
+      await authenticate(req, res, next);
       expect(next).toHaveBeenCalled();
       expect(req.user).toMatchObject({ id: 42, email: `${role}@example.com`, role });
     },
