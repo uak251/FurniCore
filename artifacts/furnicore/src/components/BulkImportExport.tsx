@@ -255,6 +255,10 @@ export function BulkImportExport({
         return;
       }
       const json = normalizeImportResult(parsed);
+      // Clear the preview table so it doesn't render alongside the result panel
+      setCsvText(null);
+      setPreview(null);
+      setFileName("");
       setResult(json);
       if ((json.imported ?? 0) > 0 || (json.updated ?? 0) > 0) {
         onImported?.();

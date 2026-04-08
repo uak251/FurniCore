@@ -19,10 +19,12 @@ interface ImageUploadProps {
   entityId: number;
   maxFiles?: number;
   onUploaded?: () => void;
+  /** Render a smaller inline upload button instead of the full drag-and-drop zone. */
+  compact?: boolean;
   className?: string;
 }
 
-export function ImageUpload({ entityType, entityId, maxFiles = 1, onUploaded, className }: ImageUploadProps) {
+export function ImageUpload({ entityType, entityId, maxFiles = 1, onUploaded, compact, className }: ImageUploadProps) {
   const inputRef   = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -49,6 +51,33 @@ export function ImageUpload({ entityType, entityId, maxFiles = 1, onUploaded, cl
     setDragging(false);
     handleFiles(e.dataTransfer.files);
   }, [handleFiles]);
+
+  if (compact) {
+    return (
+      <>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple={maxFiles > 1}
+          className="sr-only"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isPending}
+          className={cn("w-full", className)}
+          onClick={() => !isPending && inputRef.current?.click()}
+        >
+          {isPending
+            ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Uploading…</>
+            : <><Upload className="mr-1.5 h-3.5 w-3.5" />Upload image</>}
+        </Button>
+      </>
+    );
+  }
 
   return (
     <div

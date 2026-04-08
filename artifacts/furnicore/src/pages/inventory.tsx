@@ -7,8 +7,9 @@ import {
   useDeleteInventoryItem,
   useGetCurrentUser,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuthToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Plus, Package, Pencil, Trash2, Upload, Images } from "lucide-react";
+import { AlertTriangle, Plus, Package, Pencil, Trash2, Upload, Images, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
@@ -59,6 +60,19 @@ export default function InventoryPage() {
   const [editItem, setEditItem] = useState<any>(null);
 
   const { data: allImages = [] } = useModuleImages("inventory");
+
+  const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+  const { data: valuation } = useQuery({
+    queryKey: ["inventory-valuation"],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/inventory/valuation`, {
+        headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+      });
+      if (!res.ok) return null;
+      return res.json() as Promise<{ method: string; totalValue: number; rows: any[] }>;
+    },
+    staleTime: 60_000,
+  });
 
   const { data: inventory, isLoading } = useListInventory();
   const { data: lowStock } = useGetLowStockItems();
@@ -217,6 +231,23 @@ export default function InventoryPage() {
             <span className="break-words">{lowStock.map((i: any) => i.name).join(", ")}</span>
           </p>
         </div>
+      )}
+
+      {valuation && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
+              <CardTitle className="text-sm font-semibold">
+                Total Inventory Value:{" "}
+                <span className="text-primary">{formatCurrency(valuation.totalValue)}</span>
+              </CardTitle>
+              <span className="ml-auto text-xs text-muted-foreground font-normal">
+                Method: <span className="font-semibold">{valuation.method}</span>
+              </span>
+            </div>
+          </CardHeader>
+        </Card>
       )}
 
       <TableToolbar
@@ -450,14 +481,18 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Module Gallery */}
+      {/* Module Gallery — filtered to raw_material items only */}
       <Dialog open={showGallery} onOpenChange={setShowGallery}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Raw Materials Gallery</DialogTitle></DialogHeader>
           <ModuleGallery
             entityType="inventory"
-            images={allImages}
+            images={allImages.filter((img: any) =>
+              (inventory ?? []).find((i: any) => i.id === img.entityId && i.type === "raw_material")
+            )}
             canDelete={canManageImages}
+            canUpload={canManageImages}
+            entityIds={(inventory ?? []).filter((i: any) => i.type === "raw_material").map((i: any) => i.id)}
             entityLabels={Object.fromEntries((inventory ?? []).map((i: any) => [i.id, i.name]))}
           />
         </DialogContent>

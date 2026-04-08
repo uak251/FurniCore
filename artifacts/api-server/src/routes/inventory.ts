@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { eq, lte, ilike } from "drizzle-orm";
-import { db, inventoryTable, suppliersTable } from "@workspace/db";
+import { db, inventoryTable, suppliersTable, appSettingsTable } from "@workspace/db";
 import { CreateInventoryItemBody, UpdateInventoryItemBody, GetInventoryItemParams, UpdateInventoryItemParams, DeleteInventoryItemParams, ListInventoryQueryParams } from "@workspace/api-zod";
 import { authenticate, AuthRequest } from "../middlewares/authenticate";
 import { logActivity } from "../lib/activityLogger";
+import { emitLowStockAlert } from "../lib/socket";
 
 const router: IRouter = Router();
 
@@ -38,6 +39,32 @@ router.get("/inventory/low-stock", authenticate, async (_req, res): Promise<void
   const items = await db.select().from(inventoryTable);
   const enriched = await Promise.all(items.map(enrichItem));
   res.json(enriched.filter(i => i.isLowStock));
+});
+
+router.get("/inventory/valuation", authenticate, async (_req, res): Promise<void> => {
+  const [setting] = await db
+    .select()
+    .from(appSettingsTable)
+    .where(eq(appSettingsTable.key, "INVENTORY_VALUATION_METHOD"));
+  const method = setting?.value ?? "WAC";
+
+  const items = await db.select().from(inventoryTable);
+  const rows = items.map((i) => {
+    const quantity = Number(i.quantity);
+    const unitCost = Number(i.unitCost);
+    return {
+      id:         i.id,
+      name:       i.name,
+      type:       i.type,
+      unit:       i.unit,
+      quantity,
+      unitCost,
+      value:      quantity * unitCost,
+    };
+  });
+
+  const totalValue = rows.reduce((sum, r) => sum + r.value, 0);
+  res.json({ method, rows, totalValue });
 });
 
 router.post("/inventory", authenticate, async (req: AuthRequest, res): Promise<void> => {
@@ -76,6 +103,16 @@ router.patch("/inventory/:id", authenticate, async (req: AuthRequest, res): Prom
   if (!item) { res.status(404).json({ error: "Item not found" }); return; }
   const enriched = await enrichItem(item);
   await logActivity({ userId: req.user?.id, action: "UPDATE", module: "inventory", description: `Updated inventory item ${item.name}`, oldData: await enrichItem(old), newData: enriched });
+
+  if (enriched.isLowStock) {
+    emitLowStockAlert({
+      id: enriched.id,
+      name: enriched.name,
+      quantity: enriched.quantity,
+      reorderLevel: enriched.reorderLevel,
+    });
+  }
+
   res.json(enriched);
 });
 

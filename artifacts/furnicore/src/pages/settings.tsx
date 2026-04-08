@@ -77,9 +77,40 @@ const MODULE_PERMISSIONS = [
    TAB 1 — GENERAL
    ════════════════════════════════════════════════════════════════════════════════ */
 
+const VALUATION_METHODS = [
+  { value: "FIFO", label: "FIFO — First In, First Out" },
+  { value: "LIFO", label: "LIFO — Last In, First Out" },
+  { value: "WAC",  label: "WAC — Weighted Average Cost" },
+] as const;
+
 function GeneralTab() {
   const { currency, setCurrency } = useCurrency();
   const { toast } = useToast();
+  const [valuationMethod, setValuationMethod] = useState<string>("WAC");
+  const [valuationLoading, setValuationLoading] = useState(false);
+
+  // Load current valuation method from API
+  useEffect(() => {
+    apiFetch<{ value: string | null }>("/api/settings/INVENTORY_VALUATION_METHOD")
+      .then((s) => { if (s.value) setValuationMethod(s.value); })
+      .catch(() => { /* silently fall back to WAC */ });
+  }, []);
+
+  const saveValuationMethod = async (method: string) => {
+    setValuationLoading(true);
+    try {
+      await apiFetch("/api/settings/INVENTORY_VALUATION_METHOD", {
+        method: "PUT",
+        body: JSON.stringify({ value: method }),
+      });
+      setValuationMethod(method);
+      toast({ title: "Valuation method saved", description: `Inventory will now use ${VALUATION_METHODS.find((m) => m.value === method)?.label ?? method}.` });
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Failed to save", description: err?.message ?? "Unknown error" });
+    } finally {
+      setValuationLoading(false);
+    }
+  };
 
   const handleCurrencyChange = (code: string) => {
     setCurrency(code);
@@ -161,6 +192,46 @@ function GeneralTab() {
                 {currency.code === c.code && <CheckCircle2 className="ml-auto h-4 w-4 text-primary" />}
               </button>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Inventory Valuation Method */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-base">Inventory Valuation Method</CardTitle>
+          </div>
+          <CardDescription>
+            Controls how inventory value is calculated in valuation reports. Full FIFO / LIFO accuracy requires purchase-lot tracking.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="space-y-1.5 min-w-64">
+              <Label htmlFor="valuation-method-select">Method</Label>
+              <Select
+                value={valuationMethod}
+                onValueChange={saveValuationMethod}
+                disabled={valuationLoading}
+              >
+                <SelectTrigger id="valuation-method-select" className="w-72">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {VALUATION_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {valuationLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+          <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+            <p><strong>FIFO</strong> — oldest stock consumed first. Inventory value reflects most recent purchase prices.</p>
+            <p><strong>LIFO</strong> — newest stock consumed first. COGS reflects current market prices. Not permitted under IFRS.</p>
+            <p><strong>WAC</strong> — running average cost per unit. Smooths out price fluctuations. Recommended for most use cases.</p>
           </div>
         </CardContent>
       </Card>

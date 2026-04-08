@@ -146,12 +146,16 @@ interface ModuleGalleryProps {
   images: RecordImage[];
   isLoading?: boolean;
   canDelete?: boolean;
+  /** Allow uploading images directly from the gallery (renders an upload zone per entity group). */
+  canUpload?: boolean;
   /** Map from entityId → display name/label */
   entityLabels?: Record<number, string>;
+  /** Ordered list of entity IDs to show even when they have no images yet (used when canUpload=true). */
+  entityIds?: number[];
   className?: string;
 }
 
-export function ModuleGallery({ entityType, images, isLoading, canDelete, entityLabels, className }: ModuleGalleryProps) {
+export function ModuleGallery({ entityType, images, isLoading, canDelete, canUpload, entityLabels, entityIds, className }: ModuleGalleryProps) {
   const [lightboxImages, setLightboxImages] = useState<RecordImage[] | null>(null);
   const [lightboxIdx,    setLightboxIdx]    = useState(0);
   const deleteMut = useDeleteImage(entityType);
@@ -161,6 +165,12 @@ export function ModuleGallery({ entityType, images, isLoading, canDelete, entity
     (acc[img.entityId] ??= []).push(img);
     return acc;
   }, {});
+
+  // Merge ids from images + caller-supplied list (so empty items still show upload zone)
+  const allIds = Array.from(new Set([
+    ...(entityIds ?? []),
+    ...Object.keys(groups).map(Number),
+  ]));
 
   const openLightbox = (imgs: RecordImage[], idx: number) => { setLightboxImages(imgs); setLightboxIdx(idx); };
 
@@ -172,7 +182,7 @@ export function ModuleGallery({ entityType, images, isLoading, canDelete, entity
     );
   }
 
-  if (!images.length) {
+  if (!images.length && !canUpload) {
     return (
       <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
         <UploadCloud className="h-10 w-10 opacity-30" />
@@ -183,24 +193,37 @@ export function ModuleGallery({ entityType, images, isLoading, canDelete, entity
 
   return (
     <div className={cn("space-y-6", className)}>
-      {Object.entries(groups).map(([eid, imgs]) => {
-        const label = entityLabels?.[Number(eid)] ?? `#${eid}`;
+      {allIds.map((eid) => {
+        const imgs = groups[eid] ?? [];
+        const label = entityLabels?.[eid] ?? `#${eid}`;
         return (
-          <div key={eid}>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{label}</p>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-              {imgs.map((img, i) => (
-                <ImageThumbnail
-                  key={img.id} image={img} index={i}
-                  onOpen={() => openLightbox(imgs, i)}
-                  canDelete={!!canDelete} onDelete={(id) => deleteMut.mutate(id)}
-                  canReorder={false} onSetPrimary={() => {}}
-                />
-              ))}
-            </div>
+          <div key={eid} className="rounded-lg border bg-card p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</p>
+            {imgs.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+                {imgs.map((img, i) => (
+                  <ImageThumbnail
+                    key={img.id} image={img} index={i}
+                    onOpen={() => openLightbox(imgs, i)}
+                    canDelete={!!canDelete} onDelete={(id) => deleteMut.mutate(id)}
+                    canReorder={false} onSetPrimary={() => {}}
+                  />
+                ))}
+              </div>
+            )}
+            {canUpload && (
+              <ImageUpload entityType={entityType} entityId={eid} maxFiles={10} compact />
+            )}
           </div>
         );
       })}
+
+      {!allIds.length && canUpload && (
+        <div className="flex flex-col items-center gap-3 py-16 text-center text-muted-foreground">
+          <UploadCloud className="h-10 w-10 opacity-30" />
+          <p className="text-sm">No raw materials found. Add inventory items first.</p>
+        </div>
+      )}
 
       {lightboxImages && (
         <ImageModal

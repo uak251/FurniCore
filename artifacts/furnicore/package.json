@@ -83,5 +83,8 @@
     "vitest": "^3.1.1",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.8.3"
   }
 }

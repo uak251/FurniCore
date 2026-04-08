@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useListNotifications, useMarkNotificationRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,6 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, AlertTriangle, Info, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { socket, connectSocket, disconnectSocket } from "@/lib/socket";
+import type { LowStockPayload } from "@/lib/socket";
 
 const TYPE_ICONS: Record<string, typeof Info> = {
   warning: AlertTriangle,
@@ -27,8 +30,30 @@ const MAX_PREVIEW = 8;
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: notifications, isLoading } = useListNotifications();
   const markRead = useMarkNotificationRead();
+
+  // Real-time low-stock alerts via Socket.io
+  useEffect(() => {
+    connectSocket();
+
+    const handleLowStock = (item: LowStockPayload) => {
+      toast({
+        variant: "destructive",
+        title: "Low Stock Alert",
+        description: `${item.name} — only ${item.quantity} ${item.quantity === 1 ? "unit" : "units"} remaining (reorder at ${item.reorderLevel}).`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+    };
+
+    socket.on("low-stock", handleLowStock);
+
+    return () => {
+      socket.off("low-stock", handleLowStock);
+      disconnectSocket();
+    };
+  }, [queryClient, toast]);
 
   const list = notifications ?? [];
   const unreadCount = list.filter((n) => !n.isRead).length;

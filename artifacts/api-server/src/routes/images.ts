@@ -22,10 +22,11 @@
  *   View            : any authenticated user
  */
 
-import { Router, type IRouter, type NextFunction, type Request } from "express";
+import { Router, type IRouter, type NextFunction, type Request, type RequestHandler } from "express";
 import { eq, and, asc } from "drizzle-orm";
 import { unlink } from "fs/promises";
 import { join } from "path";
+import multer from "multer";
 import { db, recordImagesTable } from "@workspace/db";
 import { authenticate, requireRole, AuthRequest } from "../middlewares/authenticate";
 import { uploadSingle, uploadMulti, UPLOADS_ROOT } from "../middlewares/upload";
@@ -37,6 +38,22 @@ const VALID_ENTITY_TYPES = new Set(["product", "inventory", "employee", "payroll
 
 /** Who may upload / delete / reorder images (view is any authenticated user). */
 const IMAGE_EDIT_ROLES = ["admin", "manager", "accountant", "sales_manager"] as const;
+
+/** Wraps a Multer middleware so that MulterError and fileFilter rejections return 400 JSON instead of 500. */
+function runUpload(mw: RequestHandler): RequestHandler {
+  return (req, res, next) => {
+    mw(req, res, (err) => {
+      if (!err) return next();
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: "MULTER_ERROR", code: err.code, message: err.message });
+      }
+      if (err instanceof Error) {
+        return res.status(400).json({ error: "UPLOAD_ERROR", message: err.message });
+      }
+      next(err);
+    });
+  };
+}
 
 function validateEntityType(req: Request, res: any): boolean {
   const { entityType } = req.params as any;
@@ -80,16 +97,8 @@ router.post(
   "/images/:entityType/:entityId",
   authenticate,
   requireRole(...IMAGE_EDIT_ROLES),
-  (req, res, next) => {
-    if (!validateEntityType(req, res)) return;
-    uploadSingle(req, res, (err) => {
-      if (err) {
-        res.status(400).json({ error: "UPLOAD_ERROR", message: (err as Error).message });
-        return;
-      }
-      next();
-    });
-  },
+  (req, res, next) => { if (!validateEntityType(req, res)) return; next(); },
+  runUpload(uploadSingle),
   async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
     const { entityType, entityId } = req.params as any;
     const file = (req as any).file as Express.Multer.File | undefined;
@@ -120,13 +129,8 @@ router.post(
   "/images/:entityType/:entityId/bulk",
   authenticate,
   requireRole(...IMAGE_EDIT_ROLES),
-  (req, res, next) => {
-    if (!validateEntityType(req, res)) return;
-    uploadMulti(req, res, (err) => {
-      if (err) { res.status(400).json({ error: "UPLOAD_ERROR", message: (err as Error).message }); return; }
-      next();
-    });
-  },
+  (req, res, next) => { if (!validateEntityType(req, res)) return; next(); },
+  runUpload(uploadMulti),
   async (req: AuthRequest, res, next: NextFunction): Promise<void> => {
     const { entityType, entityId } = req.params as any;
     const files = ((req as any).files ?? []) as Express.Multer.File[];

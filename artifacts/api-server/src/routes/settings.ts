@@ -38,7 +38,10 @@ const POWERBI_KEYS = [
   "POWERBI_REPORT_SALES_OVERVIEW",
 ] as const;
 
-const ALLOWED_KEYS = new Set<string>(POWERBI_KEYS);
+/** Non-PowerBI setting keys that can also be read/written through this API. */
+const EXTRA_KEYS = ["INVENTORY_VALUATION_METHOD"] as const;
+
+const ALLOWED_KEYS = new Set<string>([...POWERBI_KEYS, ...EXTRA_KEYS]);
 
 function maskValue(key: string, value: string | null | undefined): string {
   if (!value) return "";
@@ -67,6 +70,20 @@ router.get("/settings", authenticate, requireRole("admin"), async (_req, res, ne
     });
 
     res.json({ settings: result });
+  } catch (err) { next(err); }
+});
+
+/* ── GET /settings/:key — read a single setting ─────────────────────────────── */
+router.get("/settings/:key", authenticate, requireRole("admin"), async (req, res, next: NextFunction): Promise<void> => {
+  const key = req.params.key as string;
+  if (!ALLOWED_KEYS.has(key)) {
+    res.status(400).json({ error: "UNKNOWN_KEY", message: `Unknown setting key: ${key}` });
+    return;
+  }
+  try {
+    const [row] = await db.select().from(appSettingsTable).where(eq(appSettingsTable.key, key));
+    const value = row?.value ?? process.env[key] ?? null;
+    res.json({ key, value });
   } catch (err) { next(err); }
 });
 

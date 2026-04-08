@@ -147,17 +147,18 @@ router.post(
         }
 
         const d = parsed.data;
-        /* Upsert by name */
+        /* Upsert by name — quantity is incremental (adds to existing stock) */
         const [existing] = await db
-          .select({ id: inventoryTable.id })
+          .select({ id: inventoryTable.id, quantity: inventoryTable.quantity })
           .from(inventoryTable)
           .where(eq(inventoryTable.name, d.name));
 
         if (existing) {
+          const accumulated = Number(existing.quantity) + d.quantity;
           await db.update(inventoryTable).set({
             type: d.type,
             unit: d.unit,
-            quantity: String(d.quantity),
+            quantity: String(accumulated),
             reorderLevel: String(d.reorderlevel),
             unitCost: String(d.unitcost),
           }).where(eq(inventoryTable.id, existing.id));
