@@ -56,9 +56,11 @@ import type {
   ManufacturingTask,
   MessageResponse,
   Notification,
+  PatchProfileBody,
   PatchThemeBody,
   PayrollRecord,
   PendingApprovals,
+  PostCurrentUserAvatarBody,
   Product,
   ProductCosting,
   PutDashboardThemeDefaultsBody,
@@ -572,6 +574,262 @@ export function useGetCurrentUser<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update current user profile
+ */
+export const getPatchCurrentUserProfileUrl = () => {
+  return `/api/auth/me`;
+};
+
+export const patchCurrentUserProfile = async (
+  patchProfileBody: PatchProfileBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getPatchCurrentUserProfileUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchProfileBody),
+  });
+};
+
+export const getPatchCurrentUserProfileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCurrentUserProfile>>,
+    TError,
+    { data: BodyType<PatchProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchCurrentUserProfile>>,
+  TError,
+  { data: BodyType<PatchProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["patchCurrentUserProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchCurrentUserProfile>>,
+    { data: BodyType<PatchProfileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchCurrentUserProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchCurrentUserProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchCurrentUserProfile>>
+>;
+export type PatchCurrentUserProfileMutationBody = BodyType<PatchProfileBody>;
+export type PatchCurrentUserProfileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update current user profile
+ */
+export const usePatchCurrentUserProfile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCurrentUserProfile>>,
+    TError,
+    { data: BodyType<PatchProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchCurrentUserProfile>>,
+  TError,
+  { data: BodyType<PatchProfileBody> },
+  TContext
+> => {
+  return useMutation(getPatchCurrentUserProfileMutationOptions(options));
+};
+
+/**
+ * @summary Upload profile avatar (multipart file)
+ */
+export const getPostCurrentUserAvatarUrl = () => {
+  return `/api/auth/me/avatar`;
+};
+
+export const postCurrentUserAvatar = async (
+  postCurrentUserAvatarBody: PostCurrentUserAvatarBody,
+  options?: RequestInit,
+): Promise<User> => {
+  const formData = new FormData();
+  formData.append(`image`, postCurrentUserAvatarBody.image);
+
+  return customFetch<User>(getPostCurrentUserAvatarUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getPostCurrentUserAvatarMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCurrentUserAvatar>>,
+    TError,
+    { data: BodyType<PostCurrentUserAvatarBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postCurrentUserAvatar>>,
+  TError,
+  { data: BodyType<PostCurrentUserAvatarBody> },
+  TContext
+> => {
+  const mutationKey = ["postCurrentUserAvatar"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postCurrentUserAvatar>>,
+    { data: BodyType<PostCurrentUserAvatarBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postCurrentUserAvatar(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostCurrentUserAvatarMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postCurrentUserAvatar>>
+>;
+export type PostCurrentUserAvatarMutationBody =
+  BodyType<PostCurrentUserAvatarBody>;
+export type PostCurrentUserAvatarMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload profile avatar (multipart file)
+ */
+export const usePostCurrentUserAvatar = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCurrentUserAvatar>>,
+    TError,
+    { data: BodyType<PostCurrentUserAvatarBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postCurrentUserAvatar>>,
+  TError,
+  { data: BodyType<PostCurrentUserAvatarBody> },
+  TContext
+> => {
+  return useMutation(getPostCurrentUserAvatarMutationOptions(options));
+};
+
+/**
+ * @summary Remove profile avatar
+ */
+export const getDeleteCurrentUserAvatarUrl = () => {
+  return `/api/auth/me/avatar`;
+};
+
+export const deleteCurrentUserAvatar = async (
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getDeleteCurrentUserAvatarUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCurrentUserAvatarMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCurrentUserAvatar>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCurrentUserAvatar>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deleteCurrentUserAvatar"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCurrentUserAvatar>>,
+    void
+  > = () => {
+    return deleteCurrentUserAvatar(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCurrentUserAvatarMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCurrentUserAvatar>>
+>;
+
+export type DeleteCurrentUserAvatarMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove profile avatar
+ */
+export const useDeleteCurrentUserAvatar = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCurrentUserAvatar>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCurrentUserAvatar>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeleteCurrentUserAvatarMutationOptions(options));
+};
 
 /**
  * @summary Set personal dashboard theme

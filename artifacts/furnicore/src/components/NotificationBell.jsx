@@ -41,8 +41,17 @@ export function NotificationBell() {
             queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
         };
         socket.on("low-stock", handleLowStock);
+        const handleNewCustomerOrder = (payload) => {
+            toast({
+                title: "New customer order",
+                description: `${payload.orderNumber} — ${payload.customerName}`,
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+        };
+        socket.on("new-customer-order", handleNewCustomerOrder);
         return () => {
             socket.off("low-stock", handleLowStock);
+            socket.off("new-customer-order", handleNewCustomerOrder);
         };
     }, [queryClient, toast]);
     const list = notifications ?? [];

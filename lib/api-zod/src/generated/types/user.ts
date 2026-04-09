@@ -18,6 +18,16 @@ export interface User {
    * @nullable
    */
   dashboardTheme?: string | null;
+  /**
+   * Mobile or phone number (optional)
+   * @nullable
+   */
+  phone?: string | null;
+  /**
+   * Avatar image URL (HTTPS recommended)
+   * @nullable
+   */
+  profileImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

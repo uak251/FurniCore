@@ -16,6 +16,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, usersTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
+import { notifySalesStakeholdersOfCustomerOrder } from "../lib/salesOrderNotifications";
 const router = Router();
 const customerOnly = [authenticate, requireRole("customer")];
 /* ─── helpers ───────────────────────────────────────────────────────────── */
@@ -252,6 +253,7 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
         status: "confirmed",
         visibleToCustomer: true,
     });
+    void notifySalesStakeholdersOfCustomerOrder(order);
     res.status(201).json(await enrichOrderForCustomer(order));
 });
 /* ═════════════════════════════════════════════════════════════════════════ */

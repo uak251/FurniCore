@@ -157,6 +157,71 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/User"
+    patch:
+      operationId: patchCurrentUserProfile
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchProfileBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me/avatar:
+    post:
+      operationId: postCurrentUserAvatar
+      tags: [auth]
+      summary: Upload profile avatar (multipart file)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        "200":
+          description: Updated user with new profile image URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: No file or invalid image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCurrentUserAvatar
+      tags: [auth]
+      summary: Remove profile avatar
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
 
   /auth/me/theme:
     patch:
@@ -1456,6 +1521,12 @@ components:
         dashboardTheme:
           type: ["string", "null"]
           description: Selected theme id; null means use portal default
+        phone:
+          type: ["string", "null"]
+          description: Mobile or phone number (optional)
+        profileImageUrl:
+          type: ["string", "null"]
+          description: Avatar image URL (HTTPS recommended)
         createdAt:
           type: string
         updatedAt:
@@ -1477,6 +1548,21 @@ components:
           description: Theme id from catalog, or null to use portal default
       required:
         - themeId
+
+    PatchProfileBody:
+      type: object
+      description: Partial update — omit fields you do not want to change
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 255
+        phone:
+          type: ["string", "null"]
+          maxLength: 40
+        profileImageUrl:
+          type: ["string", "null"]
+          maxLength: 2048
 
     DashboardThemeInfo:
       type: object

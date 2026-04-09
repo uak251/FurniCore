@@ -50,3 +50,14 @@ export function emitLowStockAlert(item) {
         .to("role:inventory_manager")
         .emit("low-stock", item);
 }
+/** Notify owner (admin), sales, production manager (manager), and accountant of a new portal order. */
+export function emitNewCustomerOrder(payload) {
+    if (!io)
+        return;
+    io
+        .to("role:admin")
+        .to("role:manager")
+        .to("role:sales_manager")
+        .to("role:accountant")
+        .emit("new-customer-order", payload);
+}

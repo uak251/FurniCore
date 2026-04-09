@@ -42,3 +42,22 @@ function fileFilter(_req, file, cb) {
 }
 export const uploadSingle = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES } }).single("image");
 export const uploadMulti = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES, files: 10 } }).array("images", 10);
+/** Profile avatars: fixed folder `uploads/profile/`, filename includes user id (after authenticate). Max 2 MB. */
+const profileStorage = multer.diskStorage({
+    destination(_req, _file, cb) {
+        const dir = join(UPLOADS_ROOT, "profile");
+        mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename(req, file, cb) {
+        const ext = extname(file.originalname).toLowerCase() || ".jpg";
+        const uid = req.user?.id ?? "0";
+        cb(null, `user-${uid}-${uuidv4()}${ext}`);
+    },
+});
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+export const uploadProfileAvatar = multer({
+    storage: profileStorage,
+    fileFilter,
+    limits: { fileSize: AVATAR_MAX_BYTES },
+}).single("image");

@@ -49,6 +49,11 @@ export const LoginResponse = zod.object({
       .string()
       .nullish()
       .describe("Selected theme id; null means use portal default"),
+    phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+    profileImageUrl: zod
+      .string()
+      .nullish()
+      .describe("Avatar image URL (HTTPS recommended)"),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   }),
@@ -75,6 +80,11 @@ export const RefreshTokenResponse = zod.object({
       .string()
       .nullish()
       .describe("Selected theme id; null means use portal default"),
+    phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+    profileImageUrl: zod
+      .string()
+      .nullish()
+      .describe("Avatar image URL (HTTPS recommended)"),
     createdAt: zod.string(),
     updatedAt: zod.string(),
   }),
@@ -101,6 +111,106 @@ export const GetCurrentUserResponse = zod.object({
     .string()
     .nullish()
     .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update current user profile
+ */
+export const patchCurrentUserProfileBodyNameMin = 2;
+export const patchCurrentUserProfileBodyNameMax = 255;
+
+export const patchCurrentUserProfileBodyPhoneMax = 40;
+
+export const patchCurrentUserProfileBodyProfileImageUrlMax = 2048;
+
+export const PatchCurrentUserProfileBody = zod
+  .object({
+    name: zod
+      .string()
+      .min(patchCurrentUserProfileBodyNameMin)
+      .max(patchCurrentUserProfileBodyNameMax)
+      .optional(),
+    phone: zod.string().max(patchCurrentUserProfileBodyPhoneMax).nullish(),
+    profileImageUrl: zod
+      .string()
+      .max(patchCurrentUserProfileBodyProfileImageUrlMax)
+      .nullish(),
+  })
+  .describe("Partial update — omit fields you do not want to change");
+
+export const PatchCurrentUserProfileResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Upload profile avatar (multipart file)
+ */
+export const PostCurrentUserAvatarBody = zod.object({
+  image: zod.instanceof(File),
+});
+
+export const PostCurrentUserAvatarResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Remove profile avatar
+ */
+export const DeleteCurrentUserAvatarResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  isActive: zod.boolean(),
+  isVerified: zod.boolean().optional(),
+  dashboardTheme: zod
+    .string()
+    .nullish()
+    .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -126,6 +236,11 @@ export const PatchCurrentUserThemeResponse = zod.object({
     .string()
     .nullish()
     .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -182,6 +297,11 @@ export const ListUsersResponseItem = zod.object({
     .string()
     .nullish()
     .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -215,6 +335,11 @@ export const GetUserResponse = zod.object({
     .string()
     .nullish()
     .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -244,6 +369,11 @@ export const UpdateUserResponse = zod.object({
     .string()
     .nullish()
     .describe("Selected theme id; null means use portal default"),
+  phone: zod.string().nullish().describe("Mobile or phone number (optional)"),
+  profileImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Avatar image URL (HTTPS recommended)"),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });

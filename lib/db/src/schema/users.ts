@@ -24,6 +24,10 @@ export const usersTable = pgTable("users", {
   permissions: text("permissions"),
   /** Dashboard UI theme id (e.g. indigo-clinical); null = use portal default from app_settings */
   dashboardTheme: varchar("dashboard_theme", { length: 64 }),
+  /** E.164 or local display; optional */
+  phone: varchar("phone", { length: 40 }),
+  /** User-provided avatar URL (e.g. HTTPS image) */
+  profileImageUrl: text("profile_image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

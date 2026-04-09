@@ -46,6 +46,16 @@ export interface User {
    * @nullable
    */
   dashboardTheme?: string | null;
+  /**
+   * Mobile or phone number (optional)
+   * @nullable
+   */
+  phone?: string | null;
+  /**
+   * Avatar image URL (HTTPS recommended)
+   * @nullable
+   */
+  profileImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,6 +72,27 @@ export interface PatchThemeBody {
    * @nullable
    */
   themeId: string | null;
+}
+
+/**
+ * Partial update — omit fields you do not want to change
+ */
+export interface PatchProfileBody {
+  /**
+   * @minLength 2
+   * @maxLength 255
+   */
+  name?: string;
+  /**
+   * @maxLength 40
+   * @nullable
+   */
+  phone?: string | null;
+  /**
+   * @maxLength 2048
+   * @nullable
+   */
+  profileImageUrl?: string | null;
 }
 
 export interface DashboardThemeInfo {
@@ -511,6 +542,10 @@ export interface ManufacturingOverview {
   averageProgress: number;
   tasksByStatus: ManufacturingOverviewTasksByStatusItem[];
 }
+
+export type PostCurrentUserAvatarBody = {
+  image: Blob;
+};
 
 export type GetDashboardThemeCatalog200 = {
   themes?: DashboardThemeInfo[];

@@ -1,4 +1,7 @@
 import { Router } from "express";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import multer from "multer";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
@@ -11,7 +14,33 @@ import { logger } from "../lib/logger";
 import { logActivity } from "../lib/activityLogger";
 import { sendVerificationEmail, emailEnabled } from "../lib/email";
 import { THEME_IDS } from "../lib/themeCatalog";
+import { uploadProfileAvatar } from "../middlewares/upload.js";
+import { UPLOADS_ROOT } from "../uploadsRoot.js";
 const router = Router();
+/** Multer wrapper — returns 400 JSON on filter/size errors. */
+function runUpload(mw) {
+    return (req, res, next) => {
+        mw(req, res, (err) => {
+            if (!err)
+                return next();
+            if (err instanceof multer.MulterError) {
+                res.status(400).json({ error: "MULTER_ERROR", message: err.message });
+                return;
+            }
+            if (err instanceof Error) {
+                res.status(400).json({ error: "UPLOAD_ERROR", message: err.message });
+                return;
+            }
+            next(err);
+        });
+    };
+}
+/** Safe unlink only for files stored under `uploads/profile/`. */
+function diskPathFromProfilePublicUrl(publicPath) {
+    if (!publicPath?.startsWith("/uploads/profile/"))
+        return null;
+    return join(UPLOADS_ROOT, publicPath.replace(/^\/uploads\//, ""));
+}
 /** Public: current session duration preset and access-token TTL (for clients / UI). */
 router.get("/auth/session-policy", (_req, res) => {
     res.json({
@@ -37,6 +66,8 @@ function sanitize(user) {
         isActive: user.isActive,
         isVerified: user.isVerified,
         dashboardTheme: user.dashboardTheme ?? null,
+        phone: user.phone ?? null,
+        profileImageUrl: user.profileImageUrl ?? null,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
     };
@@ -358,6 +389,155 @@ router.get("/auth/me", authenticate, async (req, res) => {
         return;
     }
     res.json(sanitize(user));
+});
+router.post("/auth/me/avatar", authenticate, runUpload(uploadProfileAvatar), async (req, res, next) => {
+    if (!req.file) {
+        res.status(400).json({ error: "NO_FILE", message: 'Expected multipart field "image" (JPEG, PNG, WebP, or GIF, max 2 MB).' });
+        return;
+    }
+    try {
+        const [existing] = await db
+            .select({ profileImageUrl: usersTable.profileImageUrl })
+            .from(usersTable)
+            .where(eq(usersTable.id, req.user.id));
+        const oldDisk = existing?.profileImageUrl
+            ? diskPathFromProfilePublicUrl(existing.profileImageUrl)
+            : null;
+        const publicUrl = `/uploads/profile/${req.file.filename}`;
+        const [user] = await db
+            .update(usersTable)
+            .set({ profileImageUrl: publicUrl })
+            .where(eq(usersTable.id, req.user.id))
+            .returning();
+        if (!user) {
+            await unlink(req.file.path).catch(() => { });
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        if (oldDisk) {
+            await unlink(oldDisk).catch(() => { });
+        }
+        await logActivity({
+            userId: req.user.id,
+            action: "UPDATE",
+            module: "profile",
+            description: "Uploaded profile avatar",
+        });
+        res.json(sanitize(user));
+    }
+    catch (err) {
+        if (req.file?.path) {
+            await unlink(req.file.path).catch(() => { });
+        }
+        next(err);
+    }
+});
+router.delete("/auth/me/avatar", authenticate, async (req, res, next) => {
+    try {
+        const [existing] = await db.select().from(usersTable).where(eq(usersTable.id, req.user.id));
+        if (!existing) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        const oldDisk = existing.profileImageUrl
+            ? diskPathFromProfilePublicUrl(existing.profileImageUrl)
+            : null;
+        const [user] = await db
+            .update(usersTable)
+            .set({ profileImageUrl: null })
+            .where(eq(usersTable.id, req.user.id))
+            .returning();
+        if (!user) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        if (oldDisk) {
+            await unlink(oldDisk).catch(() => { });
+        }
+        await logActivity({
+            userId: req.user.id,
+            action: "UPDATE",
+            module: "profile",
+            description: "Removed profile avatar",
+        });
+        res.json(sanitize(user));
+    }
+    catch (err) {
+        next(err);
+    }
+});
+const PatchProfileBody = z
+    .object({
+    name: z.string().min(2).max(255).optional(),
+    phone: z.union([z.string().max(40), z.null()]).optional(),
+    profileImageUrl: z.union([z.string().max(2048), z.null()]).optional(),
+})
+    .refine((body) => Object.keys(body).length > 0, { message: "At least one field is required" });
+const profileImageUrlSchema = z
+    .union([z.null(), z.literal(""), z.string().trim().url().max(2048)]);
+router.patch("/auth/me", authenticate, async (req, res, next) => {
+    const raw = PatchProfileBody.safeParse(req.body);
+    if (!raw.success) {
+        res.status(400).json({ error: "VALIDATION_ERROR", message: raw.error.message });
+        return;
+    }
+    const body = raw.data;
+    const updates = {};
+    if (body.name !== undefined)
+        updates.name = body.name.trim();
+    if (body.phone !== undefined) {
+        updates.phone = body.phone === null || body.phone === ""
+            ? null
+            : body.phone.trim() || null;
+    }
+    if (body.profileImageUrl !== undefined) {
+        const v = body.profileImageUrl;
+        const [prevRow] = await db
+            .select({ profileImageUrl: usersTable.profileImageUrl })
+            .from(usersTable)
+            .where(eq(usersTable.id, req.user.id));
+        const prevPath = prevRow?.profileImageUrl
+            ? diskPathFromProfilePublicUrl(prevRow.profileImageUrl)
+            : null;
+        if (v === null || v === "") {
+            updates.profileImageUrl = null;
+            if (prevPath) {
+                await unlink(prevPath).catch(() => { });
+            }
+        }
+        else {
+            const urlParsed = profileImageUrlSchema.safeParse(v.trim());
+            if (!urlParsed.success) {
+                res.status(400).json({ error: "VALIDATION_ERROR", message: "profileImageUrl must be a valid URL" });
+                return;
+            }
+            updates.profileImageUrl = urlParsed.data;
+            if (prevPath) {
+                await unlink(prevPath).catch(() => { });
+            }
+        }
+    }
+    try {
+        const [user] = await db
+            .update(usersTable)
+            .set(updates)
+            .where(eq(usersTable.id, req.user.id))
+            .returning();
+        if (!user) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        await logActivity({
+            userId: req.user.id,
+            action: "UPDATE",
+            module: "profile",
+            description: "Updated profile (name / phone / avatar)",
+        });
+        res.json(sanitize(user));
+    }
+    catch (err) {
+        next(err);
+    }
 });
 /* ═══════════════════════════════════════════════════════════════════════════
    PATCH /auth/me/theme  — user picks personal dashboard theme (persisted)
