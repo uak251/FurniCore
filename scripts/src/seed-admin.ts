@@ -9,8 +9,8 @@
  *   ADMIN_EMAIL   — Email address (default: "admin@furnicore.com")
  *   ADMIN_PASS    — Password      (default: "Admin@123456")
  *
- * Idempotent: if the email already exists the script upgrades it to admin
- * and marks it as verified instead of failing.
+ * Idempotent: re-run anytime. If the email already exists, the password is
+ * reset to ADMIN_PASS and the account is forced to admin + verified + active.
  *
  * DATABASE_URL is loaded from ../.env via `tsx --env-file=../.env` before
  * any module code runs (see scripts/package.json seed-admin script).
@@ -26,37 +26,40 @@ const {
   ADMIN_PASS  = "Admin@123456",
 } = process.env;
 
-console.log(`\nFurniCore — Bootstrap Admin User`);
-console.log(`  Email : ${ADMIN_EMAIL}`);
-console.log(`  Name  : ${ADMIN_NAME}\n`);
+const emailNorm = ADMIN_EMAIL.trim().toLowerCase();
 
+console.log(`\nFurniCore — Bootstrap Admin User`);
+console.log(`  Email : ${emailNorm}`);
+console.log(`  Name  : ${ADMIN_NAME}\n`);
 const [existing] = await db
-  .select({ id: usersTable.id, role: usersTable.role, isVerified: usersTable.isVerified })
+  .select({ id: usersTable.id })
   .from(usersTable)
-  .where(eq(usersTable.email, ADMIN_EMAIL));
+  .where(eq(usersTable.email, emailNorm));
+
+const passwordHash = await bcrypt.hash(ADMIN_PASS, 12);
 
 if (existing) {
-  if (existing.role === "admin" && existing.isVerified) {
-    console.log("  Admin account already exists and is verified — nothing to do.");
-  } else {
-    await db
-      .update(usersTable)
-      .set({ role: "admin", isVerified: true, isActive: true })
-      .where(eq(usersTable.id, existing.id));
-    console.log(`  Updated existing account (id=${existing.id}) -> role=admin, isVerified=true`);
-  }
+  await db
+    .update(usersTable)
+    .set({
+      name: ADMIN_NAME,
+      passwordHash,
+      role: "admin",
+      isActive: true,
+      isVerified: true,
+    })
+    .where(eq(usersTable.id, existing.id));
+  console.log(`  Admin user updated (id=${existing.id}) — password reset to ADMIN_PASS, role=admin, verified`);
 } else {
-  const passwordHash = await bcrypt.hash(ADMIN_PASS, 12);
-
   const [created] = await db
     .insert(usersTable)
     .values({
-      name:        ADMIN_NAME,
-      email:       ADMIN_EMAIL,
+      name: ADMIN_NAME,
+      email: emailNorm,
       passwordHash,
-      role:        "admin",
-      isActive:    true,
-      isVerified:  true,
+      role: "admin",
+      isActive: true,
+      isVerified: true,
     })
     .returning({ id: usersTable.id });
 
@@ -64,7 +67,7 @@ if (existing) {
 }
 
 console.log(`\n  You can now log in:`);
-console.log(`    Email    : ${ADMIN_EMAIL}`);
+console.log(`    Email    : ${emailNorm}`);
 console.log(`    Password : ${ADMIN_PASS}`);
 console.log(`\n  Change the password immediately after first login!\n`);
 

@@ -164,7 +164,8 @@ router.post("/auth/login", async (req, res) => {
         return;
     }
     const { email, password } = parsed.data;
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    const emailNorm = email.trim().toLowerCase();
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, emailNorm));
     if (!user || !user.isActive) {
         res.status(401).json({ error: "Invalid credentials" });
         return;
