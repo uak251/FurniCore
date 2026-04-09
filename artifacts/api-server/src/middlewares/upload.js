@@ -15,11 +15,8 @@ import multer from "multer";
 import { mkdirSync } from "fs";
 import { join, extname } from "path";
 import { v4 as uuidv4 } from "uuid";
-import { fileURLToPath } from "url";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, "..");
-/** Root of the on-disk uploads directory (two levels above src/middlewares) */
-export const UPLOADS_ROOT = join(__dirname, "..", "..", "uploads");
+import { UPLOADS_ROOT } from "../uploadsRoot.js";
+export { UPLOADS_ROOT };
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
 const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB
 const storage = multer.diskStorage({

@@ -1,11 +1,9 @@
 /**
- * API origin for raw `fetch` / URLs.
+ * API origin helpers for `fetch`, uploads, and Socket.io.
  *
- * In **development**, always returns `""` so calls use same-origin paths like `/api/...`
- * and hit the Vite dev proxy (see `vite.config.ts` → `server.proxy`). That avoids 404s
- * when `VITE_API_URL` pointed at the wrong port while the proxy target was correct.
- *
- * In **production**, returns `VITE_API_URL` with trailing `/api` stripped when present.
+ * `apiOriginPrefix` (used for `/uploads/...` images): uses `VITE_API_URL` when set
+ * so `<img src>` can be absolute `https://.../uploads/...`. If unset in development,
+ * returns `""` so assets stay same-origin and use the Vite proxy.
  */
 export function stripTrailingApiPath(origin) {
     let base = origin.replace(/\/+$/, "");
@@ -13,7 +11,18 @@ export function stripTrailingApiPath(origin) {
         base = base.slice(0, -4);
     return base;
 }
-/** Prefix before `/api/...` for manual fetch (empty string = relative to the page origin). */
+/**
+ * Prefix for static assets under `/uploads/...` (see `resolvePublicAssetUrl`).
+ *
+ * In **production**, uses `VITE_API_URL` (trailing `/api` stripped) so `<img src>`
+ * can be absolute `https://api.example.com/uploads/...` when the SPA and API
+ * differ.
+ *
+ * In **development**, always returns `""` so images stay same-origin as the Vite
+ * dev server and use `server.proxy` for `/uploads`. Prefixing with `http://`
+ * from `VITE_API_URL` here would break thumbnails when the page is served over
+ * **HTTPS** (mixed-content blocking).
+ */
 export function apiOriginPrefix() {
     if (import.meta.env.DEV)
         return "";

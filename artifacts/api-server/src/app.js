@@ -2,13 +2,9 @@ import express from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { mkdirSync } from "fs";
-import { join } from "path";
-import { fileURLToPath } from "url";
 import router from "./routes";
 import { logger } from "./lib/logger";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, "..");
-const UPLOADS_ROOT = join(__dirname, "..", "uploads");
+import { UPLOADS_ROOT } from "./uploadsRoot.js";
 mkdirSync(UPLOADS_ROOT, { recursive: true });
 const app = express();
 app.use(pinoHttp({
