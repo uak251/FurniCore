@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development pnpm run build && cross-env NODE_ENV=development pnpm run start",
+    "dev": "cross-env NODE_ENV=development pnpm run build && cross-env NODE_ENV=development pnpm run start:dist",
     "build": "node ./build.mjs",
-    "start": "node --enable-source-maps ./dist/index.mjs",
+    "start": "node ./build.mjs && node --enable-source-maps ./dist/index.mjs",
+    "start:dist": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "node -e \"process.exit(0)\"",
     "lint": "eslint src",
     "test": "vitest run",

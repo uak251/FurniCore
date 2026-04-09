@@ -16,6 +16,7 @@
     "seed-demo-hr-payroll": "tsx --env-file=../.env ./src/seed-demo-hr-payroll.ts",
     "seed-chart-of-accounts": "tsx --env-file=../.env ./src/seed-chart-of-accounts.ts",
     "seed-all-demo": "tsx --env-file=../.env ./src/seed-all-demo.ts",
+    "migrate": "tsx --env-file=../.env ./src/_migrate.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

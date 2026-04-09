@@ -466,6 +466,39 @@ router.delete("/auth/me/avatar", authenticate, async (req, res, next) => {
         next(err);
     }
 });
+/* ═══════════════════════════════════════════════════════════════════════════
+   PATCH /auth/me/theme  — MUST be registered before PATCH /auth/me (Express 5 path matching)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const PatchThemeBody = z.object({
+    themeId: z
+        .string()
+        .nullable()
+        .refine((v) => v === null || THEME_IDS.includes(v), { message: "Invalid theme id" }),
+});
+router.patch("/auth/me/theme", authenticate, async (req, res, next) => {
+    const parsed = PatchThemeBody.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
+        return;
+    }
+    const themeId = parsed.data.themeId;
+    try {
+        const [user] = await db
+            .update(usersTable)
+            .set({ dashboardTheme: themeId === null ? null : themeId })
+            .where(eq(usersTable.id, req.user.id))
+            .returning();
+        if (!user) {
+            res.status(404).json({ error: "User not found" });
+            return;
+        }
+        await logActivity({ userId: req.user?.id, action: "UPDATE", module: "preferences", description: `Set dashboard theme to ${themeId ?? "portal default"}` });
+        res.json(sanitize(user));
+    }
+    catch (err) {
+        next(err);
+    }
+});
 const PatchProfileBody = z
     .object({
     name: z.string().min(2).max(255).optional(),
@@ -533,39 +566,6 @@ router.patch("/auth/me", authenticate, async (req, res, next) => {
             module: "profile",
             description: "Updated profile (name / phone / avatar)",
         });
-        res.json(sanitize(user));
-    }
-    catch (err) {
-        next(err);
-    }
-});
-/* ═══════════════════════════════════════════════════════════════════════════
-   PATCH /auth/me/theme  — user picks personal dashboard theme (persisted)
-   ═══════════════════════════════════════════════════════════════════════════ */
-const PatchThemeBody = z.object({
-    themeId: z
-        .string()
-        .nullable()
-        .refine((v) => v === null || THEME_IDS.includes(v), { message: "Invalid theme id" }),
-});
-router.patch("/auth/me/theme", authenticate, async (req, res, next) => {
-    const parsed = PatchThemeBody.safeParse(req.body);
-    if (!parsed.success) {
-        res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
-        return;
-    }
-    const themeId = parsed.data.themeId;
-    try {
-        const [user] = await db
-            .update(usersTable)
-            .set({ dashboardTheme: themeId === null ? null : themeId })
-            .where(eq(usersTable.id, req.user.id))
-            .returning();
-        if (!user) {
-            res.status(404).json({ error: "User not found" });
-            return;
-        }
-        await logActivity({ userId: req.user?.id, action: "UPDATE", module: "preferences", description: `Set dashboard theme to ${themeId ?? "portal default"}` });
         res.json(sanitize(user));
     }
     catch (err) {
