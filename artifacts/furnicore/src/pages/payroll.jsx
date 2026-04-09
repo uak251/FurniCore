@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { BulkImportExport } from "@/components/BulkImportExport";
 import { ModuleAnalyticsPanel } from "@/components/ModuleAnalyticsPanel";
 import { useCurrency } from "@/lib/currency";
-import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages } from "@/components/images";
+import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages, MODULE_GALLERY_DIALOG_BODY_CLASS, MODULE_GALLERY_DIALOG_CONTENT_CLASS, MODULE_GALLERY_DIALOG_HEADER_CLASS, MODULE_GALLERY_DIALOG_TITLE_CLASS, } from "@/components/images";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const TABLE_ID = "payroll";
 /* ─── Payroll breakdown panel ────────────────────────────────────────────────── */
@@ -124,7 +124,7 @@ export default function PayrollPage() {
     const [adjRecord, setAdjRecord] = useState(null);
     const [filterMonth, setFilterMonth] = useState("all");
     const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
-    const { data: allImages = [] } = useModuleImages("payroll");
+    const { data: allImages = [], isLoading: galleryImagesLoading } = useModuleImages("payroll");
     const { data: payroll, isLoading } = useListPayroll();
     const { data: employees } = useListEmployees();
     const generatePayroll = useGeneratePayroll();
@@ -226,5 +226,5 @@ export default function PayrollPage() {
                                 ["bob@company.com", "4", "2026", "3500", "0", "0", "3500", "draft", "No deductions"],
                             ], onImported: invalidate })] }) }), _jsx(Dialog, { open: !!adjRecord, onOpenChange: (v) => { if (!v)
                     setAdjRecord(null); }, children: _jsxs(DialogContent, { className: "max-h-[90vh] max-w-lg overflow-y-auto", children: [_jsx(DialogHeader, { children: _jsxs(DialogTitle, { className: "flex items-center gap-2", children: [_jsx(Banknote, { className: "h-5 w-5 text-primary", "aria-hidden": true }), "Payroll Adjustments & Breakdown"] }) }), adjRecord && (_jsx(AdjustmentsPanel, { payrollRecord: adjRecord, onClose: () => setAdjRecord(null) }))] }) }), _jsx(Dialog, { open: imagesPayrollId !== null, onOpenChange: (v) => { if (!v)
-                    setImagesPayrollId(null); }, children: _jsxs(DialogContent, { className: "max-w-xl max-h-[85vh] overflow-y-auto", children: [_jsx(DialogHeader, { children: _jsxs(DialogTitle, { children: ["Documents / Images \u2014 Payroll Record #", imagesPayrollId] }) }), imagesPayrollId !== null && (_jsx(RecordImagePanel, { entityType: "payroll", entityId: imagesPayrollId, canUpload: canManageImages, canDelete: canManageImages }))] }) }), _jsx(Dialog, { open: showGallery, onOpenChange: setShowGallery, children: _jsxs(DialogContent, { className: "max-w-4xl max-h-[85vh] overflow-y-auto", children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Payroll Documents Gallery" }) }), _jsx(ModuleGallery, { entityType: "payroll", images: allImages, canDelete: canManageImages, entityLabels: Object.fromEntries((payroll ?? []).map((p) => [p.id, `${p.employeeName ?? `#${p.employeeId}`} — ${MONTHS[(p.month ?? 1) - 1]} ${p.year}`])) })] }) }), _jsx(ModuleAnalyticsPanel, { module: "payroll", reportId: "payroll-summary", title: "Payroll Analytics Dashboard" })] }));
+                    setImagesPayrollId(null); }, children: _jsxs(DialogContent, { className: "max-w-xl max-h-[85vh] overflow-y-auto", children: [_jsx(DialogHeader, { children: _jsxs(DialogTitle, { children: ["Documents / Images \u2014 Payroll Record #", imagesPayrollId] }) }), imagesPayrollId !== null && (_jsx(RecordImagePanel, { entityType: "payroll", entityId: imagesPayrollId, canUpload: canManageImages, canDelete: canManageImages }))] }) }), _jsx(Dialog, { open: showGallery, onOpenChange: setShowGallery, children: _jsxs(DialogContent, { className: MODULE_GALLERY_DIALOG_CONTENT_CLASS, children: [_jsx(DialogHeader, { className: MODULE_GALLERY_DIALOG_HEADER_CLASS, children: _jsx(DialogTitle, { className: MODULE_GALLERY_DIALOG_TITLE_CLASS, children: "Payroll Documents Gallery" }) }), _jsx("div", { className: MODULE_GALLERY_DIALOG_BODY_CLASS, children: _jsx(ModuleGallery, { entityType: "payroll", isLoading: galleryImagesLoading, images: allImages.filter((img) => (payroll ?? []).some((p) => p.id === img.entityId)), canDelete: canManageImages, canUpload: canManageImages, entityIds: (payroll ?? []).map((p) => p.id), entityLabels: Object.fromEntries((payroll ?? []).map((p) => [p.id, `${p.employeeName ?? `#${p.employeeId}`} — ${MONTHS[(p.month ?? 1) - 1]} ${p.year}`])), emptyListHint: "No payroll records found. Generate payroll first." }) })] }) }), _jsx(ModuleAnalyticsPanel, { module: "payroll", reportId: "payroll-summary", title: "Payroll Analytics Dashboard" })] }));
 }
