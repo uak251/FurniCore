@@ -150,19 +150,32 @@ router.get("/customer-portal/orders/:id", ...customerOnly, async (req, res) => {
     res.json(await enrichOrderForCustomer(order));
 });
 const PlaceOrderBody = z.object({
-    shippingAddress: z.string().min(5),
+    shippingAddress: z
+        .string()
+        .transform((s) => s.trim())
+        .pipe(z.string().min(5, "Shipping address must be at least 5 characters.")),
     notes: z.string().optional(),
     discountCode: z.string().optional(),
     taxRate: z.number().min(0).max(100).optional(),
     items: z.array(z.object({
         productId: z.number().int(),
         quantity: z.number().int().positive(),
-    })).min(1),
+    })).min(1, "Add at least one line item."),
 });
+function zodIssuesPayload(err) {
+    const issues = err.issues.map((i) => ({
+        path: i.path.map(String).join(".") || "request",
+        message: i.message,
+    }));
+    return {
+        error: issues[0]?.message ?? "Invalid request",
+        issues,
+    };
+}
 router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
     const parsed = PlaceOrderBody.safeParse(req.body);
     if (!parsed.success) {
-        res.status(400).json({ error: parsed.error.message });
+        res.status(400).json(zodIssuesPayload(parsed.error));
         return;
     }
     const d = parsed.data;
@@ -269,7 +282,7 @@ router.post("/customer-portal/invoices/:id/pay", ...customerOnly, async (req, re
         paymentReference: z.string().optional(),
     }).safeParse(req.body);
     if (!body.success) {
-        res.status(400).json({ error: body.error.message });
+        res.status(400).json(zodIssuesPayload(body.error));
         return;
     }
     // Verify invoice belongs to this customer

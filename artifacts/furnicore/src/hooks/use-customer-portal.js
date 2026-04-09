@@ -14,8 +14,12 @@ async function apiFetch(path, options) {
     if (res.status === 204)
         return undefined;
     const json = await res.json();
-    if (!res.ok)
-        throw new Error(json?.error ?? `HTTP ${res.status}`);
+    if (!res.ok) {
+        const fromIssues = Array.isArray(json?.issues) && json.issues.length > 0
+            ? json.issues.map((i) => i.message).join(" ")
+            : "";
+        throw new Error(fromIssues || (typeof json?.error === "string" ? json.error : "") || `HTTP ${res.status}`);
+    }
     return json;
 }
 /* ─── Hooks ──────────────────────────────────────────────────────────────── */
