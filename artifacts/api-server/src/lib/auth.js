@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { verifyToken } from "./verifyToken";
+import { getAccessExpiresIn, getRefreshExpiresIn } from "./sessionPolicy";
 export { verifyToken, TokenVerificationError } from "./verifyToken";
 const ACCESS_SECRET = process.env.SESSION_SECRET || "furnicore_access_secret_2024";
 const REFRESH_SECRET = (process.env.SESSION_SECRET || "furnicore_refresh_secret_2024") + "_refresh";
@@ -10,8 +11,6 @@ const REFRESH_SECRET = (process.env.SESSION_SECRET || "furnicore_refresh_secret_
  * token cannot be used as a bearer token (and vice-versa).
  */
 const EMAIL_VERIFY_SECRET = process.env.EMAIL_VERIFY_SECRET || "furnicore_email_verify_2024";
-const ACCESS_EXPIRY = "15m";
-const REFRESH_EXPIRY = "7d";
 /** Verification links expire after 15 minutes. */
 export const EMAIL_VERIFY_EXPIRY_MS = 15 * 60 * 1000;
 export function hashPassword(password) {
@@ -21,10 +20,10 @@ export function comparePassword(password, hash) {
     return bcrypt.compare(password, hash);
 }
 export function generateAccessToken(payload) {
-    return jwt.sign(payload, ACCESS_SECRET, { expiresIn: ACCESS_EXPIRY });
+    return jwt.sign(payload, ACCESS_SECRET, { expiresIn: getAccessExpiresIn() });
 }
 export function generateRefreshToken(payload) {
-    return jwt.sign(payload, REFRESH_SECRET, { expiresIn: REFRESH_EXPIRY });
+    return jwt.sign(payload, REFRESH_SECRET, { expiresIn: getRefreshExpiresIn() });
 }
 export function verifyAccessToken(token) {
     return verifyToken(token);

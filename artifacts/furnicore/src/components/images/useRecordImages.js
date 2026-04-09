@@ -9,7 +9,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@workspace/api-client-react";
 /**
- * Inventory bulk upload — must match Express route in `api-server/src/routes/images.ts`:
+ * Inventory bulk upload — must match Express route in `api-server/src/routes/images.js`:
  * `router.post("/images/inventory/:id/bulk", …)` under `app.use("/api", router)`.
  * Full URL: `POST /api/images/inventory/:id/bulk` — multipart field name `images` (Multer `uploadMulti`).
  */

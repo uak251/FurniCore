@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Link, useLocation } from "wouter";
 import { useLogout, useGetCurrentUser } from "@workspace/api-client-react";
-import { removeAuthToken } from "@/lib/auth";
+import { clearAuthStorage } from "@/lib/auth";
 import { disconnectSocket } from "@/lib/socket";
 import { Hammer, LogOut, HardHat } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export function WorkerLayout({ children }) {
         }
         finally {
             disconnectSocket();
-            removeAuthToken();
+            clearAuthStorage();
             setLocation("/login");
         }
     };

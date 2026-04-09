@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
 import { LoginBody, RefreshTokenBody, RegisterBody } from "@workspace/api-zod";
 import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken, generateEmailVerifyToken, verifyEmailVerifyToken, EMAIL_VERIFY_EXPIRY_MS, } from "../lib/auth";
+import { getAccessExpiresInSeconds, getSessionDurationPreset } from "../lib/sessionPolicy.js";
 import { authenticate } from "../middlewares/authenticate";
 import { revokeAccessToken } from "../lib/tokenBlacklist";
 import { logger } from "../lib/logger";
@@ -11,6 +12,13 @@ import { logActivity } from "../lib/activityLogger";
 import { sendVerificationEmail, emailEnabled } from "../lib/email";
 import { THEME_IDS } from "../lib/themeCatalog";
 const router = Router();
+/** Public: current session duration preset and access-token TTL (for clients / UI). */
+router.get("/auth/session-policy", (_req, res) => {
+    res.json({
+        sessionDuration: getSessionDurationPreset(),
+        accessExpiresIn: getAccessExpiresInSeconds(),
+    });
+});
 /* ─── Zod schemas for new endpoints ────────────────────────────────────── */
 const ResendVerificationBody = z.object({
     email: z.string().email(),
@@ -96,6 +104,7 @@ router.post("/auth/register", async (req, res, next) => {
                 requiresVerification: false,
                 accessToken,
                 refreshToken,
+                accessExpiresIn: getAccessExpiresInSeconds(),
                 user: sanitize(user),
             });
             return;
@@ -183,7 +192,12 @@ router.post("/auth/login", async (req, res) => {
         module: "auth",
         description: `${user.name} logged in`,
     });
-    res.json({ accessToken, refreshToken, user: sanitize(user) });
+    res.json({
+        accessToken,
+        refreshToken,
+        accessExpiresIn: getAccessExpiresInSeconds(),
+        user: sanitize(user),
+    });
 });
 /* ═══════════════════════════════════════════════════════════════════════════
    GET /auth/verify-email?token=<JWT>
@@ -303,7 +317,12 @@ router.post("/auth/refresh", async (req, res) => {
         const accessToken = generateAccessToken({ id: user.id, email: user.email, role: user.role });
         const newRefreshToken = generateRefreshToken({ id: user.id, email: user.email });
         await db.update(usersTable).set({ refreshToken: newRefreshToken }).where(eq(usersTable.id, user.id));
-        res.json({ accessToken, refreshToken: newRefreshToken, user: sanitize(user) });
+        res.json({
+            accessToken,
+            refreshToken: newRefreshToken,
+            accessExpiresIn: getAccessExpiresInSeconds(),
+            user: sanitize(user),
+        });
     }
     catch {
         res.status(401).json({ error: "Invalid or expired refresh token" });

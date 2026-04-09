@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useLogout, useGetCurrentUser, useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { removeAuthToken } from "@/lib/auth";
+import { clearAuthStorage } from "@/lib/auth";
 import { disconnectSocket } from "@/lib/socket";
 import { LayoutDashboard, Package, Boxes, Truck, FileText, Hammer, Users, Banknote, Receipt, Bell, Activity, Settings, LogOut, UserCircle, Menu, ShoppingCart, BookOpen, } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,7 +102,7 @@ export function Layout({ children }) {
         }
         finally {
             disconnectSocket();
-            removeAuthToken();
+            clearAuthStorage();
             setLocation("/login");
         }
     };

@@ -7,6 +7,9 @@ import { pgTable, varchar, text, timestamp } from "drizzle-orm/pg-core";
  * Known keys (POWERBI_*):
  *   POWERBI_TENANT_ID, POWERBI_CLIENT_ID, POWERBI_CLIENT_SECRET,
  *   POWERBI_WORKSPACE_ID, POWERBI_REPORT_SUPPLIER_LEDGER, …
+ * Other keys:
+ *   INVENTORY_VALUATION_METHOD — FIFO | LIFO | WAC
+ *   SESSION_DURATION — 30m | 1h | 1d | persistent (JWT lifetimes for all modules)
  */
 export const appSettingsTable = pgTable("app_settings", {
   key:       varchar("key", { length: 120 }).primaryKey(),

@@ -3,7 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  * Settings Page — FurniCore ERP
  *
  * Tabs:
- *  1. General      — Currency selector, date format
+ *  1. General      — Session duration (admin), currency, valuation
  *  2. Power BI     — Report status + setup guide
  *  3. Access Control — Per-user extra-module permission delegation (admin)
  *  4. Portal themes — Default dashboard theme per role (admin)
@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCurrency, CURRENCIES } from "@/lib/currency";
 import { getAuthToken } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { SessionDurationSettings } from "@/components/settings/SessionDurationSettings";
 import { apiOriginPrefix } from "@/lib/api-base";
 const API_BASE = apiOriginPrefix();
 async function apiFetch(path, init) {
@@ -91,7 +92,7 @@ function GeneralTab() {
         setCurrency(code);
         toast({ title: "Currency updated", description: `ERP now uses ${CURRENCIES.find((c) => c.code === code)?.label ?? code}` });
     };
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs(Card, { children: [_jsxs(CardHeader, { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(DollarSign, { className: "h-5 w-5 text-muted-foreground" }), _jsx(CardTitle, { className: "text-base", children: "Currency" })] }), _jsx(CardDescription, { children: "Applies to all monetary values across every ERP module \u2014 inventory costs, payroll, accounting, and invoices." })] }), _jsxs(CardContent, { className: "space-y-4", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-4", children: [_jsxs("div", { className: "space-y-1.5 min-w-64", children: [_jsx(Label, { htmlFor: "currency-select", children: "Active currency" }), _jsxs(Select, { value: currency.code, onValueChange: handleCurrencyChange, children: [_jsx(SelectTrigger, { id: "currency-select", className: "w-72", children: _jsx(SelectValue, {}) }), _jsx(SelectContent, { children: CURRENCIES.map((c) => (_jsxs(SelectItem, { value: c.code, children: [_jsx("span", { className: "font-mono mr-2 text-xs text-muted-foreground", children: c.code }), c.symbol, " \u2014 ", c.label] }, c.code))) })] })] }), _jsxs("div", { className: "space-y-1.5", children: [_jsx(Label, { className: "text-xs text-muted-foreground", children: "Preview" }), _jsx("div", { className: "flex gap-3 text-sm font-mono", children: [1, 1234.5, 1_000_000].map((n) => {
+    return (_jsxs("div", { className: "space-y-6", children: [_jsx(SessionDurationSettings, {}), _jsxs(Card, { children: [_jsxs(CardHeader, { children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(DollarSign, { className: "h-5 w-5 text-muted-foreground" }), _jsx(CardTitle, { className: "text-base", children: "Currency" })] }), _jsx(CardDescription, { children: "Applies to all monetary values across every ERP module \u2014 inventory costs, payroll, accounting, and invoices." })] }), _jsxs(CardContent, { className: "space-y-4", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-4", children: [_jsxs("div", { className: "space-y-1.5 min-w-64", children: [_jsx(Label, { htmlFor: "currency-select", children: "Active currency" }), _jsxs(Select, { value: currency.code, onValueChange: handleCurrencyChange, children: [_jsx(SelectTrigger, { id: "currency-select", className: "w-72", children: _jsx(SelectValue, {}) }), _jsx(SelectContent, { children: CURRENCIES.map((c) => (_jsxs(SelectItem, { value: c.code, children: [_jsx("span", { className: "font-mono mr-2 text-xs text-muted-foreground", children: c.code }), c.symbol, " \u2014 ", c.label] }, c.code))) })] })] }), _jsxs("div", { className: "space-y-1.5", children: [_jsx(Label, { className: "text-xs text-muted-foreground", children: "Preview" }), _jsx("div", { className: "flex gap-3 text-sm font-mono", children: [1, 1234.5, 1_000_000].map((n) => {
                                                     const def = CURRENCIES.find((c) => c.code === currency.code);
                                                     const fmt = new Intl.NumberFormat(def.locale, { style: "currency", currency: def.code, minimumFractionDigits: 2 });
                                                     return (_jsx("span", { className: "rounded-md border bg-muted/30 px-2 py-1", children: fmt.format(n) }, n));

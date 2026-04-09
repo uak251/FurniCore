@@ -9,12 +9,14 @@
  *
  * Known key groups:
  *   POWERBI_*  — Azure AD + Power BI report IDs
+ *   SESSION_DURATION — 30m | 1h | 1d | persistent (JWT access + refresh lifetimes)
  */
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, appSettingsTable } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
 import { logActivity } from "../lib/activityLogger";
+import { loadSessionPolicy, isValidSessionDurationValue, SESSION_DURATION_KEY, } from "../lib/sessionPolicy.js";
 const router = Router();
 /** Keys whose values should be masked when listed (only last 4 chars shown). */
 const SECRET_KEYS = new Set(["POWERBI_CLIENT_SECRET"]);
@@ -34,7 +36,7 @@ const POWERBI_KEYS = [
     "POWERBI_REPORT_SALES_OVERVIEW",
 ];
 /** Non-PowerBI setting keys that can also be read/written through this API. */
-const EXTRA_KEYS = ["INVENTORY_VALUATION_METHOD"];
+const EXTRA_KEYS = ["INVENTORY_VALUATION_METHOD", "SESSION_DURATION"];
 const ALLOWED_KEYS = new Set([...POWERBI_KEYS, ...EXTRA_KEYS]);
 function maskValue(key, value) {
     if (!value)
@@ -97,6 +99,13 @@ router.put("/settings/:key", authenticate, requireRole("admin"), async (req, res
     }
     try {
         const trimmed = value.trim();
+        if (key === SESSION_DURATION_KEY && trimmed && !isValidSessionDurationValue(trimmed)) {
+            res.status(400).json({
+                error: "VALIDATION_ERROR",
+                message: `SESSION_DURATION must be one of: 30m, 1h, 1d, persistent`,
+            });
+            return;
+        }
         if (!trimmed) {
             // Empty value → delete the DB entry (fall back to env var)
             await db.delete(appSettingsTable).where(eq(appSettingsTable.key, key));
@@ -109,6 +118,9 @@ router.put("/settings/:key", authenticate, requireRole("admin"), async (req, res
         }
         // Invalidate the in-memory cache in powerbi.ts
         settingsCache.clear();
+        if (key === SESSION_DURATION_KEY) {
+            await loadSessionPolicy();
+        }
         await logActivity({ userId: req.user?.id, action: "UPDATE", module: "settings", description: `Set ${key}${SECRET_KEYS.has(key) ? " (secret)" : ""}` });
         res.json({ key, saved: true });
     }
@@ -131,6 +143,13 @@ router.post("/settings/bulk", authenticate, requireRole("admin"), async (req, re
     try {
         for (const [key, value] of Object.entries(settings)) {
             const trimmed = String(value ?? "").trim();
+            if (key === SESSION_DURATION_KEY && trimmed && !isValidSessionDurationValue(trimmed)) {
+                res.status(400).json({
+                    error: "VALIDATION_ERROR",
+                    message: `SESSION_DURATION must be one of: 30m, 1h, 1d, persistent`,
+                });
+                return;
+            }
             if (!trimmed) {
                 await db.delete(appSettingsTable).where(eq(appSettingsTable.key, key));
             }
@@ -142,6 +161,9 @@ router.post("/settings/bulk", authenticate, requireRole("admin"), async (req, re
             }
         }
         settingsCache.clear();
+        if (Object.keys(settings).includes(SESSION_DURATION_KEY)) {
+            await loadSessionPolicy();
+        }
         await logActivity({ userId: req.user?.id, action: "UPDATE", module: "settings", description: `Bulk-updated ${Object.keys(settings).length} settings` });
         res.json({ saved: Object.keys(settings).length });
     }
@@ -159,6 +181,9 @@ router.delete("/settings/:key", authenticate, requireRole("admin"), async (req, 
     try {
         await db.delete(appSettingsTable).where(eq(appSettingsTable.key, key));
         settingsCache.clear();
+        if (key === SESSION_DURATION_KEY) {
+            await loadSessionPolicy();
+        }
         res.json({ key, removed: true });
     }
     catch (err) {

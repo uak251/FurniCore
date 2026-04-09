@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Hammer, Loader2, MailCheck, RefreshCw } from "lucide-react";
-import { setAuthToken } from "@/lib/auth";
+import { applyAuthSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -107,7 +107,7 @@ export default function Signup() {
             });
             if (!response.requiresVerification && response.accessToken) {
                 // Dev mode: account is auto-verified — log the user in immediately.
-                setAuthToken(response.accessToken);
+                applyAuthSession(response);
                 navigate("/");
                 return;
             }

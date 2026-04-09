@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLogin } from "@workspace/api-client-react";
-import { setAuthToken } from "@/lib/auth";
+import { applyAuthSession } from "@/lib/auth";
 import { Hammer, Loader2, MailWarning, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
@@ -79,7 +79,7 @@ export default function Login() {
         setUnverifiedEmail(null);
         try {
             const response = await login.mutateAsync({ data: values });
-            setAuthToken(response.accessToken);
+            applyAuthSession(response);
             const payload = decodeJwtPayload(response.accessToken);
             const role = typeof payload.role === "string" ? payload.role : "employee";
             toast({ title: "Welcome back", description: "Successfully logged in to FurniCore." });
