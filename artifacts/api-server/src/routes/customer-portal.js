@@ -27,7 +27,8 @@ import {
     usersTable,
 } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
-import { notifySalesStakeholdersOfCustomerOrder } from "../lib/salesOrderNotifications";
+import { notifySalesStakeholdersOfCustomerOrder, notifySalesStakeholdersOfPaymentPlanRequest } from "../lib/salesOrderNotifications";
+import { insertInvoiceForOrderIfAbsent } from "../lib/invoiceHelpers.js";
 import {
     PRODUCT_STATUS_LABELS,
     MANUFACTURING_STAGE_LABELS,
@@ -44,11 +45,18 @@ function genOrderNumber() {
 function pad(n) { return String(n).padStart(2, "0"); }
 function rand4() { return String(Math.floor(Math.random() * 9000) + 1000); }
 async function enrichOrderForCustomer(order) {
-    const [items, updates] = await Promise.all([
+    const [items, updates, inv] = await Promise.all([
         db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id)),
         db.select().from(orderUpdatesTable)
             .where(and(eq(orderUpdatesTable.orderId, order.id), eq(orderUpdatesTable.visibleToCustomer, true)))
             .orderBy(desc(orderUpdatesTable.createdAt)),
+        db.select({
+            id: invoicesTable.id,
+            invoiceNumber: invoicesTable.invoiceNumber,
+            status: invoicesTable.status,
+            totalAmount: invoicesTable.totalAmount,
+            dueDate: invoicesTable.dueDate,
+        }).from(invoicesTable).where(eq(invoicesTable.orderId, order.id)).limit(1).then((r) => r[0] ?? null),
     ]);
     return {
         ...order,
@@ -58,6 +66,17 @@ async function enrichOrderForCustomer(order) {
         totalAmount: Number(order.totalAmount),
         taxRate: Number(order.taxRate),
         estimatedDelivery: order.estimatedDelivery?.toISOString() ?? null,
+        paymentPlanRequestedAt: order.paymentPlanRequestedAt?.toISOString() ?? null,
+        paymentPlanCustomerNotes: order.paymentPlanCustomerNotes ?? null,
+        invoice: inv
+            ? {
+                id: inv.id,
+                invoiceNumber: inv.invoiceNumber,
+                status: inv.status,
+                totalAmount: Number(inv.totalAmount),
+                dueDate: inv.dueDate?.toISOString() ?? null,
+            }
+            : null,
         items: items.map(i => ({
             ...i,
             unitPrice: Number(i.unitPrice),
@@ -322,6 +341,9 @@ const PlaceOrderBody = z.object({
     notes: z.string().optional(),
     discountCode: z.string().optional(),
     taxRate: z.number().min(0).max(100).optional(),
+    /** Ask sales to propose advance + installment schedule */
+    requestPaymentPlan: z.boolean().optional(),
+    paymentPlanNotes: z.string().max(2000).optional(),
     items: z.array(z.object({
         productId: z.number().int(),
         quantity: z.number().int().positive(),
@@ -383,6 +405,8 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
     const taxRate = d.taxRate ?? 0;
     const taxAmount = (subtotal - discountAmount) * taxRate / 100;
     const total = subtotal - discountAmount + taxAmount;
+    const requestPlan = Boolean(d.requestPaymentPlan);
+    const planNotes = requestPlan ? (d.paymentPlanNotes?.trim() || null) : null;
     const [order] = await db.insert(customerOrdersTable).values({
         orderNumber: genOrderNumber(),
         customerId: userId,
@@ -397,6 +421,8 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
         taxAmount: String(taxAmount.toFixed(2)),
         totalAmount: String(total.toFixed(2)),
         status: "confirmed",
+        paymentPlanRequestedAt: requestPlan ? new Date() : null,
+        paymentPlanCustomerNotes: planNotes,
     }).returning();
     await Promise.all(lines.map(({ product, item, unitPrice, lineTotal }) => db.insert(orderItemsTable).values({
         orderId: order.id,
@@ -408,6 +434,12 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
         discountPercent: "0",
         lineTotal: String(lineTotal.toFixed(2)),
     })));
+    // Sales invoice (same totals as order) — idempotent per order
+    await insertInvoiceForOrderIfAbsent(order, {
+        status: "sent",
+        dueDays: 30,
+        notes: requestPlan ? "Payment plan requested by customer — sales will follow up." : null,
+    });
     // Auto-insert a "confirmed" update
     await db.insert(orderUpdatesTable).values({
         orderId: order.id,
@@ -415,6 +447,15 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
         status: "confirmed",
         visibleToCustomer: true,
     });
+    if (requestPlan) {
+        await db.insert(orderUpdatesTable).values({
+            orderId: order.id,
+            message: "You requested a payment plan (advance + installments). A sales manager will contact you with options.",
+            status: "confirmed",
+            visibleToCustomer: true,
+        });
+        void notifySalesStakeholdersOfPaymentPlanRequest(order, planNotes ?? "");
+    }
     void notifySalesStakeholdersOfCustomerOrder(order);
     res.status(201).json(await enrichOrderForCustomer(order));
 });

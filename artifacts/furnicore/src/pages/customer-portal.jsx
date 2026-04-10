@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, Package, FileText, Minus, Plus, Trash2, CheckCircle2, Truck, Star, Image, Info, ChevronDown, ChevronUp, ShoppingBag, AlertTriangle, } from "lucide-react";
+import { ShoppingCart, Package, FileText, Minus, Plus, Trash2, CheckCircle2, Truck, Star, Image, Info, ChevronDown, ChevronUp, ShoppingBag, AlertTriangle, Printer, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrowseCheckoutDialog } from "@/components/browse-checkout-dialog";
 import { useCustomerShop } from "@/contexts/customer-shop-context";
@@ -80,16 +80,21 @@ function OrderInvoiceDialog({ open, onOpenChange, order }) {
     const { format: fmt } = useCurrency();
     if (!order)
         return null;
+    const inv = order.invoice;
+    const planReq = Boolean(order.paymentPlanRequestedAt);
     return _jsx(Dialog, {
         open,
         onOpenChange,
         children: _jsxs(DialogContent, {
-            className: "max-h-[90vh] max-w-2xl overflow-y-auto",
+            className: "max-h-[90vh] max-w-2xl overflow-y-auto print:shadow-none",
+            id: "order-confirmation-print",
             children: [
                 _jsx(DialogHeader, { children: _jsxs(DialogTitle, { className: "flex items-center gap-2", children: [_jsx(FileText, { className: "h-5 w-5" }), "Order confirmed"] }) }),
                 _jsxs("div", {
                     className: "space-y-4 text-sm",
                     children: [
+                        inv && _jsxs(Alert, { className: "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30", children: [_jsx(FileText, { className: "h-4 w-4 text-emerald-700" }), _jsxs(AlertDescription, { className: "text-emerald-900 dark:text-emerald-100", children: [_jsx("p", { className: "font-semibold", children: "Invoice generated" }), _jsxs("p", { className: "mt-1 font-mono text-sm", children: ["Invoice ", inv.invoiceNumber, " · Total ", fmt(inv.totalAmount), inv.dueDate && _jsxs("span", { className: "block text-xs font-sans text-muted-foreground", children: ["Due ", new Date(inv.dueDate).toLocaleDateString()] })] }), _jsx("p", { className: "mt-2 text-xs", children: "You can pay from the Invoices tab or follow instructions from sales." })] })] }),
+                        planReq && _jsxs(Alert, { className: "border-sky-200 bg-sky-50 dark:bg-sky-950/30", children: [_jsx(Info, { className: "h-4 w-4 text-sky-700" }), _jsx(AlertDescription, { className: "text-sky-900 dark:text-sky-100", children: "You asked for a payment plan (advance + installments). A sales manager will contact you with options." })] }),
                         _jsxs("div", { className: "rounded-lg border bg-muted/30 p-3", children: [
                             _jsx("p", { className: "font-mono text-lg font-bold", children: order.orderNumber }),
                             _jsx("p", { className: "text-xs text-muted-foreground", children: new Date(order.createdAt).toLocaleString() }),
@@ -129,10 +134,10 @@ function OrderInvoiceDialog({ open, onOpenChange, order }) {
                                 _jsx("p", { className: "whitespace-pre-wrap text-muted-foreground", children: order.shippingAddress }),
                             ] })]
                             : []),
-                        _jsx("p", { className: "text-xs text-muted-foreground", children: "Keep this summary for your records. Track status under My Orders." }),
+                        _jsx("p", { className: "text-xs text-muted-foreground", children: "Keep this summary for your records. Track status under My Orders and pay under Invoices." }),
                     ],
                 }),
-                _jsx(DialogFooter, { children: _jsx(Button, { onClick: () => onOpenChange(false), children: "Done" }) }),
+                _jsxs(DialogFooter, { className: "flex flex-wrap gap-2 sm:justify-end", children: [_jsxs(Button, { type: "button", variant: "outline", onClick: () => window.print(), children: [_jsx(Printer, { className: "mr-1.5 h-4 w-4" }), "Print / Save PDF"] }), _jsx(Button, { onClick: () => onOpenChange(false), children: "Done" })] }),
             ],
         }),
     });
@@ -203,7 +208,8 @@ function BrowseTab({ onOrderPlaced }) {
             toast({ variant: "destructive", title: "Invalid code", description: discountResult.reason });
         }
     };
-    const { register, handleSubmit, reset, formState: { errors } } = useForm({ defaultValues: { shippingAddress: "", notes: "" } });
+    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: { shippingAddress: "", notes: "", requestPaymentPlan: false, paymentPlanNotes: "" } });
+    const wantPlan = watch("requestPaymentPlan");
     const onCheckout = async (data) => {
         if (cart.length === 0) {
             toast({ variant: "destructive", title: "Cart is empty" });
@@ -215,6 +221,8 @@ function BrowseTab({ onOrderPlaced }) {
                 shippingAddress,
                 notes: data.notes?.trim() || undefined,
                 discountCode: appliedDiscount?.code,
+                requestPaymentPlan: Boolean(data.requestPaymentPlan),
+                paymentPlanNotes: data.requestPaymentPlan ? (data.paymentPlanNotes?.trim() || undefined) : undefined,
                 items: cart.map(i => ({ productId: i.product.id, quantity: i.quantity })),
             });
             setConfirmedOrder(order);
@@ -252,7 +260,7 @@ function BrowseTab({ onOrderPlaced }) {
                 }) })] }), _jsxs("section", { id: "shop-all", className: "scroll-mt-28 space-y-4", children: [_jsx("h2", { className: "text-lg font-semibold text-emerald-950 dark:text-emerald-100", children: "All products" }), _jsxs("p", { className: "text-sm text-muted-foreground", children: ["Use the search bar above to filter. Category: ", _jsx("strong", { children: categoryFilter === "all" ? "All" : categoryFilter }), "."] }), _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsxs(Select, { value: categoryFilter, onValueChange: setCategoryFilter, children: [_jsx(SelectTrigger, { className: "w-48 sm:w-56", children: _jsx(SelectValue, { placeholder: "Category" }) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All categories" }), categories.map(c => _jsx(SelectItem, { value: c, children: c }, c))] })] }), cart.length > 0 && (_jsxs(Button, { className: "ml-auto", onClick: () => setShowCheckout(true), children: [_jsx(ShoppingCart, { className: "mr-1.5 h-4 w-4" }), "Checkout (", cart.length, ") \u2014 ", fmt(total)] }))] }), isLoading ? (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: [1, 2, 3, 4, 5, 6].map(i => _jsx(Skeleton, { className: "h-96 rounded-xl" }, i)) })) : filtered.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center py-16 text-muted-foreground", children: [_jsx(Package, { className: "mb-3 h-10 w-10" }), _jsx("p", { children: "No products match your search" })] })) : (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: filtered.map(product => {
                     const cartItem = cart.find(i => i.product.id === product.id);
                     return _jsx(ProductCatalogCard, { product, cartItem, fmt, addToCart, changeQty, setCart, compact: false }, product.id);
-                }) }))] }), _jsx(BrowseCheckoutDialog, { open: showCheckout, onOpenChange: setShowCheckout, handleSubmit, onCheckout, cart, changeQty, subtotal, appliedDiscount, discountInput, setDiscountInput, applyDiscount, register, errors, checkoutSubmitDisabled, placeOrderButtonLabel, setShowCheckout, total, fmt }), _jsx(OrderInvoiceDialog, { open: showOrderInvoice, onOpenChange: handleInvoiceDialogChange, order: confirmedOrder })] }));
+                }) }))] }), _jsx(BrowseCheckoutDialog, { open: showCheckout, onOpenChange: setShowCheckout, handleSubmit, onCheckout, cart, changeQty, subtotal, appliedDiscount, discountInput, setDiscountInput, applyDiscount, register, errors, checkoutSubmitDisabled, placeOrderButtonLabel, setShowCheckout, total, fmt, watch }), _jsx(OrderInvoiceDialog, { open: showOrderInvoice, onOpenChange: handleInvoiceDialogChange, order: confirmedOrder })] }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  TAB 2 — MY ORDERS                                                          */

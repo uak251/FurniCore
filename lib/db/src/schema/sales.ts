@@ -39,6 +39,9 @@ export const customerOrdersTable = pgTable("customer_orders", {
   taxAmount:         numeric("tax_amount",     { precision: 12, scale: 2 }).notNull().default("0"),
   totalAmount:       numeric("total_amount",   { precision: 12, scale: 2 }).notNull().default("0"),
   estimatedDelivery: timestamp("estimated_delivery", { withTimezone: true }),
+  /** Customer asked sales for advance + installment payment plan */
+  paymentPlanRequestedAt: timestamp("payment_plan_requested_at", { withTimezone: true }),
+  paymentPlanCustomerNotes: text("payment_plan_customer_notes"),
   /** Optional link to a manufacturing task for production tracking */
   taskId:    integer("task_id"),
   createdBy: integer("created_by").references(() => usersTable.id),

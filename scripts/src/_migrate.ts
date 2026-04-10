@@ -143,6 +143,12 @@ CREATE INDEX IF NOT EXISTS products_hot_rank_idx ON products (hot_rank) WHERE ho
 CREATE INDEX IF NOT EXISTS products_fav_rank_idx ON products (favourite_rank) WHERE favourite_rank IS NOT NULL;
 `;
 
+/** Checkout: auto-invoice + optional payment-plan request on customer_orders */
+const checkoutInvoicePaymentPlanV1 = `
+ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS payment_plan_requested_at TIMESTAMPTZ;
+ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS payment_plan_customer_notes TEXT;
+`;
+
 const migrations = [
   createModuleTables,
   userProfilesPreferredCurrencyNullable,
@@ -154,6 +160,7 @@ const migrations = [
   "ALTER TABLE chart_of_accounts ADD COLUMN IF NOT EXISTS parent_id INTEGER",
   productCatalogModuleV1,
   storefrontMerchV1,
+  checkoutInvoicePaymentPlanV1,
 ];
 
 for (const stmt of migrations) {

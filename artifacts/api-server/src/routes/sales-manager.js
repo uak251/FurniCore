@@ -21,6 +21,7 @@ import { eq, and, desc, sql, asc } from "drizzle-orm";
 import { z } from "zod";
 import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, productCategoriesTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
+import { insertInvoiceForOrderIfAbsent } from "../lib/invoiceHelpers.js";
 const router = Router();
 const salesAuth = [authenticate, requireRole("admin", "manager", "sales_manager")];
 
@@ -34,7 +35,6 @@ router.get("/sales-manager/product-categories", ...salesAuth, async (_req, res) 
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 function genOrderNumber() { return `CO-${dateSuffix()}-${rand4()}`; }
-function genInvoiceNumber() { return `INV-${dateSuffix()}-${rand4()}`; }
 function dateSuffix() {
     const d = new Date();
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
@@ -303,25 +303,14 @@ router.post("/sales-manager/invoices", ...salesAuth, async (req, res) => {
         res.status(404).json({ error: "Order not found" });
         return;
     }
-    const subtotal = Number(order.subtotal);
-    const discountAmount = Number(order.discountAmount);
     const taxRate = body.data.taxRate ?? Number(order.taxRate);
-    const taxAmount = (subtotal - discountAmount) * taxRate / 100;
-    const totalAmount = subtotal - discountAmount + taxAmount;
-    const [inv] = await db.insert(invoicesTable).values({
-        invoiceNumber: genInvoiceNumber(),
-        orderId: order.id,
-        customerId: order.customerId ?? null,
-        customerName: order.customerName,
-        customerEmail: order.customerEmail,
-        subtotal: String(subtotal.toFixed(2)),
-        discountAmount: String(discountAmount.toFixed(2)),
-        taxAmount: String(taxAmount.toFixed(2)),
-        totalAmount: String(totalAmount.toFixed(2)),
+    const inv = await insertInvoiceForOrderIfAbsent(order, {
+        taxRate,
         dueDate: body.data.dueDate ? new Date(body.data.dueDate) : null,
         notes: body.data.notes ?? null,
+        status: "draft",
         createdBy: req.user?.id ?? null,
-    }).returning();
+    });
     res.status(201).json(serializeInvoice(inv));
 });
 const PatchInvoiceBody = z.object({

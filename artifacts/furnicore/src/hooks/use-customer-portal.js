@@ -29,6 +29,15 @@ export function useCustomerProfile() {
 export function useProductCatalog() {
     return useQuery({ queryKey: ["catalog"], queryFn: () => apiFetch("/customer-portal/catalog") });
 }
+
+/** Home page: collections, hot selling, favourites, announcement. */
+export function useCustomerStorefront(options = {}) {
+    return useQuery({
+        queryKey: ["customerStorefront"],
+        queryFn: () => apiFetch("/customer-portal/storefront"),
+        ...options,
+    });
+}
 export function useValidateDiscount(code, orderAmount) {
     return useQuery({
         queryKey: ["discountValidation", code, orderAmount],

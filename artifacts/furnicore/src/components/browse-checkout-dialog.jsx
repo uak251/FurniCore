@@ -27,7 +27,9 @@ export function BrowseCheckoutDialog({
     setShowCheckout,
     total,
     fmt,
+    watch,
 }) {
+    const requestPlan = watch ? watch("requestPaymentPlan") : false;
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
@@ -137,6 +139,31 @@ export function BrowseCheckoutDialog({
                     <div className="space-y-1">
                         <Label htmlFor="order-notes">Order notes</Label>
                         <Input id="order-notes" {...register("notes")} placeholder="Special requirements…" />
+                    </div>
+                    <div className="space-y-3 rounded-lg border border-dashed border-primary/25 bg-muted/20 p-3">
+                        <div className="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                id="req-payment-plan"
+                                className="mt-1 h-4 w-4 rounded border-input"
+                                {...register("requestPaymentPlan")}
+                            />
+                            <Label htmlFor="req-payment-plan" className="cursor-pointer text-sm font-normal leading-snug">
+                                Request a payment plan from sales (advance + installments). A sales manager will propose
+                                options and follow up.
+                            </Label>
+                        </div>
+                        {requestPlan && (
+                            <div className="space-y-1 pl-7">
+                                <Label htmlFor="plan-notes">Notes for sales (optional)</Label>
+                                <Textarea
+                                    id="plan-notes"
+                                    rows={2}
+                                    {...register("paymentPlanNotes")}
+                                    placeholder="e.g. Prefer 30% advance, balance in three monthly payments…"
+                                />
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" type="button" onClick={() => setShowCheckout(false)}>
