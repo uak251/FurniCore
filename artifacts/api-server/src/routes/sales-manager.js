@@ -17,12 +17,21 @@
  * GET  /sales-manager/receivables           — outstanding invoices with aging buckets
  */
 import { Router } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, asc } from "drizzle-orm";
 import { z } from "zod";
-import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, } from "@workspace/db";
+import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, productCategoriesTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
 const router = Router();
 const salesAuth = [authenticate, requireRole("admin", "manager", "sales_manager")];
+
+router.get("/sales-manager/product-categories", ...salesAuth, async (_req, res) => {
+    const rows = await db
+        .select()
+        .from(productCategoriesTable)
+        .orderBy(asc(productCategoriesTable.sortOrder), asc(productCategoriesTable.name));
+    res.json(rows);
+});
+
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
 function genOrderNumber() { return `CO-${dateSuffix()}-${rand4()}`; }
 function genInvoiceNumber() { return `INV-${dateSuffix()}-${rand4()}`; }
@@ -370,20 +379,50 @@ router.get("/sales-manager/discounts", ...salesAuth, async (_req, res) => {
     const rows = await db.select().from(discountsTable).orderBy(desc(discountsTable.createdAt));
     res.json(rows.map(serializeDiscount));
 });
+/** HTML datetime-local uses `YYYY-MM-DDTHH:mm` (no offset); Zod's `.datetime()` alone rejects that. */
+const isoOrLocalDatetime = z.union([
+    z.string().datetime({ local: true }),
+    z.string().datetime(),
+]);
+function zodIssuesMessage(err) {
+    return err.issues.map((i) => `${i.path.length ? `${i.path.join(".")}: ` : ""}${i.message}`).join("; ");
+}
 const DiscountBody = z.object({
     code: z.string().min(1).max(50),
     description: z.string().optional(),
     type: z.enum(["percentage", "fixed"]),
-    value: z.number().positive(),
-    minOrderAmount: z.number().min(0).optional(),
+    value: z.number().nonnegative(),
+    minOrderAmount: z.number().nonnegative().optional(),
     maxUses: z.number().int().positive().optional().nullable(),
-    expiresAt: z.string().datetime().optional().nullable(),
+    expiresAt: z.preprocess(
+        (v) => (v === "" || v === undefined || v === null ? null : v),
+        z.union([z.null(), isoOrLocalDatetime]),
+    ),
+    isActive: z.boolean().optional(),
+});
+const DiscountPatchBody = z.object({
+    code: z.string().min(1).max(50).optional(),
+    description: z.string().optional(),
+    type: z.enum(["percentage", "fixed"]).optional(),
+    value: z.number().nonnegative().optional(),
+    minOrderAmount: z.number().nonnegative().optional(),
+    maxUses: z.number().int().positive().optional().nullable(),
+    expiresAt: z.preprocess(
+        (v) => {
+            if (v === undefined)
+                return undefined;
+            if (v === "" || v === null)
+                return null;
+            return v;
+        },
+        z.union([z.null(), isoOrLocalDatetime]).optional(),
+    ),
     isActive: z.boolean().optional(),
 });
 router.post("/sales-manager/discounts", ...salesAuth, async (req, res) => {
     const parsed = DiscountBody.safeParse(req.body);
     if (!parsed.success) {
-        res.status(400).json({ error: parsed.error.message });
+        res.status(400).json({ error: zodIssuesMessage(parsed.error) });
         return;
     }
     const d = parsed.data;
@@ -406,9 +445,9 @@ router.patch("/sales-manager/discounts/:id", ...salesAuth, async (req, res) => {
         res.status(400).json({ error: "Invalid id" });
         return;
     }
-    const parsed = DiscountBody.partial().safeParse(req.body);
+    const parsed = DiscountPatchBody.safeParse(req.body);
     if (!parsed.success) {
-        res.status(400).json({ error: parsed.error.message });
+        res.status(400).json({ error: zodIssuesMessage(parsed.error) });
         return;
     }
     const patch = {};

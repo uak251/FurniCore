@@ -29,6 +29,7 @@ import type {
   CreateSupplierBody,
   CreateTransactionBody,
   CreateUserBody,
+  CustomerProfile,
   DashboardSummary,
   DashboardThemeDefaultsResponse,
   Employee,
@@ -56,6 +57,7 @@ import type {
   ManufacturingTask,
   MessageResponse,
   Notification,
+  PatchCustomerProfileBody,
   PatchProfileBody,
   PatchThemeBody,
   PayrollRecord,
@@ -66,6 +68,7 @@ import type {
   PutDashboardThemeDefaultsBody,
   RefreshBody,
   RegisterBody,
+  ResendVerificationBody,
   Supplier,
   SupplierQuote,
   Transaction,
@@ -77,6 +80,8 @@ import type {
   UpdateSupplierBody,
   UpdateUserBody,
   User,
+  VerifyOtpBody,
+  VerifyOtpResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -915,6 +920,343 @@ export const usePatchCurrentUserTheme = <
   TContext
 > => {
   return useMutation(getPatchCurrentUserThemeMutationOptions(options));
+};
+
+/**
+ * Completes customer signup after registration. Does not return auth tokens;
+the user signs in with `POST /auth/login` afterward.
+
+ * @summary Verify customer email with 6-digit OTP (signup)
+ */
+export const getVerifyOtpUrl = () => {
+  return `/api/auth/verify-otp`;
+};
+
+export const verifyOtp = async (
+  verifyOtpBody: VerifyOtpBody,
+  options?: RequestInit,
+): Promise<VerifyOtpResponse> => {
+  return customFetch<VerifyOtpResponse>(getVerifyOtpUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyOtpBody),
+  });
+};
+
+export const getVerifyOtpMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    TError,
+    { data: BodyType<VerifyOtpBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyOtp>>,
+  TError,
+  { data: BodyType<VerifyOtpBody> },
+  TContext
+> => {
+  const mutationKey = ["verifyOtp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    { data: BodyType<VerifyOtpBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyOtp(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyOtpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyOtp>>
+>;
+export type VerifyOtpMutationBody = BodyType<VerifyOtpBody>;
+export type VerifyOtpMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Verify customer email with 6-digit OTP (signup)
+ */
+export const useVerifyOtp = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyOtp>>,
+    TError,
+    { data: BodyType<VerifyOtpBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyOtp>>,
+  TError,
+  { data: BodyType<VerifyOtpBody> },
+  TContext
+> => {
+  return useMutation(getVerifyOtpMutationOptions(options));
+};
+
+/**
+ * @summary Resend signup verification OTP
+ */
+export const getResendVerificationUrl = () => {
+  return `/api/auth/resend-verification`;
+};
+
+export const resendVerification = async (
+  resendVerificationBody: ResendVerificationBody,
+  options?: RequestInit,
+): Promise<MessageResponse> => {
+  return customFetch<MessageResponse>(getResendVerificationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(resendVerificationBody),
+  });
+};
+
+export const getResendVerificationMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendVerification>>,
+    TError,
+    { data: BodyType<ResendVerificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resendVerification>>,
+  TError,
+  { data: BodyType<ResendVerificationBody> },
+  TContext
+> => {
+  const mutationKey = ["resendVerification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resendVerification>>,
+    { data: BodyType<ResendVerificationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return resendVerification(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResendVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resendVerification>>
+>;
+export type ResendVerificationMutationBody = BodyType<ResendVerificationBody>;
+export type ResendVerificationMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Resend signup verification OTP
+ */
+export const useResendVerification = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendVerification>>,
+    TError,
+    { data: BodyType<ResendVerificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resendVerification>>,
+  TError,
+  { data: BodyType<ResendVerificationBody> },
+  TContext
+> => {
+  return useMutation(getResendVerificationMutationOptions(options));
+};
+
+/**
+ * @summary Get extended customer profile
+ */
+export const getGetCustomerProfileUrl = () => {
+  return `/api/customer-profile`;
+};
+
+export const getCustomerProfile = async (
+  options?: RequestInit,
+): Promise<CustomerProfile> => {
+  return customFetch<CustomerProfile>(getGetCustomerProfileUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCustomerProfileQueryKey = () => {
+  return [`/api/customer-profile`] as const;
+};
+
+export const getGetCustomerProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCustomerProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomerProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCustomerProfileQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCustomerProfile>>
+  > = ({ signal }) => getCustomerProfile({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomerProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCustomerProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCustomerProfile>>
+>;
+export type GetCustomerProfileQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get extended customer profile
+ */
+
+export function useGetCustomerProfile<
+  TData = Awaited<ReturnType<typeof getCustomerProfile>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCustomerProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCustomerProfileQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update extended customer profile
+ */
+export const getPatchCustomerProfileUrl = () => {
+  return `/api/customer-profile`;
+};
+
+export const patchCustomerProfile = async (
+  patchCustomerProfileBody: PatchCustomerProfileBody,
+  options?: RequestInit,
+): Promise<CustomerProfile> => {
+  return customFetch<CustomerProfile>(getPatchCustomerProfileUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchCustomerProfileBody),
+  });
+};
+
+export const getPatchCustomerProfileMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCustomerProfile>>,
+    TError,
+    { data: BodyType<PatchCustomerProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchCustomerProfile>>,
+  TError,
+  { data: BodyType<PatchCustomerProfileBody> },
+  TContext
+> => {
+  const mutationKey = ["patchCustomerProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchCustomerProfile>>,
+    { data: BodyType<PatchCustomerProfileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchCustomerProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchCustomerProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchCustomerProfile>>
+>;
+export type PatchCustomerProfileMutationBody =
+  BodyType<PatchCustomerProfileBody>;
+export type PatchCustomerProfileMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update extended customer profile
+ */
+export const usePatchCustomerProfile = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchCustomerProfile>>,
+    TError,
+    { data: BodyType<PatchCustomerProfileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchCustomerProfile>>,
+  TError,
+  { data: BodyType<PatchCustomerProfileBody> },
+  TContext
+> => {
+  return useMutation(getPatchCustomerProfileMutationOptions(options));
 };
 
 /**

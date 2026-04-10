@@ -246,6 +246,149 @@ export const PatchCurrentUserThemeResponse = zod.object({
 });
 
 /**
+ * Completes customer signup after registration. Does not return auth tokens;
+the user signs in with `POST /auth/login` afterward.
+
+ * @summary Verify customer email with 6-digit OTP (signup)
+ */
+export const verifyOtpBodyCodeRegExp = new RegExp("^\\d{6}$");
+
+export const VerifyOtpBody = zod.object({
+  email: zod.string().email(),
+  code: zod
+    .string()
+    .regex(verifyOtpBodyCodeRegExp)
+    .describe("Six-digit verification code from email"),
+});
+
+export const VerifyOtpResponse = zod.object({
+  message: zod.string(),
+  alreadyVerified: zod
+    .boolean()
+    .optional()
+    .describe("Present when the account was already verified"),
+});
+
+/**
+ * @summary Resend signup verification OTP
+ */
+export const ResendVerificationBody = zod.object({
+  email: zod.string().email(),
+});
+
+export const ResendVerificationResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary Get extended customer profile
+ */
+export const GetCustomerProfileResponse = zod.object({
+  userId: zod.number().optional(),
+  email: zod.string().optional(),
+  name: zod.string().optional(),
+  fullName: zod.string().optional(),
+  phone: zod.string().nullish(),
+  country: zod.string().nullish(),
+  cityRegion: zod.string().nullish(),
+  preferredCurrency: zod
+    .string()
+    .nullish()
+    .describe(
+      "Explicit ISO 4217 override; null means use regional default only",
+    ),
+  localityCurrency: zod
+    .string()
+    .optional()
+    .describe(
+      "Inferred from country (when mappable) and otherwise Accept-Language",
+    ),
+  effectiveDisplayCurrency: zod
+    .string()
+    .optional()
+    .describe(
+      "preferredCurrency ?? localityCurrency — use for display amounts",
+    ),
+  timezone: zod.string().nullish(),
+  profileImageUrl: zod.string().nullish(),
+  dashboardTheme: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Update extended customer profile
+ */
+export const patchCustomerProfileBodyFullNameMin = 2;
+export const patchCustomerProfileBodyFullNameMax = 255;
+
+export const patchCustomerProfileBodyCountryMax = 120;
+
+export const patchCustomerProfileBodyCityRegionMax = 120;
+
+export const patchCustomerProfileBodyPreferredCurrencyTwoMin = 3;
+export const patchCustomerProfileBodyPreferredCurrencyTwoMax = 3;
+
+export const patchCustomerProfileBodyTimezoneMax = 80;
+
+export const PatchCustomerProfileBody = zod.object({
+  fullName: zod
+    .string()
+    .min(patchCustomerProfileBodyFullNameMin)
+    .max(patchCustomerProfileBodyFullNameMax)
+    .optional(),
+  country: zod.string().max(patchCustomerProfileBodyCountryMax).optional(),
+  cityRegion: zod
+    .string()
+    .max(patchCustomerProfileBodyCityRegionMax)
+    .optional(),
+  preferredCurrency: zod
+    .union([
+      zod.null(),
+      zod
+        .string()
+        .min(patchCustomerProfileBodyPreferredCurrencyTwoMin)
+        .max(patchCustomerProfileBodyPreferredCurrencyTwoMax),
+    ])
+    .optional()
+    .describe(
+      "ISO 4217 code, or null to clear override and use regional default",
+    ),
+  timezone: zod.string().max(patchCustomerProfileBodyTimezoneMax).optional(),
+});
+
+export const PatchCustomerProfileResponse = zod.object({
+  userId: zod.number().optional(),
+  email: zod.string().optional(),
+  name: zod.string().optional(),
+  fullName: zod.string().optional(),
+  phone: zod.string().nullish(),
+  country: zod.string().nullish(),
+  cityRegion: zod.string().nullish(),
+  preferredCurrency: zod
+    .string()
+    .nullish()
+    .describe(
+      "Explicit ISO 4217 override; null means use regional default only",
+    ),
+  localityCurrency: zod
+    .string()
+    .optional()
+    .describe(
+      "Inferred from country (when mappable) and otherwise Accept-Language",
+    ),
+  effectiveDisplayCurrency: zod
+    .string()
+    .optional()
+    .describe(
+      "preferredCurrency ?? localityCurrency — use for display amounts",
+    ),
+  timezone: zod.string().nullish(),
+  profileImageUrl: zod.string().nullish(),
+  dashboardTheme: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
  * @summary List available dashboard themes
  */
 export const GetDashboardThemeCatalogResponse = zod.object({

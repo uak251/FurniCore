@@ -34,6 +34,71 @@ export interface RefreshBody {
   refreshToken: string;
 }
 
+export interface VerifyOtpBody {
+  email: string;
+  /**
+   * Six-digit verification code from email
+   * @pattern ^\d{6}$
+   */
+  code: string;
+}
+
+export interface VerifyOtpResponse {
+  message: string;
+  /** Present when the account was already verified */
+  alreadyVerified?: boolean;
+}
+
+export interface ResendVerificationBody {
+  email: string;
+}
+
+export interface CustomerProfile {
+  userId?: number;
+  email?: string;
+  name?: string;
+  fullName?: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  country?: string | null;
+  /** @nullable */
+  cityRegion?: string | null;
+  /**
+   * Explicit ISO 4217 override; null means use regional default only
+   * @nullable
+   */
+  preferredCurrency?: string | null;
+  /** Inferred from country (when mappable) and otherwise Accept-Language */
+  localityCurrency?: string;
+  /** preferredCurrency ?? localityCurrency — use for display amounts */
+  effectiveDisplayCurrency?: string;
+  /** @nullable */
+  timezone?: string | null;
+  /** @nullable */
+  profileImageUrl?: string | null;
+  /** @nullable */
+  dashboardTheme?: string | null;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export interface PatchCustomerProfileBody {
+  /**
+   * @minLength 2
+   * @maxLength 255
+   */
+  fullName?: string;
+  /** @maxLength 120 */
+  country?: string;
+  /** @maxLength 120 */
+  cityRegion?: string;
+  /** ISO 4217 code, or null to clear override and use regional default */
+  preferredCurrency?: null | string;
+  /** @maxLength 80 */
+  timezone?: string;
+}
+
 export interface User {
   id: number;
   name: string;

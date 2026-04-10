@@ -11,11 +11,20 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { preferencesPathForRole } from "@/lib/profile-path";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
+import { useCustomerProfile, usePatchCustomerProfile } from "@/hooks/use-customer-profile";
+import { CURRENCIES } from "@/lib/currency";
+
+/** Form value: no explicit override — use API `localityCurrency` / `effectiveDisplayCurrency`. */
+const REGIONAL_CURRENCY_DEFAULT = "__regional__";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 /**
  * Self-service profile: display name, phone, uploaded avatar. Email is read-only.
  */
 export default function ProfilePage() {
     const { data: me, isLoading: userLoading } = useGetCurrentUser();
+    const isCustomer = me?.role === "customer";
+    const { data: custProf } = useCustomerProfile(isCustomer);
+    const patchCust = usePatchCustomerProfile();
     const qc = useQueryClient();
     const { toast } = useToast();
     const fileRef = useRef(null);
@@ -56,8 +65,8 @@ export default function ProfilePage() {
             },
         },
     });
-    const { register, handleSubmit, reset, formState: { isDirty } } = useForm({
-        defaultValues: { name: "", phone: "" },
+    const { register, handleSubmit, reset, formState: { isDirty }, setValue, watch } = useForm({
+        defaultValues: { name: "", phone: "", country: "", cityRegion: "", preferredCurrency: REGIONAL_CURRENCY_DEFAULT, timezone: "" },
     });
     useEffect(() => {
         if (!me)
@@ -65,8 +74,12 @@ export default function ProfilePage() {
         reset({
             name: me.name ?? "",
             phone: me.phone ?? "",
+            country: custProf?.country ?? "",
+            cityRegion: custProf?.cityRegion ?? "",
+            preferredCurrency: custProf?.preferredCurrency ?? REGIONAL_CURRENCY_DEFAULT,
+            timezone: custProf?.timezone ?? "",
         });
-    }, [me, reset]);
+    }, [me, custProf, reset]);
     useEffect(() => {
         return () => {
             if (localPreview?.startsWith("blob:")) {
@@ -92,6 +105,15 @@ export default function ProfilePage() {
                 phone: phoneTrim === "" ? null : phoneTrim,
             },
         });
+        if (isCustomer) {
+            await patchCust.mutateAsync({
+                fullName: data.name.trim(),
+                country: data.country?.trim() || "",
+                cityRegion: data.cityRegion?.trim() || "",
+                preferredCurrency: data.preferredCurrency === REGIONAL_CURRENCY_DEFAULT ? null : data.preferredCurrency,
+                timezone: data.timezone?.trim() || "",
+            });
+        }
     };
     const savedAvatarSrc = me?.profileImageUrl ? resolvePublicAssetUrl(me.profileImageUrl) : "";
     const previewSrc = localPreview || savedAvatarSrc || undefined;
@@ -185,10 +207,61 @@ export default function ProfilePage() {
                                     </Label>
                                     <Input id="profile-phone" type="tel" placeholder="+1 …" {...register("phone")} autoComplete="tel" />
                                 </div>
+                                {isCustomer && (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="profile-country">Country</Label>
+                                            <Input id="profile-country" {...register("country")} autoComplete="country-name" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="profile-city">City / region</Label>
+                                            <Input id="profile-city" {...register("cityRegion")} />
+                                        </div>
+                                        <div className="space-y-1.5 sm:col-span-2">
+                                            <p className="text-sm text-muted-foreground">
+                                                <span className="font-medium text-foreground">Regional default currency</span>
+                                                {": "}
+                                                {custProf?.localityCurrency ?? "—"}
+                                                {" "}
+                                                (from your country when we can map it, otherwise from your browser language).
+                                                {" "}
+                                                {custProf?.effectiveDisplayCurrency != null && (
+                                                    <span className="text-foreground/80">
+                                                        Amounts use{" "}
+                                                        <span className="font-medium text-foreground">{custProf.effectiveDisplayCurrency}</span>
+                                                        {custProf.preferredCurrency ? " (override)." : "."}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Optional currency override</Label>
+                                            <Select value={watch("preferredCurrency")} onValueChange={(v) => setValue("preferredCurrency", v, { shouldDirty: true })}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Regional default" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value={REGIONAL_CURRENCY_DEFAULT}>
+                                                        Use regional default ({custProf?.localityCurrency ?? "…"})
+                                                    </SelectItem>
+                                                    {CURRENCIES.map((c) => (
+                                                        <SelectItem key={c.code} value={c.code}>
+                                                            {c.code} — {c.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-1.5 sm:col-span-2">
+                                            <Label htmlFor="profile-tz">Timezone (optional)</Label>
+                                            <Input id="profile-tz" placeholder="e.g. America/New_York" {...register("timezone")} />
+                                        </div>
+                                    </>
+                                )}
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button type="submit" disabled={patch.isPending || !isDirty}>
-                                    {patch.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
+                                <Button type="submit" disabled={patch.isPending || patchCust.isPending || !isDirty}>
+                                    {patch.isPending || patchCust.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save changes"}
                                 </Button>
                                 {me && (
                                     <Button type="button" variant="outline" asChild>

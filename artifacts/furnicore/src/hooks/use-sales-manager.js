@@ -87,10 +87,51 @@ export function useDeleteDiscount() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (id) => apiFetch(`/sales-manager/discounts/${id}`, { method: "DELETE" }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ["salesDiscounts"] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["salesDiscounts"] });
+        },
     });
 }
 /* ─── Receivables ────────────────────────────────────────────────────────── */
 export function useSalesReceivables() {
     return useQuery({ queryKey: ["salesReceivables"], queryFn: () => apiFetch("/sales-manager/receivables") });
+}
+
+/** Category list for catalog filters (admin / manager / sales_manager). */
+export function useSalesProductCategories() {
+    return useQuery({ queryKey: ["salesProductCategories"], queryFn: () => apiFetch("/sales-manager/product-categories") });
+}
+
+/** Products with optional category + operational status filters. */
+export function useSalesCatalogProducts(filters) {
+    return useQuery({
+        queryKey: ["salesCatalogProducts", filters],
+        queryFn: () => {
+            const sp = new URLSearchParams();
+            if (filters?.search) sp.set("search", filters.search);
+            if (filters?.categoryId != null && filters.categoryId !== "all") sp.set("categoryId", String(filters.categoryId));
+            if (filters?.productStatus && filters.productStatus !== "all") sp.set("productStatus", filters.productStatus);
+            const q = sp.toString();
+            return apiFetch(q ? `/products?${q}` : "/products");
+        },
+    });
+}
+
+export function useUpdateSalesProduct() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, ...body }) => apiFetch(`/products/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["salesCatalogProducts"] });
+            qc.invalidateQueries({ queryKey: ["listProducts"] });
+        },
+    });
+}
+
+export function useProductManufacturingHistory(productId) {
+    return useQuery({
+        queryKey: ["productManufacturingHistory", productId],
+        queryFn: () => apiFetch(`/products/${productId}/manufacturing-history`),
+        enabled: productId != null && productId > 0,
+    });
 }

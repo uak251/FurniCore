@@ -154,3 +154,35 @@ export async function sendVerificationEmail(to, name, token) {
         html: verificationEmailHtml(name, verifyUrl),
     });
 }
+
+function otpEmailHtml(name, code) {
+  return `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:24px;background:#f4f4f5;">
+  <table width="100%" style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);">
+    <tr><td style="text-align:center;">
+      <h1 style="margin:0 0 16px;font-size:22px;">Verify your email</h1>
+      <p style="color:#52525b;">Hi ${name}, use this code to activate your FurniCore account:</p>
+      <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:24px 0;">${code}</p>
+      <p style="font-size:13px;color:#71717a;">Expires in 5 minutes. If you didn't sign up, ignore this email.</p>
+    </td></tr>
+  </table></body></html>`;
+}
+
+function otpEmailText(name, code) {
+  return [`Hi ${name},`, ``, `Your FurniCore verification code is: ${code}`, ``, `It expires in 5 minutes.`].join("\n");
+}
+
+/** Send 6-digit OTP for email verification (signup). */
+export async function sendOtpEmail(to, name, code) {
+  if (!emailEnabled) {
+    console.info(`[email] EMAIL_DISABLED — OTP for ${to}: ${code}`);
+    return;
+  }
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: SMTP_FROM,
+    to,
+    subject: "Your FurniCore verification code",
+    text: otpEmailText(name, code),
+    html: otpEmailHtml(name, code),
+  });
+}

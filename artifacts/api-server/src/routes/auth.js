@@ -4,15 +4,16 @@ import { join } from "path";
 import multer from "multer";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, emailOtpChallengesTable } from "@workspace/db";
 import { LoginBody, RefreshTokenBody, RegisterBody } from "@workspace/api-zod";
-import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken, generateEmailVerifyToken, verifyEmailVerifyToken, EMAIL_VERIFY_EXPIRY_MS, } from "../lib/auth";
+import { hashPassword, comparePassword, generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyEmailVerifyToken, } from "../lib/auth";
 import { getAccessExpiresInSeconds, getSessionDurationPreset } from "../lib/sessionPolicy.js";
 import { authenticate } from "../middlewares/authenticate";
 import { revokeAccessToken } from "../lib/tokenBlacklist";
 import { logger } from "../lib/logger";
 import { logActivity } from "../lib/activityLogger";
-import { sendVerificationEmail, emailEnabled } from "../lib/email";
+import { sendOtpEmail, emailEnabled } from "../lib/email";
+import { generateOtpDigits, saveOtpChallenge, verifyOtpChallenge } from "../services/otpService.js";
 import { THEME_IDS } from "../lib/themeCatalog";
 import { uploadProfileAvatar } from "../middlewares/upload.js";
 import { UPLOADS_ROOT } from "../uploadsRoot.js";
@@ -55,6 +56,10 @@ const ResendVerificationBody = z.object({
 const VerifyEmailQuery = z.object({
     token: z.string().min(1),
 });
+const VerifyOtpBody = z.object({
+    email: z.string().email(),
+    code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
+});
 /* ─── helpers ───────────────────────────────────────────────────────────── */
 /** Sanitized user object safe to send to clients (no hashes or tokens). */
 function sanitize(user) {
@@ -83,7 +88,8 @@ router.post("/auth/register", async (req, res, next) => {
         res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
         return;
     }
-    const { name, email, password } = parsed.data;
+    const { name, password } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
     try {
         const [existing] = await db
             .select({ id: usersTable.id, role: usersTable.role, isVerified: usersTable.isVerified })
@@ -140,8 +146,7 @@ router.post("/auth/register", async (req, res, next) => {
             });
             return;
         }
-        // Email is enabled: create unverified account and send verification link.
-        const verifyExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
+        // Email is enabled: create unverified account and send 6-digit OTP (5-minute TTL).
         const [user] = await db
             .insert(usersTable)
             .values({
@@ -152,34 +157,79 @@ router.post("/auth/register", async (req, res, next) => {
             isActive: true,
             isVerified: false,
             emailVerifyToken: null,
-            emailVerifyExpiry: verifyExpiry,
+            emailVerifyExpiry: null,
         })
             .returning();
-        const realToken = generateEmailVerifyToken({ id: user.id, email: user.email });
-        const realExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
-        await db.update(usersTable)
-            .set({ emailVerifyToken: realToken, emailVerifyExpiry: realExpiry })
-            .where(eq(usersTable.id, user.id));
+        const otp = generateOtpDigits();
+        await saveOtpChallenge(email, otp);
         try {
-            await sendVerificationEmail(user.email, user.name, realToken);
+            await sendOtpEmail(user.email, user.name, otp);
         }
         catch (mailErr) {
-            console.error("[auth/register] Failed to send verification email:", mailErr);
+            console.error("[auth/register] Failed to send OTP email:", mailErr);
         }
         await logActivity({
             userId: user.id,
             action: "REGISTER",
             module: "auth",
-            description: `${user.name} registered as customer (pending email verification)`,
+            description: `${user.name} registered as customer (pending OTP verification)`,
         });
         res.status(201).json({
-            message: "Account created! A verification link has been sent to your email address. " +
-                "Please check your inbox (and spam folder) and click the link to activate your account.",
+            message: "Account created! Enter the 6-digit code sent to your email to activate your account.",
             email: user.email,
             requiresVerification: true,
+            verificationMethod: "otp",
         });
     }
     catch (err) {
+        next(err);
+    }
+});
+/* ═══════════════════════════════════════════════════════════════════════════
+   POST /auth/verify-otp
+   Completes customer signup after 6-digit email OTP.
+   ═══════════════════════════════════════════════════════════════════════════ */
+router.post("/auth/verify-otp", async (req, res, next) => {
+    const parsed = VerifyOtpBody.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
+        return;
+    }
+    const emailNorm = parsed.data.email.trim().toLowerCase();
+    const code = parsed.data.code;
+    try {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.email, emailNorm));
+        if (!user || user.role !== "customer") {
+            res.status(400).json({ error: "INVALID_REQUEST", message: "No pending verification for this email." });
+            return;
+        }
+        if (user.isVerified) {
+            res.json({ message: "Email is already verified. You can sign in.", alreadyVerified: true });
+            return;
+        }
+        const check = await verifyOtpChallenge(emailNorm, code);
+        if (!check.ok) {
+            const msg =
+                check.reason === "EXPIRED"
+                    ? "Code expired. Request a new one from the sign-in page."
+                    : check.reason === "NO_OTP"
+                      ? "No verification code found. Register again or resend a code."
+                      : "Invalid code.";
+            res.status(400).json({ error: "OTP_INVALID", message: msg });
+            return;
+        }
+        await db
+            .update(usersTable)
+            .set({ isVerified: true, emailVerifyToken: null, emailVerifyExpiry: null })
+            .where(eq(usersTable.id, user.id));
+        await logActivity({
+            userId: user.id,
+            action: "EMAIL_VERIFIED",
+            module: "auth",
+            description: `${user.name} verified email with OTP`,
+        });
+        res.json({ message: "Email verified. You can sign in now." });
+    } catch (err) {
         next(err);
     }
 });
@@ -294,41 +344,48 @@ router.post("/auth/resend-verification", async (req, res) => {
         res.status(400).json({ error: "A valid email address is required." });
         return;
     }
-    const { email } = parsed.data;
+    const email = parsed.data.email.trim().toLowerCase();
     // Use a consistent response time regardless of whether the email exists
     // (prevents user-enumeration timing attacks)
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
     if (!user || user.isVerified) {
         // Return the same 200 to avoid leaking whether the email is registered
         res.json({
-            message: "If that email belongs to an unverified account, a new verification link has been sent.",
+            message: "If that email belongs to an unverified account, a new code has been sent.",
         });
         return;
     }
-    // Rate-limit: don't resend if a non-expired token was issued < 1 minute ago
+    if (user.role !== "customer") {
+        res.json({
+            message: "If that email belongs to an unverified account, a new code has been sent.",
+        });
+        return;
+    }
+    // Rate-limit OTP resend: 1 per minute
+    const [lastOtp] = await db
+        .select({ createdAt: emailOtpChallengesTable.createdAt })
+        .from(emailOtpChallengesTable)
+        .where(eq(emailOtpChallengesTable.email, email))
+        .limit(1);
     const ONE_MINUTE = 60_000;
-    if (user.emailVerifyExpiry &&
-        user.emailVerifyExpiry.getTime() > Date.now() + EMAIL_VERIFY_EXPIRY_MS - ONE_MINUTE) {
+    if (lastOtp && lastOtp.createdAt.getTime() > Date.now() - ONE_MINUTE) {
         res.status(429).json({
             error: "RESEND_TOO_SOON",
-            message: "A verification email was sent very recently. Please wait a moment before requesting another.",
+            message: "A code was sent recently. Please wait a minute before requesting another.",
         });
         return;
     }
-    const newToken = generateEmailVerifyToken({ id: user.id, email: user.email });
-    const newExpiry = new Date(Date.now() + EMAIL_VERIFY_EXPIRY_MS);
-    await db.update(usersTable)
-        .set({ emailVerifyToken: newToken, emailVerifyExpiry: newExpiry })
-        .where(eq(usersTable.id, user.id));
+    const otp = generateOtpDigits();
+    await saveOtpChallenge(email, otp);
     try {
-        await sendVerificationEmail(user.email, user.name, newToken);
+        await sendOtpEmail(user.email, user.name, otp);
     }
     catch (err) {
-        console.error("[auth/resend-verification] Failed to send email:", err);
-        res.status(502).json({ error: "Failed to send verification email. Please try again shortly." });
+        console.error("[auth/resend-verification] Failed to send OTP:", err);
+        res.status(502).json({ error: "Failed to send email. Please try again shortly." });
         return;
     }
-    res.json({ message: "A new verification link has been sent to your email address." });
+    res.json({ message: "A new verification code has been sent to your email address." });
 });
 /* ═══════════════════════════════════════════════════════════════════════════
    POST /auth/refresh

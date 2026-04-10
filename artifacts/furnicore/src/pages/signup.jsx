@@ -73,7 +73,7 @@ function VerifyEmailPrompt({ email }) {
         try {
             await resendVerification(email);
             setResent(true);
-            toast({ title: "Email resent", description: "Check your inbox for the new link." });
+            toast({ title: "Code resent", description: "Check your inbox for the new 6-digit code." });
         }
         catch (err) {
             const msg = err?.data?.message ?? "Could not resend the email. Try again shortly.";
@@ -83,7 +83,7 @@ function VerifyEmailPrompt({ email }) {
             setResending(false);
         }
     };
-    return (_jsx(Card, { className: "border-border/40 shadow-xl", children: _jsxs(CardContent, { className: "flex flex-col items-center gap-5 py-10 text-center", children: [_jsx("div", { className: "rounded-full bg-primary/10 p-4", children: _jsx(MailCheck, { className: "h-10 w-10 text-primary" }) }), _jsxs("div", { children: [_jsx("h2", { className: "text-xl font-semibold", children: "Check your inbox" }), _jsxs("p", { className: "mt-2 text-sm text-muted-foreground leading-relaxed", children: ["We've sent a verification link to", " ", _jsx("span", { className: "font-medium text-foreground", children: email }), ".", _jsx("br", {}), "Click the link in that email to activate your account."] })] }), resent && (_jsx(Alert, { className: "text-left border-green-200 bg-green-50 text-green-800", children: _jsx(AlertDescription, { children: "\u2713 A fresh verification link has been sent." }) })), _jsxs("div", { className: "flex flex-col gap-2 w-full", children: [_jsx(Button, { variant: "outline", className: "w-full", disabled: resending, onClick: handleResend, children: resending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Resending\u2026"] })) : (_jsxs(_Fragment, { children: [_jsx(RefreshCw, { className: "mr-2 h-4 w-4" }), " Resend verification email"] })) }), _jsx(Button, { variant: "ghost", className: "w-full", asChild: true, children: _jsx(Link, { href: "/login", children: "Back to Sign In" }) })] }), _jsxs("p", { className: "text-xs text-muted-foreground", children: ["Can't find it? Check your spam / junk folder. Verification links expire after ", _jsx("strong", { children: "15 minutes" }), "."] })] }) }));
+    return (_jsx(Card, { className: "border-border/40 shadow-xl", children: _jsxs(CardContent, { className: "flex flex-col items-center gap-5 py-10 text-center", children: [_jsx("div", { className: "rounded-full bg-primary/10 p-4", children: _jsx(MailCheck, { className: "h-10 w-10 text-primary" }) }), _jsxs("div", { children: [_jsx("h2", { className: "text-xl font-semibold", children: "Check your inbox" }), _jsxs("p", { className: "mt-2 text-sm text-muted-foreground leading-relaxed", children: ["We've sent a 6-digit code to", " ", _jsx("span", { className: "font-medium text-foreground", children: email }), ".", _jsx("br", {}), "Enter it on the verification page to activate your account."] })] }), _jsx(Link, { href: `/verify-otp?email=${encodeURIComponent(email)}`, className: "text-sm font-medium text-primary underline", children: "Enter verification code" }), resent && (_jsx(Alert, { className: "text-left border-green-200 bg-green-50 text-green-800", children: _jsx(AlertDescription, { children: "\u2713 A new code has been sent." }) })), _jsxs("div", { className: "flex flex-col gap-2 w-full", children: [_jsx(Button, { variant: "outline", className: "w-full", disabled: resending, onClick: handleResend, children: resending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Resending\u2026"] })) : (_jsxs(_Fragment, { children: [_jsx(RefreshCw, { className: "mr-2 h-4 w-4" }), " Resend code"] })) }), _jsx(Button, { variant: "ghost", className: "w-full", asChild: true, children: _jsx(Link, { href: "/login", children: "Back to Sign In" }) })] }), _jsxs("p", { className: "text-xs text-muted-foreground", children: ["Codes expire after ", _jsx("strong", { children: "5 minutes" }), "."] })] }) }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════
    Main Signup page
@@ -121,7 +121,7 @@ export default function Signup() {
                 setVerifyEmail(values.email);
                 toast({
                     title: "Account not yet verified",
-                    description: "Use the button below to resend the verification link.",
+                    description: "Use the button below to resend the verification code.",
                 });
                 return;
             }

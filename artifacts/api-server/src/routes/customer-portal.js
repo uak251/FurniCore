@@ -12,11 +12,27 @@
  * POST /customer-portal/invoices/:id/pay     — record payment for an invoice
  */
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, isNotNull } from "drizzle-orm";
 import { z } from "zod";
-import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, usersTable, } from "@workspace/db";
+import {
+    db,
+    customerOrdersTable,
+    orderItemsTable,
+    invoicesTable,
+    discountsTable,
+    orderUpdatesTable,
+    productsTable,
+    productCategoriesTable,
+    recordImagesTable,
+    usersTable,
+} from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
 import { notifySalesStakeholdersOfCustomerOrder } from "../lib/salesOrderNotifications";
+import {
+    PRODUCT_STATUS_LABELS,
+    MANUFACTURING_STAGE_LABELS,
+    ECOMMERCE_SHELF_BADGE,
+} from "../lib/productCatalogConstants.js";
 const router = Router();
 const customerOnly = [authenticate, requireRole("customer")];
 /* ─── helpers ───────────────────────────────────────────────────────────── */
@@ -74,17 +90,165 @@ router.get("/customer-portal/profile", ...customerOnly, async (req, res) => {
 /* ═════════════════════════════════════════════════════════════════════════ */
 /*  PRODUCT CATALOG                                                          */
 /* ═════════════════════════════════════════════════════════════════════════ */
-router.get("/customer-portal/catalog", ...customerOnly, async (_req, res) => {
-    const products = await db.select().from(productsTable).where(eq(productsTable.isActive, true));
-    res.json(products.map(p => ({
+function serializeCatalogRow(p, categoryRow) {
+    const status = p.productStatus ?? "AVAILABLE";
+    const wip = status === "WORK_IN_PROCESS";
+    return {
         id: p.id,
         name: p.name,
         description: p.description,
         sku: p.sku,
-        category: p.category,
+        category: categoryRow?.name ?? p.category,
+        categoryId: p.categoryId ?? null,
         sellingPrice: Number(p.sellingPrice),
         stockQuantity: p.stockQuantity,
-    })));
+        productStatus: status,
+        productStatusLabel: PRODUCT_STATUS_LABELS[status] ?? status,
+        wip,
+        wipStage: wip ? (p.wipStage ?? null) : null,
+        wipStageLabel: wip && p.wipStage ? (MANUFACTURING_STAGE_LABELS[p.wipStage] ?? p.wipStage) : null,
+        wipProgressPercent: wip ? (p.wipProgressPercent ?? 0) : null,
+        wipDepartment: wip ? (p.wipDepartment ?? null) : null,
+    };
+}
+
+/** First cover image per product id (sort_order, then id). */
+async function primaryImageUrlsByProductIds(ids) {
+    if (!ids.length) return {};
+    const rows = await db
+        .select({
+            entityId: recordImagesTable.entityId,
+            url: recordImagesTable.url,
+            sortOrder: recordImagesTable.sortOrder,
+            id: recordImagesTable.id,
+        })
+        .from(recordImagesTable)
+        .where(and(eq(recordImagesTable.entityType, "product"), inArray(recordImagesTable.entityId, ids)))
+        .orderBy(asc(recordImagesTable.entityId), asc(recordImagesTable.sortOrder), asc(recordImagesTable.id));
+    const map = {};
+    for (const r of rows) {
+        if (map[r.entityId] == null) map[r.entityId] = r.url;
+    }
+    return map;
+}
+
+function enrichCatalogRow(p, categoryRow, primaryImageUrl) {
+    const base = serializeCatalogRow(p, categoryRow);
+    const sell = Number(p.sellingPrice);
+    const compare = p.compareAtPrice != null ? Number(p.compareAtPrice) : null;
+    let discountPercent = null;
+    if (compare != null && compare > sell) {
+        discountPercent = Math.round((1 - sell / compare) * 100);
+    }
+    return {
+        ...base,
+        compareAtPrice: compare,
+        discountPercent,
+        primaryImageUrl: primaryImageUrl ?? null,
+        shelfBadge: ECOMMERCE_SHELF_BADGE[base.productStatus] ?? base.productStatusLabel,
+        ratingAvg: p.ratingAvg != null ? Number(p.ratingAvg) : null,
+    };
+}
+
+async function mapRowsWithImages(rows) {
+    const ids = rows.map((r) => r.p.id);
+    const imgMap = await primaryImageUrlsByProductIds(ids);
+    return rows.map(({ p, c }) => enrichCatalogRow(p, c, imgMap[p.id]));
+}
+
+/** Full catalog: all products stay visible (not filtered by stock or isActive). */
+router.get("/customer-portal/catalog", ...customerOnly, async (_req, res) => {
+    const rows = await db
+        .select({ p: productsTable, c: productCategoriesTable })
+        .from(productsTable)
+        .leftJoin(productCategoriesTable, eq(productsTable.categoryId, productCategoriesTable.id));
+    res.json(await mapRowsWithImages(rows));
+});
+
+/**
+ * Home page payload: category tiles, featured rails, promo metadata.
+ * Falls back to first N products when hot/favourite ranks are unset.
+ */
+router.get("/customer-portal/storefront", ...customerOnly, async (_req, res) => {
+    const categories = await db
+        .select()
+        .from(productCategoriesTable)
+        .where(eq(productCategoriesTable.showInCollection, true))
+        .orderBy(asc(productCategoriesTable.sortOrder), asc(productCategoriesTable.name));
+
+    const join = () =>
+        db
+            .select({ p: productsTable, c: productCategoriesTable })
+            .from(productsTable)
+            .leftJoin(productCategoriesTable, eq(productsTable.categoryId, productCategoriesTable.id));
+
+    let hotRows = await join()
+        .where(isNotNull(productsTable.hotRank))
+        .orderBy(asc(productsTable.hotRank), asc(productsTable.id))
+        .limit(8);
+    if (hotRows.length === 0) {
+        hotRows = await join().orderBy(desc(productsTable.id)).limit(8);
+    }
+
+    let favRows = await join()
+        .where(isNotNull(productsTable.favouriteRank))
+        .orderBy(asc(productsTable.favouriteRank), asc(productsTable.id))
+        .limit(8);
+    if (favRows.length === 0) {
+        favRows = await join().orderBy(asc(productsTable.id)).limit(8);
+    }
+
+    const hotIds = hotRows.map((r) => r.p.id);
+    const favIds = favRows.map((r) => r.p.id);
+    const imgMap = await primaryImageUrlsByProductIds([...new Set([...hotIds, ...favIds])]);
+
+    const collections = categories
+        .filter((c) => c.slug !== "uncategorized")
+        .map((c) => ({
+            id: c.id,
+            name: c.name,
+            slug: c.slug,
+            imageUrl: c.imageUrl ?? null,
+        }));
+
+    res.json({
+        announcement: {
+            label: "Offer of the week",
+            subtitle: "Member pricing and curated showroom picks",
+            href: "#shop-all",
+        },
+        collections,
+        hotSelling: hotRows.map(({ p, c }) => enrichCatalogRow(p, c, imgMap[p.id])),
+        mostFavourites: favRows.map(({ p, c }) => enrichCatalogRow(p, c, imgMap[p.id])),
+    });
+});
+
+router.get("/customer-portal/catalog/:id", ...customerOnly, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+    }
+    const [row] = await db
+        .select({ p: productsTable, c: productCategoriesTable })
+        .from(productsTable)
+        .leftJoin(productCategoriesTable, eq(productsTable.categoryId, productCategoriesTable.id))
+        .where(eq(productsTable.id, id));
+    if (!row) {
+        res.status(404).json({ error: "Product not found" });
+        return;
+    }
+    const [img] = await db
+        .select({ url: recordImagesTable.url })
+        .from(recordImagesTable)
+        .where(and(eq(recordImagesTable.entityType, "product"), eq(recordImagesTable.entityId, id)))
+        .orderBy(asc(recordImagesTable.sortOrder), asc(recordImagesTable.id))
+        .limit(1);
+    const x = enrichCatalogRow(row.p, row.c, img?.url ?? null);
+    res.json({
+        ...x,
+        costVisibleToCustomer: false,
+    });
 });
 /* ═════════════════════════════════════════════════════════════════════════ */
 /*  DISCOUNT VALIDATION                                                      */
@@ -187,11 +351,9 @@ router.post("/customer-portal/orders", ...customerOnly, async (req, res) => {
         return;
     }
     // Fetch products
-    const products = await Promise.all(d.items.map(i => db.select().from(productsTable)
-        .where(and(eq(productsTable.id, i.productId), eq(productsTable.isActive, true)))
-        .then(r => r[0])));
-    if (products.some(p => !p)) {
-        res.status(400).json({ error: "One or more products are unavailable" });
+    const products = await Promise.all(d.items.map((i) => db.select().from(productsTable).where(eq(productsTable.id, i.productId)).then((r) => r[0])));
+    if (products.some((p) => !p)) {
+        res.status(400).json({ error: "One or more products were not found" });
         return;
     }
     let subtotal = 0;

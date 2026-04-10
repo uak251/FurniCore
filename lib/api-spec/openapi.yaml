@@ -35,6 +35,8 @@ tags:
     description: Activity logs
   - name: dashboard
     description: Dashboard summaries
+  - name: customer
+    description: Customer portal profile and preferences
 
 paths:
   /healthz:
@@ -243,6 +245,113 @@ paths:
                 $ref: "#/components/schemas/User"
         "400":
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/verify-otp:
+    post:
+      operationId: verifyOtp
+      tags: [auth]
+      summary: Verify customer email with 6-digit OTP (signup)
+      description: |
+        Completes customer signup after registration. Does not return auth tokens;
+        the user signs in with `POST /auth/login` afterward.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyOtpBody"
+      responses:
+        "200":
+          description: Email verified (or already verified)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyOtpResponse"
+        "400":
+          description: Validation error or invalid OTP
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/resend-verification:
+    post:
+      operationId: resendVerification
+      tags: [auth]
+      summary: Resend signup verification OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResendVerificationBody"
+      responses:
+        "200":
+          description: Generic success (does not reveal whether email exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: Invalid email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limited — wait before requesting another code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /customer-profile:
+    get:
+      operationId: getCustomerProfile
+      tags: [customer]
+      summary: Get extended customer profile
+      responses:
+        "200":
+          description: Profile including locality vs preferred currency
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: patchCustomerProfile
+      tags: [customer]
+      summary: Update extended customer profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCustomerProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -1487,6 +1596,100 @@ components:
           type: string
       required:
         - refreshToken
+
+    VerifyOtpBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: "^\\d{6}$"
+          description: Six-digit verification code from email
+      required:
+        - email
+        - code
+
+    VerifyOtpResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        alreadyVerified:
+          type: boolean
+          description: Present when the account was already verified
+      required:
+        - message
+
+    ResendVerificationBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+
+    CustomerProfile:
+      type: object
+      properties:
+        userId:
+          type: integer
+        email:
+          type: string
+        name:
+          type: string
+        fullName:
+          type: string
+        phone:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        cityRegion:
+          type: ["string", "null"]
+        preferredCurrency:
+          type: ["string", "null"]
+          description: Explicit ISO 4217 override; null means use regional default only
+        localityCurrency:
+          type: string
+          description: Inferred from country (when mappable) and otherwise Accept-Language
+        effectiveDisplayCurrency:
+          type: string
+          description: preferredCurrency ?? localityCurrency — use for display amounts
+        timezone:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+        dashboardTheme:
+          type: ["string", "null"]
+        updatedAt:
+          type: ["string", "null"]
+
+    PatchCustomerProfileBody:
+      type: object
+      minProperties: 1
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 255
+        country:
+          type: string
+          maxLength: 120
+        cityRegion:
+          type: string
+          maxLength: 120
+        preferredCurrency:
+          description: ISO 4217 code, or null to clear override and use regional default
+          oneOf:
+            - type: "null"
+            - type: string
+              minLength: 3
+              maxLength: 3
+        timezone:
+          type: string
+          maxLength: 80
 
     AuthResponse:
       type: object

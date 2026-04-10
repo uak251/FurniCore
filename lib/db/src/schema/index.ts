@@ -1,5 +1,7 @@
 export * from "./users";
+export * from "./product_categories";
 export * from "./products";
+export * from "./product_manufacturing_events";
 export * from "./suppliers";
 export * from "./inventory";
 export * from "./quotes";
@@ -19,3 +21,6 @@ export * from "./journal-entries";
 export * from "./accruals";
 export * from "./images";
 export * from "./token-blacklist";
+export * from "./email_otp";
+export * from "./user_profile";
+export * from "./currency_rates_cache";

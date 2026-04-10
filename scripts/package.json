@@ -17,6 +17,7 @@
     "seed-chart-of-accounts": "tsx --env-file=../.env ./src/seed-chart-of-accounts.ts",
     "seed-all-demo": "tsx --env-file=../.env ./src/seed-all-demo.ts",
     "migrate": "tsx --env-file=../.env ./src/_migrate.ts",
+    "wipe-demo": "tsx --env-file=../.env ./src/wipe-demo-data.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCustomerProfile, useProductCatalog, useValidateDiscount, useCustomerOrders, usePlaceOrder, useCustomerInvoices, usePayInvoice, } from "@/hooks/use-customer-portal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,8 +24,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ShoppingCart, Package, FileText, Minus, Plus, Trash2, CheckCircle2, Truck, Star, Image, Info, ChevronDown, ChevronUp, ShoppingBag, AlertTriangle, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrowseCheckoutDialog } from "@/components/browse-checkout-dialog";
+import { useCustomerShop } from "@/contexts/customer-shop-context";
+import { useCustomerStorefront } from "@/hooks/use-customer-portal";
+import { useCurrency } from "@/lib/currency";
+import { resolvePublicAssetUrl } from "@/lib/image-url";
 /* ─── Shared helpers ──────────────────────────────────────────────────────── */
-const fmt = (n) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const SHELF_BADGE_CLASS = {
+    AVAILABLE: "bg-emerald-800 text-white",
+    IN_SHOWROOM: "bg-sky-800 text-white",
+    IN_FACTORY: "bg-amber-800 text-white",
+    WORK_IN_PROCESS: "bg-teal-800 text-white",
+};
 const ORDER_TIMELINE = [
     { key: "draft", label: "Order received", icon: ShoppingCart },
     { key: "confirmed", label: "Confirmed", icon: CheckCircle2 },
@@ -34,6 +44,13 @@ const ORDER_TIMELINE = [
     { key: "delivered", label: "Delivered", icon: CheckCircle2 },
 ];
 const STATUS_ORDER = ORDER_TIMELINE.map(s => s.key);
+/** E-commerce product operational status (not stock-based). */
+const PRODUCT_STATUS_BADGE_COLORS = {
+    AVAILABLE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200",
+    IN_SHOWROOM: "bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-200",
+    IN_FACTORY: "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200",
+    WORK_IN_PROCESS: "bg-violet-100 text-violet-800 dark:bg-violet-950/40 dark:text-violet-200",
+};
 const STATUS_COLORS = {
     draft: "bg-slate-100 text-slate-600",
     confirmed: "bg-blue-100 text-blue-700",
@@ -53,12 +70,14 @@ const INVOICE_STATUS_COLORS = {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  PROFILE HEADER                                                             */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-function ProfileHeader({ cartCount }) {
+function ProfileHeader() {
     const { data: user } = useCustomerProfile();
-    return (_jsxs(Card, { className: "overflow-hidden", children: [_jsx("div", { className: "h-1.5 bg-gradient-to-r from-primary/60 to-primary" }), _jsxs(CardContent, { className: "flex items-center gap-4 p-4", children: [_jsx("div", { className: "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary", children: user?.name?.slice(0, 2).toUpperCase() ?? "CU" }), _jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-semibold", children: user?.name ?? "—" }), _jsx("p", { className: "text-sm text-muted-foreground", children: user?.email })] }), cartCount > 0 && (_jsxs("div", { className: "flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), cartCount, " item", cartCount !== 1 ? "s" : "", " in cart"] }))] })] }));
+    const { cartCount } = useCustomerShop();
+    return (_jsxs(Card, { className: "overflow-hidden", children: [_jsx("div", { className: "h-1.5 bg-gradient-to-r from-emerald-800/80 to-primary" }), _jsxs(CardContent, { className: "flex items-center gap-4 p-4", children: [_jsx("div", { className: "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary", children: user?.name?.slice(0, 2).toUpperCase() ?? "CU" }), _jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-semibold", children: user?.name ?? "—" }), _jsx("p", { className: "text-sm text-muted-foreground", children: user?.email })] }), cartCount > 0 && (_jsxs("div", { className: "flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), cartCount, " item", cartCount !== 1 ? "s" : "", " in cart"] }))] })] }));
 }
 /** Post-checkout summary (order totals + ship-to) — uses API-enriched order payload. */
 function OrderInvoiceDialog({ open, onOpenChange, order }) {
+    const { format: fmt } = useCurrency();
     if (!order)
         return null;
     return _jsx(Dialog, {
@@ -118,15 +137,23 @@ function OrderInvoiceDialog({ open, onOpenChange, order }) {
         }),
     });
 }
+/** Single product tile — catalog grid and storefront rails. */
+function ProductCatalogCard({ product, cartItem, fmt, addToCart, changeQty, setCart, compact, }) {
+    const imgUrl = product.primaryImageUrl ? resolvePublicAssetUrl(product.primaryImageUrl) : "";
+    const shelfClass = SHELF_BADGE_CLASS[product.productStatus ?? "AVAILABLE"] ?? "bg-emerald-800 text-white";
+    const stars = Math.min(5, Math.round(product.ratingAvg ?? 0));
+    return (_jsxs(Card, { className: cn("group flex flex-col overflow-hidden border-emerald-900/10 shadow-sm transition hover:shadow-lg", compact && "text-sm"), children: [_jsxs("div", { className: cn("relative overflow-hidden rounded-t-lg bg-muted", compact ? "aspect-[4/3]" : "aspect-[4/3]"), children: [imgUrl ? _jsx("img", { src: imgUrl, alt: "", className: "h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]" }) : _jsx("div", { className: "flex h-full min-h-[7rem] w-full items-center justify-center bg-gradient-to-br from-emerald-900/5 to-amber-100/30", children: _jsx(Package, { className: "h-12 w-12 text-emerald-900/25", "aria-hidden": true }) }), product.shelfBadge && _jsx("span", { className: cn("absolute bottom-2 left-2 max-w-[85%] rounded px-2 py-0.5 text-[9px] font-bold uppercase leading-tight tracking-wide shadow sm:text-[10px]", shelfClass), children: product.shelfBadge }), product.discountPercent != null && product.discountPercent > 0 && _jsx("span", { className: "absolute right-2 top-2 flex h-11 w-11 flex-col items-center justify-center rounded-full bg-amber-100/95 text-[10px] font-bold leading-none text-amber-900 shadow", children: [_jsxs("span", { children: [product.discountPercent, "%"] }), _jsx("span", { className: "text-[8px] font-semibold uppercase", children: "Off" })] })] }), _jsxs(CardContent, { className: "flex flex-1 flex-col p-3 md:p-4", children: [_jsxs("div", { className: "mb-1.5 flex flex-wrap gap-1.5", children: [_jsx(Badge, { variant: "outline", className: "text-[10px]", children: product.category }), _jsx(Badge, { className: cn("text-[10px]", PRODUCT_STATUS_BADGE_COLORS[product.productStatus ?? "AVAILABLE"] ?? "bg-muted text-foreground"), children: product.productStatusLabel ?? product.productStatus ?? "Available" })] }), _jsx("p", { className: "font-semibold leading-snug", children: product.name }), product.description && !compact && _jsx("p", { className: "mt-1 line-clamp-2 text-xs text-muted-foreground", children: product.description }), _jsx("div", { className: "mb-1 mt-2 flex gap-0.5", children: [0, 1, 2, 3, 4].map(i => _jsx(Star, { className: cn("h-3.5 w-3.5", i < stars ? "fill-amber-400 text-amber-400" : "text-muted-foreground/25"), "aria-hidden": true }, i)) }), _jsxs("div", { className: "mt-auto flex flex-wrap items-baseline gap-2 pt-2", children: [_jsx("span", { className: cn("font-bold text-emerald-900 dark:text-emerald-100", compact ? "text-base" : "text-lg"), children: fmt(product.sellingPrice) }), product.compareAtPrice != null && Number(product.compareAtPrice) > Number(product.sellingPrice) && _jsx("span", { className: "text-sm text-muted-foreground line-through", children: fmt(product.compareAtPrice) })] }), product.wip && product.wipProgressPercent != null && _jsxs("div", { className: "mt-2 space-y-1", children: [_jsxs("p", { className: "text-[10px] text-muted-foreground", children: [(product.wipStageLabel ?? "Manufacturing"), " · ", product.wipProgressPercent, "%"] }), _jsx(Progress, { value: product.wipProgressPercent, className: "h-1.5" })] }), !compact && _jsxs("p", { className: "mt-1 text-xs text-muted-foreground", children: ["Stock on hand: ", product.stockQuantity ?? 0] }), _jsx("div", { className: "mt-3", children: cartItem ? (_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Button, { size: "icon", variant: "outline", className: "h-8 w-8", onClick: () => changeQty(product.id, -1), children: _jsx(Minus, { className: "h-3.5 w-3.5" }) }), _jsx("span", { className: "w-8 text-center font-semibold tabular-nums", children: cartItem.quantity }), _jsx(Button, { size: "icon", variant: "outline", className: "h-8 w-8", onClick: () => changeQty(product.id, 1), children: _jsx(Plus, { className: "h-3.5 w-3.5" }) }), _jsx(Button, { size: "icon", variant: "ghost", className: "ml-auto h-8 w-8 text-destructive", onClick: () => setCart(prev => prev.filter(i => i.product.id !== product.id)), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] })) : (_jsxs(Button, { className: "w-full", size: "sm", onClick: () => addToCart(product), children: [_jsx(Plus, { className: "mr-1.5 h-3.5 w-3.5" }), "Add to cart"] })) })] })] }, product.id));
+}
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  TAB 1 — BROWSE & CHECKOUT                                                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-function BrowseTab({ cart, setCart, onOrderPlaced, }) {
+function BrowseTab({ onOrderPlaced }) {
     const { toast } = useToast();
+    const { format: fmt } = useCurrency();
+    const { cart, setCart, searchQuery, setCategoryFilter, categoryFilter } = useCustomerShop();
     const { data: catalog = [], isLoading } = useProductCatalog();
+    const { data: storefront, isLoading: storefrontLoading } = useCustomerStorefront();
     const placeOrder = usePlaceOrder();
-    const [search, setSearch] = useState("");
-    const [categoryF, setCategoryF] = useState("all");
     const [showCheckout, setShowCheckout] = useState(false);
     const [showOrderInvoice, setShowOrderInvoice] = useState(false);
     const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -142,12 +169,18 @@ function BrowseTab({ cart, setCart, onOrderPlaced, }) {
     }, [catalog]);
     const filtered = useMemo(() => {
         let r = catalog;
-        if (search)
-            r = r.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || (p.description ?? "").toLowerCase().includes(search.toLowerCase()));
-        if (categoryF !== "all")
-            r = r.filter(p => p.category === categoryF);
+        const q = (searchQuery ?? "").trim();
+        if (q)
+            r = r.filter(p => p.name.toLowerCase().includes(q.toLowerCase()) || (p.description ?? "").toLowerCase().includes(q.toLowerCase()));
+        if (categoryFilter !== "all")
+            r = r.filter(p => p.category === categoryFilter);
         return r;
-    }, [catalog, search, categoryF]);
+    }, [catalog, searchQuery, categoryFilter]);
+    const scrollToShop = () => { document.getElementById("shop-all")?.scrollIntoView({ behavior: "smooth" }); };
+    const pickCategory = (name) => {
+        setCategoryFilter(name);
+        setTimeout(scrollToShop, 50);
+    };
     const addToCart = (product) => {
         setCart(prev => {
             const existing = prev.find(i => i.product.id === product.id);
@@ -204,10 +237,22 @@ function BrowseTab({ cart, setCart, onOrderPlaced, }) {
     };
     const checkoutSubmitDisabled = placeOrder.isPending || cart.length === 0;
     const placeOrderButtonLabel = "Place order \u2014 " + fmt(total);
-    return (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsx(Input, { className: "w-56", placeholder: "Search products\u2026", value: search, onChange: e => setSearch(e.target.value) }), _jsxs(Select, { value: categoryF, onValueChange: setCategoryF, children: [_jsx(SelectTrigger, { className: "w-40", children: _jsx(SelectValue, { placeholder: "Category" }) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All categories" }), categories.map(c => _jsx(SelectItem, { value: c, children: c }, c))] })] }), cart.length > 0 && (_jsxs(Button, { className: "ml-auto", onClick: () => setShowCheckout(true), children: [_jsx(ShoppingCart, { className: "mr-1.5 h-4 w-4" }), "Checkout (", cart.length, ") \u2014 ", fmt(total)] }))] }), isLoading ? (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: [1, 2, 3, 4, 5, 6].map(i => _jsx(Skeleton, { className: "h-48 rounded-xl" }, i)) })) : filtered.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center py-16 text-muted-foreground", children: [_jsx(Package, { className: "mb-3 h-10 w-10" }), _jsx("p", { children: "No products match your search" })] })) : (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: filtered.map(product => {
+    const colls = storefront?.collections ?? [];
+    const favs = storefront?.mostFavourites ?? [];
+    const hot = storefront?.hotSelling ?? [];
+    return (_jsxs("div", { className: "space-y-10", children: [storefrontLoading && !storefront && _jsx("div", { className: "grid grid-cols-2 gap-3 md:grid-cols-4", children: [1, 2, 3, 4, 5, 6, 7, 8].map(i => _jsx(Skeleton, { className: "aspect-square rounded-lg" }, i)) }), colls.length > 0 && _jsxs("section", { className: "space-y-4", "aria-labelledby": "collection-list-heading", children: [_jsx("h2", { id: "collection-list-heading", className: "text-center text-lg font-semibold uppercase tracking-[0.25em] text-emerald-950 dark:text-emerald-50", children: "Collection list" }), _jsx("div", { className: "grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4", children: colls.map(c => {
+                    const bg = c.imageUrl ? resolvePublicAssetUrl(c.imageUrl) : "";
+                    return (_jsxs("button", { type: "button", onClick: () => pickCategory(c.name), className: "group relative aspect-square overflow-hidden rounded-lg border border-emerald-900/10 bg-muted text-left shadow-sm transition hover:shadow-md", children: [bg ? _jsx("img", { src: bg, alt: "", className: "h-full w-full object-cover transition duration-300 group-hover:scale-105" }) : _jsx("div", { className: "flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-800/20 to-amber-100/40", children: _jsx("span", { className: "text-3xl font-bold text-emerald-900/30", children: c.name.charAt(0) }) }), _jsx("div", { className: "pointer-events-none absolute inset-0 bg-black/35 transition group-hover:bg-black/45" }), _jsx("span", { className: "absolute inset-0 flex items-center justify-center px-2 text-center text-xs font-bold uppercase tracking-wide text-white drop-shadow md:text-sm", children: c.name })] }, c.id));
+                }) })] }), favs.length > 0 && _jsxs("section", { className: "space-y-4", "aria-labelledby": "most-fav-heading", children: [_jsx("h2", { id: "most-fav-heading", className: "text-center text-lg font-semibold uppercase tracking-[0.25em] text-foreground", children: "Most favourites" }), _jsx("div", { className: "grid grid-cols-2 gap-3 md:grid-cols-4", children: favs.map(p => {
+                    const cartItem = cart.find(i => i.product.id === p.id);
+                    return _jsx(ProductCatalogCard, { product: p, cartItem, fmt, addToCart, changeQty, setCart, compact: true }, p.id);
+                }) })] }), hot.length > 0 && _jsxs("section", { className: "space-y-4", "aria-labelledby": "hot-heading", children: [_jsx("h2", { id: "hot-heading", className: "text-center text-xl font-semibold text-emerald-950 dark:text-emerald-100", children: "Hot selling products" }), _jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4", children: hot.map(p => {
+                    const cartItem = cart.find(i => i.product.id === p.id);
+                    return _jsx(ProductCatalogCard, { product: p, cartItem, fmt, addToCart, changeQty, setCart, compact: false }, p.id);
+                }) })] }), _jsxs("section", { id: "shop-all", className: "scroll-mt-28 space-y-4", children: [_jsx("h2", { className: "text-lg font-semibold text-emerald-950 dark:text-emerald-100", children: "All products" }), _jsxs("p", { className: "text-sm text-muted-foreground", children: ["Use the search bar above to filter. Category: ", _jsx("strong", { children: categoryFilter === "all" ? "All" : categoryFilter }), "."] }), _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsxs(Select, { value: categoryFilter, onValueChange: setCategoryFilter, children: [_jsx(SelectTrigger, { className: "w-48 sm:w-56", children: _jsx(SelectValue, { placeholder: "Category" }) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All categories" }), categories.map(c => _jsx(SelectItem, { value: c, children: c }, c))] })] }), cart.length > 0 && (_jsxs(Button, { className: "ml-auto", onClick: () => setShowCheckout(true), children: [_jsx(ShoppingCart, { className: "mr-1.5 h-4 w-4" }), "Checkout (", cart.length, ") \u2014 ", fmt(total)] }))] }), isLoading ? (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: [1, 2, 3, 4, 5, 6].map(i => _jsx(Skeleton, { className: "h-96 rounded-xl" }, i)) })) : filtered.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center py-16 text-muted-foreground", children: [_jsx(Package, { className: "mb-3 h-10 w-10" }), _jsx("p", { children: "No products match your search" })] })) : (_jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-3", children: filtered.map(product => {
                     const cartItem = cart.find(i => i.product.id === product.id);
-                    return (_jsxs(Card, { className: "flex flex-col hover:shadow-md transition-shadow", children: [_jsx("div", { className: "flex h-32 items-center justify-center rounded-t-lg bg-gradient-to-br from-primary/5 to-primary/15", children: _jsx(Package, { className: "h-12 w-12 text-primary/40", "aria-hidden": true }) }), _jsxs(CardContent, { className: "flex flex-1 flex-col p-4", children: [_jsx(Badge, { variant: "outline", className: "mb-2 w-fit text-[10px]", children: product.category }), _jsx("p", { className: "font-semibold leading-tight", children: product.name }), product.description && _jsx("p", { className: "mt-1 line-clamp-2 text-xs text-muted-foreground", children: product.description }), _jsx("p", { className: "mt-auto pt-3 text-lg font-bold text-primary", children: fmt(product.sellingPrice) }), product.stockQuantity === 0 ? (_jsx("p", { className: "mt-1 text-xs font-medium text-red-600", children: "Out of stock" })) : (_jsxs("p", { className: "mt-1 text-xs text-muted-foreground", children: [product.stockQuantity, " in stock"] })), _jsx("div", { className: "mt-3", children: cartItem ? (_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Button, { size: "icon", variant: "outline", className: "h-8 w-8", onClick: () => changeQty(product.id, -1), children: _jsx(Minus, { className: "h-3.5 w-3.5" }) }), _jsx("span", { className: "w-8 text-center font-semibold tabular-nums", children: cartItem.quantity }), _jsx(Button, { size: "icon", variant: "outline", className: "h-8 w-8", onClick: () => changeQty(product.id, 1), children: _jsx(Plus, { className: "h-3.5 w-3.5" }) }), _jsx(Button, { size: "icon", variant: "ghost", className: "h-8 w-8 text-destructive ml-auto", onClick: () => setCart(prev => prev.filter(i => i.product.id !== product.id)), children: _jsx(Trash2, { className: "h-3.5 w-3.5" }) })] })) : (_jsxs(Button, { className: "w-full", size: "sm", disabled: product.stockQuantity === 0, onClick: () => addToCart(product), children: [_jsx(Plus, { className: "mr-1.5 h-3.5 w-3.5" }), "Add to cart"] })) })] })] }, product.id));
-                }) })), _jsx(BrowseCheckoutDialog, { open: showCheckout, onOpenChange: setShowCheckout, handleSubmit, onCheckout, cart, changeQty, subtotal, appliedDiscount, discountInput, setDiscountInput, applyDiscount, register, errors, checkoutSubmitDisabled, placeOrderButtonLabel, setShowCheckout, total, fmt }) ] }));  
+                    return _jsx(ProductCatalogCard, { product, cartItem, fmt, addToCart, changeQty, setCart, compact: false }, product.id);
+                }) }))] }), _jsx(BrowseCheckoutDialog, { open: showCheckout, onOpenChange: setShowCheckout, handleSubmit, onCheckout, cart, changeQty, subtotal, appliedDiscount, discountInput, setDiscountInput, applyDiscount, register, errors, checkoutSubmitDisabled, placeOrderButtonLabel, setShowCheckout, total, fmt }), _jsx(OrderInvoiceDialog, { open: showOrderInvoice, onOpenChange: handleInvoiceDialogChange, order: confirmedOrder })] }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  TAB 2 — MY ORDERS                                                          */
@@ -224,6 +269,7 @@ function OrderTimeline({ order }) {
             }) }) }));
 }
 function MyOrdersTab() {
+    const { format: fmt } = useCurrency();
     const { data: orders = [], isLoading } = useCustomerOrders();
     const [expandedId, setExpandedId] = useState(null);
     const [statusF, setStatusF] = useState("all");
@@ -249,6 +295,7 @@ function MyOrdersTab() {
 /*  TAB 3 — MY INVOICES                                                        */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 function InvoicesTab() {
+    const { format: fmt } = useCurrency();
     const { toast } = useToast();
     const { data: invoices = [], isLoading } = useCustomerInvoices();
     const payInvoice = usePayInvoice();
@@ -284,10 +331,10 @@ function InvoicesTab() {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 export default function CustomerPortalPage() {
     const [activeTab, setActiveTab] = useState("browse");
-    const [cart, setCart] = useState([]);
+    const { cart } = useCustomerShop();
     const { data: orders = [] } = useCustomerOrders();
     const { data: invoices = [] } = useCustomerInvoices();
     const activeOrderCount = orders.filter(o => !["delivered", "cancelled"].includes(o.status)).length;
     const unpaidInvoiceCount = invoices.filter(i => i.status !== "paid" && i.status !== "cancelled").length;
-    return (_jsxs("div", { className: "space-y-5", children: [_jsx(ProfileHeader, { cartCount: cart.reduce((s, i) => s + i.quantity, 0) }), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "w-full sm:w-auto", children: [_jsxs(TabsTrigger, { value: "browse", className: "relative gap-1.5", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), "Browse", cart.length > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: cart.length })] }), _jsxs(TabsTrigger, { value: "orders", className: "relative gap-1.5", children: [_jsx(Package, { className: "h-4 w-4" }), "My Orders", activeOrderCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: activeOrderCount })] }), _jsxs(TabsTrigger, { value: "invoices", className: "relative gap-1.5", children: [_jsx(FileText, { className: "h-4 w-4" }), "Invoices", unpaidInvoiceCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums", children: unpaidInvoiceCount })] })] }), _jsx(TabsContent, { value: "browse", className: "mt-4", children: _jsx(BrowseTab, { cart: cart, setCart: setCart, onOrderPlaced: () => setActiveTab("orders") }) }), _jsx(TabsContent, { value: "orders", className: "mt-4", children: _jsx(MyOrdersTab, {}) }), _jsx(TabsContent, { value: "invoices", className: "mt-4", children: _jsx(InvoicesTab, {}) })] })] }));
+    return (_jsxs("div", { className: "space-y-5", children: [_jsx(ProfileHeader, {}), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "w-full sm:w-auto", children: [_jsxs(TabsTrigger, { value: "browse", className: "relative gap-1.5", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), "Browse", cart.length > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: cart.length })] }), _jsxs(TabsTrigger, { value: "orders", className: "relative gap-1.5", children: [_jsx(Package, { className: "h-4 w-4" }), "My Orders", activeOrderCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: activeOrderCount })] }), _jsxs(TabsTrigger, { value: "invoices", className: "relative gap-1.5", children: [_jsx(FileText, { className: "h-4 w-4" }), "Invoices", unpaidInvoiceCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums", children: unpaidInvoiceCount })] })] }), _jsx(TabsContent, { value: "browse", className: "mt-4", children: _jsx(BrowseTab, { onOrderPlaced: () => setActiveTab("orders") }) }), _jsx(TabsContent, { value: "orders", className: "mt-4", children: _jsx(MyOrdersTab, {}) }), _jsx(TabsContent, { value: "invoices", className: "mt-4", children: _jsx(InvoicesTab, {}) })] })] }));
 }
