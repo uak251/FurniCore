@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,26 @@ function decodeJwtPayload(token) {
     }
 }
 const API = apiOriginPrefix();
+/** Best-effort message from ApiError / network failures (Zod issues, JSON bodies, etc.). */
+function pickLoginErrorDetail(error) {
+    if (error == null)
+        return "";
+    const data = error.data;
+    if (typeof data === "string" && data.trim())
+        return data.trim();
+    if (data && typeof data === "object") {
+        if (typeof data.message === "string" && data.message.trim())
+            return data.message.trim();
+        const e = data.error;
+        if (typeof e === "string" && e.trim())
+            return e.trim();
+        if (Array.isArray(e))
+            return e.map((x) => (x && typeof x === "object" && "message" in x ? String(x.message) : String(x))).join("; ");
+    }
+    if (typeof error.message === "string" && error.message.trim())
+        return error.message.trim();
+    return "";
+}
 async function resendVerification(email) {
     const res = await fetch(`${API}/api/auth/resend-verification`, {
         method: "POST",
@@ -72,17 +92,35 @@ export default function Login() {
     const login = useLogin();
     const [unverifiedEmail, setUnverifiedEmail] = useState(null);
     const [showPw, setShowPw] = useState(false);
+    const [apiReachable, setApiReachable] = useState(null);
+    useEffect(() => {
+        let cancelled = false;
+        fetch(`${API}/api/healthz`)
+            .then((r) => {
+            if (!cancelled)
+                setApiReachable(r.ok);
+        })
+            .catch(() => {
+            if (!cancelled)
+                setApiReachable(false);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
     const form = useForm({
         resolver: zodResolver(loginSchema),
         defaultValues: { email: "", password: "" },
     });
-    const onSubmit = async (values) => {
+    const submitLogin = async (values, allowServerRetry) => {
         setUnverifiedEmail(null);
         try {
             const response = await login.mutateAsync({ data: values });
             applyAuthSession(response);
-            const payload = decodeJwtPayload(response.accessToken);
-            const role = typeof payload.role === "string" ? payload.role : "employee";
+            const jwtPayload = decodeJwtPayload(response.accessToken);
+            const role = typeof response.user?.role === "string"
+                ? response.user.role
+                : (typeof jwtPayload.role === "string" ? jwtPayload.role : "employee");
             toast({ title: "Welcome back", description: "Successfully logged in to FurniCore." });
             if (role === "supplier")
                 setLocation("/supplier-portal");
@@ -94,19 +132,40 @@ export default function Login() {
                 setLocation("/");
         }
         catch (error) {
-            const serverError = error?.data?.error ?? "";
-            const serverMsg = error?.data?.message ?? "";
+            const status = typeof error?.status === "number" ? error.status : undefined;
+            const errData = error?.data;
+            const serverError = errData && typeof errData === "object" && "error" in errData ? errData.error : "";
+            const detail = pickLoginErrorDetail(error);
+            if (allowServerRetry && status !== undefined && status >= 500) {
+                await new Promise((r) => setTimeout(r, 400));
+                return submitLogin(values, false);
+            }
             if (serverError === "EMAIL_NOT_VERIFIED") {
-                // Show the inline banner with the resend button
-                setUnverifiedEmail(error?.data?.email ?? values.email);
+                setUnverifiedEmail(errData && typeof errData === "object" && "email" in errData && typeof errData.email === "string"
+                    ? errData.email
+                    : values.email);
                 return;
             }
+            const isServerOrDb = status !== undefined && status >= 500;
+            if (isServerOrDb) {
+                toast({
+                    variant: "destructive",
+                    title: "Server error",
+                    description: detail || "The server could not complete sign-in. Refreshing the page.",
+                });
+                window.setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
+            const dev401Hint = import.meta.env.DEV && status === 401
+                ? " Run `pnpm --filter @workspace/scripts seed-admin` if this is a fresh database."
+                : "";
             toast({
                 variant: "destructive",
                 title: "Login Failed",
-                description: serverMsg || error?.data?.error || "Please check your credentials and try again.",
+                description: (detail || "Please check your credentials and try again.") + dev401Hint,
             });
         }
     };
-    return (_jsx("div", { className: "min-h-screen bg-background flex flex-col justify-center items-center p-4", children: _jsxs("div", { className: "w-full max-w-[400px]", children: [_jsxs("div", { className: "flex flex-col items-center mb-8", children: [_jsx("div", { className: "w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-md", children: _jsx(Hammer, { className: "h-6 w-6 text-primary-foreground" }) }), _jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "FurniCore" }), _jsx("p", { className: "text-muted-foreground mt-2", children: "Precision ERP for Manufacturing" })] }), _jsxs(Card, { className: "border-border/40 shadow-xl", children: [_jsxs(CardHeader, { className: "space-y-1 text-center", children: [_jsx(CardTitle, { className: "text-2xl", children: "Sign In" }), _jsx(CardDescription, { children: "Enter your credentials to access the system" })] }), _jsxs(CardContent, { children: [unverifiedEmail && _jsx(UnverifiedEmailBanner, { email: unverifiedEmail }), _jsx(Form, { ...form, children: _jsxs("form", { onSubmit: form.handleSubmit(onSubmit), className: "space-y-4", children: [_jsx(FormField, { control: form.control, name: "email", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Email Address" }), _jsx(FormControl, { children: _jsx(Input, { placeholder: "admin@furnicore.com", ...field }) }), _jsx(FormMessage, {})] })) }), _jsx(FormField, { control: form.control, name: "password", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Password" }), _jsx(FormControl, { children: _jsxs("div", { className: "relative", children: [_jsx(Input, { type: showPw ? "text" : "password", placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022", className: "pr-10", ...field }), _jsx(Button, { type: "button", variant: "ghost", size: "icon", className: "absolute right-0 top-0 h-9 w-9 text-muted-foreground", onClick: () => setShowPw((s) => !s), "aria-label": showPw ? "Hide password" : "Show password", children: showPw ? _jsx(EyeOff, { className: "h-4 w-4" }) : _jsx(Eye, { className: "h-4 w-4" }) })] }) }), _jsx(FormMessage, {})] })) }), _jsx(Button, { type: "submit", className: "w-full mt-6", disabled: login.isPending, children: login.isPending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Authenticating\u2026"] })) : ("Sign In") })] }) })] })] }), _jsxs("p", { className: "text-center text-sm text-muted-foreground mt-6", children: ["Customer?", " ", _jsx(Link, { href: "/signup", className: "text-primary font-medium hover:underline", children: "Create a customer account \u2192" })] })] }) }));
+    const onSubmit = async (values) => submitLogin(values, true);
+    return (_jsx("div", { className: "min-h-screen bg-background flex flex-col justify-center items-center p-4", children: _jsxs("div", { className: "w-full max-w-[400px]", children: [_jsxs("div", { className: "flex flex-col items-center mb-8", children: [_jsx("div", { className: "w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-md", children: _jsx(Hammer, { className: "h-6 w-6 text-primary-foreground" }) }), _jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "FurniCore" }), _jsx("p", { className: "text-muted-foreground mt-2", children: "Furniture manufacturing ERP" })] }), apiReachable === false && (_jsxs(Alert, { variant: "destructive", className: "mb-4", children: [_jsx(AlertTitle, { children: "Cannot reach API" }), _jsx(AlertDescription, { className: "text-sm", children: "Start the API server and ensure Vite proxies to it (see repo `.env` VITE_API_URL). Sign-in will fail until the API is up." })] })), _jsxs(Card, { className: "border-border/40 shadow-xl", children: [_jsxs(CardHeader, { className: "space-y-1 text-center", children: [_jsx(CardTitle, { className: "text-2xl", children: "Sign In" }), _jsx(CardDescription, { children: "Enter your credentials to access the system" })] }), _jsxs(CardContent, { children: [unverifiedEmail && _jsx(UnverifiedEmailBanner, { email: unverifiedEmail }), _jsx(Form, { ...form, children: _jsxs("form", { onSubmit: form.handleSubmit(onSubmit), className: "space-y-4", children: [_jsx(FormField, { control: form.control, name: "email", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Email Address" }), _jsx(FormControl, { children: _jsx(Input, { placeholder: "admin@furnicore.com", ...field }) }), _jsx(FormMessage, {})] })) }), _jsx(FormField, { control: form.control, name: "password", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Password" }), _jsx(FormControl, { children: _jsxs("div", { className: "relative", children: [_jsx(Input, { type: showPw ? "text" : "password", placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022", className: "pr-10", ...field }), _jsx(Button, { type: "button", variant: "ghost", size: "icon", className: "absolute right-0 top-0 h-9 w-9 text-muted-foreground", onClick: () => setShowPw((s) => !s), "aria-label": showPw ? "Hide password" : "Show password", children: showPw ? _jsx(EyeOff, { className: "h-4 w-4" }) : _jsx(Eye, { className: "h-4 w-4" }) })] }) }), _jsx(FormMessage, {})] })) }), _jsx(Button, { type: "submit", className: "w-full mt-6", disabled: login.isPending, children: login.isPending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Authenticating\u2026"] })) : ("Sign In") })] }) })] })] }), _jsxs("p", { className: "text-center text-sm text-muted-foreground mt-6", children: ["Customer?", " ", _jsx(Link, { href: "/signup", className: "text-primary font-medium hover:underline", children: "Create a customer account \u2192" })] })] }) }));
 }

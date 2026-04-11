@@ -11,6 +11,15 @@
       "imagePlaceholder": "https://placehold.co/640x400/f1f5f9/475569?text=Oak+Planks"
     },
     {
+      "name": "Birch Plywood Sheet — 18mm",
+      "type": "raw_material",
+      "unit": "sheet",
+      "quantity": 120,
+      "reorderLevel": 36,
+      "unitCost": 42.5,
+      "imagePlaceholder": "https://placehold.co/640x400/e2e8f0/334155?text=Birch+Plywood+18mm"
+    },
+    {
       "name": "Black Walnut Boards — Kiln Dried",
       "type": "raw_material",
       "unit": "bd_ft",

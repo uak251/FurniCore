@@ -181,8 +181,8 @@ export function CustomerLayout({ children }) {
                     )}
                 </div>
             </header>
-            <main className="flex-1 overflow-auto">
-                <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">{children}</div>
+            <main className="min-h-0 min-w-0 flex-1 overflow-auto">
+                <div className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 md:px-8 md:py-10">{children}</div>
             </main>
             <footer className="border-t bg-card px-4 py-4 text-center text-xs text-muted-foreground md:px-8">
                 FurniCore · Quality furniture · Secure checkout · Questions?{" "}

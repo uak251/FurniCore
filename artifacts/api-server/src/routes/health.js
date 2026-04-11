@@ -1,8 +1,10 @@
 import { Router } from "express";
-import { HealthCheckResponse } from "@workspace/api-zod";
 const router = Router();
+/**
+ * Liveness probe — no DB, no Zod (avoids any schema/runtime issues breaking probes).
+ * Same JSON shape as OpenAPI `HealthCheckResponse`.
+ */
 router.get("/healthz", (_req, res) => {
-    const data = HealthCheckResponse.parse({ status: "ok" });
-    res.json(data);
+    res.status(200).json({ status: "ok" });
 });
 export default router;
