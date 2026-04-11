@@ -31,9 +31,10 @@ export default function CogmReportsPage() {
         mutationFn: () => erpApi("/api/cogm/compute-monthly", { method: "POST", body: JSON.stringify({ year, month }) }),
         onSuccess: (data) => {
             qc.invalidateQueries({ queryKey: ["erp-cogm-variance"] });
-            toast({ title: "Variance computed", description: `${data.computed ?? 0} task rows` });
+            qc.invalidateQueries({ queryKey: ["erp-cogm-standard"] });
+            toast({ title: "Variance computed", description: `${data.computed ?? 0} task row(s) for ${year}-${String(month).padStart(2, "0")}` });
         },
-        onError: (e) => toast({ title: "Compute failed", description: String(e.message), variant: "destructive" }),
+        onError: (e) => toast({ title: "Compute failed", description: e instanceof Error ? e.message : String(e), variant: "destructive" }),
     });
 
     return (_jsxs("div", { className: "space-y-8", children: [

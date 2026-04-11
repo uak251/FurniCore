@@ -127,21 +127,26 @@ router.get("/cogm/variance-records", authenticate, staff, async (req, res) => {
 });
 
 /** Compute variance rows for completed tasks in a calendar month */
-router.post("/cogm/compute-monthly", authenticate, requireRole("admin", "manager", "accountant"), async (req, res) => {
-    const parsed = z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }).safeParse(req.body);
+router.post("/cogm/compute-monthly", authenticate, requireRole("admin", "manager", "accountant"), async (req, res, next) => {
+    const parsed = z
+        .object({
+        year: z.coerce.number().int().min(2000).max(2100),
+        month: z.coerce.number().int().min(1).max(12),
+    })
+        .safeParse(req.body);
     if (!parsed.success) {
-        res.status(400).json({ error: "year and month required" });
+        res.status(400).json({ error: "VALIDATION_ERROR", message: parsed.error.message });
         return;
     }
     const { year, month } = parsed.data;
     const start = new Date(year, month - 1, 1);
     const end = new Date(year, month, 0, 23, 59, 59, 999);
-    const laborRate = await getLaborRate();
-    await db.delete(cogmVarianceRecordsTable).where(and(eq(cogmVarianceRecordsTable.year, year), eq(cogmVarianceRecordsTable.month, month)));
-    const tasks = await db
-        .select()
-        .from(manufacturingTasksTable)
-        .where(
+    try {
+        const laborRate = await getLaborRate();
+        const tasks = await db
+            .select()
+            .from(manufacturingTasksTable)
+            .where(
             and(
                 eq(manufacturingTasksTable.status, "completed"),
                 isNotNull(manufacturingTasksTable.completedAt),
@@ -149,61 +154,75 @@ router.post("/cogm/compute-monthly", authenticate, requireRole("admin", "manager
                 lte(manufacturingTasksTable.completedAt, end),
             ),
         );
-    const out = [];
-    for (const task of tasks) {
-        if (!task.productId)
-            continue;
-        const [std] = await db
-            .select()
-            .from(productStandardCostsMonthlyTable)
-            .where(
-                and(
-                    eq(productStandardCostsMonthlyTable.productId, task.productId),
-                    eq(productStandardCostsMonthlyTable.year, year),
-                    eq(productStandardCostsMonthlyTable.month, month),
-                ),
-            );
-        const usages = await db
-            .select({ u: materialUsageTable, uc: inventoryTable.unitCost })
-            .from(materialUsageTable)
-            .leftJoin(inventoryTable, eq(materialUsageTable.inventoryItemId, inventoryTable.id))
-            .where(eq(materialUsageTable.taskId, task.id));
-        let actualMaterial = 0;
-        for (const { u, uc } of usages) {
-            const cost = Number(u.quantityUsed) * Number(uc ?? 0);
-            actualMaterial += cost;
-        }
-        const actualLabor = Number(task.actualHours ?? task.estimatedHours ?? 0) * laborRate;
-        const estimatedMaterial = std ? Number(std.materialStandard) : 0;
-        const estimatedLabor = std ? Number(std.laborStandard) : Number(task.estimatedHours ?? 0) * laborRate;
-        const est = estimatedMaterial + estimatedLabor;
-        const act = actualMaterial + actualLabor;
-        const variance = act - est;
-        const pct = est !== 0 ? (variance / est) * 100 : null;
-        let remark = "same";
-        if (variance > 0.01)
-            remark = "increased";
-        else if (variance < -0.01)
-            remark = "decreased";
-        const [rec] = await db
-            .insert(cogmVarianceRecordsTable)
-            .values({
-                productId: task.productId,
-                taskId: task.id,
-                year,
-                month,
-                estimatedMaterial: String(estimatedMaterial.toFixed(2)),
-                actualMaterial: String(actualMaterial.toFixed(2)),
-                estimatedLabor: String(estimatedLabor.toFixed(2)),
-                actualLabor: String(actualLabor.toFixed(2)),
-                varianceAmount: String(variance.toFixed(2)),
-                variancePercent: pct != null ? String(pct.toFixed(2)) : null,
-                remark,
-            })
-            .returning();
-        out.push(rec);
+        const out = await db.transaction(async (tx) => {
+            await tx
+                .delete(cogmVarianceRecordsTable)
+                .where(and(eq(cogmVarianceRecordsTable.year, year), eq(cogmVarianceRecordsTable.month, month)));
+            const rows = [];
+            for (const task of tasks) {
+                if (!task.productId)
+                    continue;
+                const [std] = await tx
+                    .select()
+                    .from(productStandardCostsMonthlyTable)
+                    .where(
+                    and(
+                        eq(productStandardCostsMonthlyTable.productId, task.productId),
+                        eq(productStandardCostsMonthlyTable.year, year),
+                        eq(productStandardCostsMonthlyTable.month, month),
+                    ),
+                );
+                const usageRows = await tx
+                    .select({
+                    usage: materialUsageTable,
+                    unitCost: inventoryTable.unitCost,
+                })
+                    .from(materialUsageTable)
+                    .leftJoin(inventoryTable, eq(materialUsageTable.inventoryItemId, inventoryTable.id))
+                    .where(eq(materialUsageTable.taskId, task.id));
+                let actualMaterial = 0;
+                for (const row of usageRows) {
+                    const qty = Number(row.usage?.quantityUsed ?? 0);
+                    const uc = row.unitCost != null ? Number(row.unitCost) : 0;
+                    actualMaterial += qty * uc;
+                }
+                const actualLabor = Number(task.actualHours ?? task.estimatedHours ?? 0) * laborRate;
+                const estimatedMaterial = std ? Number(std.materialStandard) : 0;
+                const estimatedLabor = std ? Number(std.laborStandard) : Number(task.estimatedHours ?? 0) * laborRate;
+                const est = estimatedMaterial + estimatedLabor;
+                const act = actualMaterial + actualLabor;
+                const variance = act - est;
+                const pct = est !== 0 ? (variance / est) * 100 : null;
+                let remark = "same";
+                if (variance > 0.01)
+                    remark = "increased";
+                else if (variance < -0.01)
+                    remark = "decreased";
+                const [rec] = await tx
+                    .insert(cogmVarianceRecordsTable)
+                    .values({
+                    productId: task.productId,
+                    taskId: task.id,
+                    year,
+                    month,
+                    estimatedMaterial: String(estimatedMaterial.toFixed(2)),
+                    actualMaterial: String(actualMaterial.toFixed(2)),
+                    estimatedLabor: String(estimatedLabor.toFixed(2)),
+                    actualLabor: String(actualLabor.toFixed(2)),
+                    varianceAmount: String(variance.toFixed(2)),
+                    variancePercent: pct != null ? String(pct.toFixed(2)) : null,
+                    remark,
+                })
+                    .returning();
+                rows.push(rec);
+            }
+            return rows;
+        });
+        res.status(201).json({ computed: out.length, records: out });
     }
-    res.status(201).json({ computed: out.length, records: out });
+    catch (err) {
+        next(err);
+    }
 });
 
 /** Inventory consumption (material usage) tied to tasks completed in period */

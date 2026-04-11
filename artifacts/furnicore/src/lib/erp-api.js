@@ -23,8 +23,11 @@ export async function erpApi(path, init) {
         data = text;
     }
     if (!res.ok) {
-        const err = typeof data === "object" && data !== null && "error" in data ? data.error : `HTTP ${res.status}`;
-        throw new Error(typeof err === "string" ? err : JSON.stringify(err));
+        const obj = typeof data === "object" && data !== null ? data : {};
+        const code = typeof obj.error === "string" ? obj.error : `HTTP ${res.status}`;
+        const detail = typeof obj.message === "string" ? obj.message.trim() : "";
+        const msg = detail && code !== detail ? `${code}: ${detail}` : detail || code;
+        throw new Error(msg);
     }
     return data;
 }
