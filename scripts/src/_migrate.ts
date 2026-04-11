@@ -349,46 +349,6 @@ VALUES ('LABOR_HOURLY_RATE', '18')
 ON CONFLICT (key) DO NOTHING;
 `;
 
-/**
- * Safety net: if `erpPricingCogmV1` failed partway through the multi-statement batch,
- * `cogm_variance_records` (or standard cost table) may never have been created. PostgreSQL
- * stops at the first error in a single query string, so later CREATEs are skipped.
- * This block is idempotent (IF NOT EXISTS only).
- */
-const ensureCogmTablesSafetyNet = `
-CREATE TABLE IF NOT EXISTS product_standard_costs_monthly (
-  id SERIAL PRIMARY KEY,
-  product_id INTEGER NOT NULL REFERENCES products(id),
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  material_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
-  labor_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
-  overhead_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
-  total_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
-  notes TEXT,
-  created_by INTEGER REFERENCES users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (product_id, year, month)
-);
-
-CREATE TABLE IF NOT EXISTS cogm_variance_records (
-  id SERIAL PRIMARY KEY,
-  product_id INTEGER REFERENCES products(id),
-  task_id INTEGER REFERENCES manufacturing_tasks(id),
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  estimated_material NUMERIC(12,2) NOT NULL DEFAULT 0,
-  actual_material NUMERIC(12,2) NOT NULL DEFAULT 0,
-  estimated_labor NUMERIC(12,2) NOT NULL DEFAULT 0,
-  actual_labor NUMERIC(12,2) NOT NULL DEFAULT 0,
-  variance_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
-  variance_percent NUMERIC(8,2),
-  remark VARCHAR(32),
-  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS cogm_variance_records_period_idx ON cogm_variance_records (year, month);
-`;
-
 const migrations = [
   foundationTablesV1,
   createModuleTables,
@@ -402,8 +362,6 @@ const migrations = [
   productCatalogModuleV1,
   storefrontMerchV1,
   checkoutInvoicePaymentPlanV1,
-  /** Run before `erpPricingCogmV1` so COGM tables exist even if that batch errors mid-string. */
-  ensureCogmTablesSafetyNet,
   erpPricingCogmV1,
 ];
 
