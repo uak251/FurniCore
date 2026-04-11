@@ -149,6 +149,88 @@ ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS payment_plan_requested_at T
 ALTER TABLE customer_orders ADD COLUMN IF NOT EXISTS payment_plan_customer_notes TEXT;
 `;
 
+/** ERP pricing workflow, official rates, COGM / standard cost (FurniCore next iteration) */
+const erpPricingCogmV1 = `
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS workflow_stage VARCHAR(32) DEFAULT 'legacy';
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS submitted_for_review_at TIMESTAMPTZ;
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS submitted_by_user_id INTEGER REFERENCES users(id);
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS pm_reviewed_at TIMESTAMPTZ;
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS pm_reviewer_id INTEGER REFERENCES users(id);
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS pm_decision VARCHAR(20);
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS finance_reviewed_at TIMESTAMPTZ;
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS finance_reviewer_id INTEGER REFERENCES users(id);
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS finance_decision VARCHAR(20);
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS requires_finance_step BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE supplier_quotes ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+CREATE TABLE IF NOT EXISTS supplier_official_rates (
+  id SERIAL PRIMARY KEY,
+  supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+  inventory_item_id INTEGER NOT NULL REFERENCES inventory(id),
+  unit_price NUMERIC(12,2) NOT NULL,
+  source_quote_id INTEGER REFERENCES supplier_quotes(id),
+  effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS supplier_official_rates_lookup_idx ON supplier_official_rates (supplier_id, inventory_item_id, effective_from DESC);
+
+CREATE TABLE IF NOT EXISTS product_price_proposals (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  proposed_selling_price NUMERIC(12,2) NOT NULL,
+  proposed_compare_at_price NUMERIC(12,2),
+  discount_percent_requested NUMERIC(5,2),
+  status VARCHAR(32) NOT NULL DEFAULT 'pending',
+  notes TEXT,
+  proposed_by_user_id INTEGER REFERENCES users(id),
+  reviewed_by_user_id INTEGER REFERENCES users(id),
+  reviewed_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS product_standard_costs_monthly (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER NOT NULL REFERENCES products(id),
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  material_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
+  labor_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
+  overhead_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
+  total_standard NUMERIC(12,2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (product_id, year, month)
+);
+
+CREATE TABLE IF NOT EXISTS cogm_variance_records (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER REFERENCES products(id),
+  task_id INTEGER REFERENCES manufacturing_tasks(id),
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  estimated_material NUMERIC(12,2) NOT NULL DEFAULT 0,
+  actual_material NUMERIC(12,2) NOT NULL DEFAULT 0,
+  estimated_labor NUMERIC(12,2) NOT NULL DEFAULT 0,
+  actual_labor NUMERIC(12,2) NOT NULL DEFAULT 0,
+  variance_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+  variance_percent NUMERIC(8,2),
+  remark VARCHAR(32),
+  computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS cogm_variance_records_period_idx ON cogm_variance_records (year, month);
+
+INSERT INTO app_settings (key, value)
+VALUES ('FINANCE_QUOTE_APPROVAL_THRESHOLD', '50000')
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO app_settings (key, value)
+VALUES ('LABOR_HOURLY_RATE', '18')
+ON CONFLICT (key) DO NOTHING;
+`;
+
 const migrations = [
   createModuleTables,
   userProfilesPreferredCurrencyNullable,
@@ -161,6 +243,7 @@ const migrations = [
   productCatalogModuleV1,
   storefrontMerchV1,
   checkoutInvoicePaymentPlanV1,
+  erpPricingCogmV1,
 ];
 
 for (const stmt of migrations) {

@@ -46,6 +46,10 @@ interface QuoteRow {
   approvedAt?: string | null;
   paidAt?: string | null;
   notes?: string | null;
+  /** ERP workflow stage (default legacy = price-lock only) */
+  workflowStage?: string | null;
+  submittedForReviewAt?: string | null;
+  requiresFinanceStep?: boolean;
 }
 
 interface Dataset {
@@ -148,6 +152,9 @@ for (const q of data.quotes) {
     lockedAt,
     approvedAt,
     paidAt,
+    workflowStage: q.workflowStage ?? "legacy",
+    submittedForReviewAt: q.submittedForReviewAt ? new Date(q.submittedForReviewAt) : null,
+    requiresFinanceStep: q.requiresFinanceStep ?? false,
   };
 
   if (existing) {

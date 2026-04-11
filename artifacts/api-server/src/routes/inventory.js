@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { eq, ilike } from "drizzle-orm";
-import { db, inventoryTable, suppliersTable, appSettingsTable } from "@workspace/db";
+import { eq, ilike, and, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { db, inventoryTable, suppliersTable, appSettingsTable, usersTable } from "@workspace/db";
 import { CreateInventoryItemBody, UpdateInventoryItemBody, GetInventoryItemParams, UpdateInventoryItemParams, DeleteInventoryItemParams, ListInventoryQueryParams } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
-import { logActivity } from "../lib/activityLogger";
+import { authenticate, requireRole } from "../middlewares/authenticate";
+import { logActivity, createNotification } from "../lib/activityLogger";
 import { notifyLowStockStakeholders } from "../lib/inventoryAlerts";
 const router = Router();
 async function enrichItem(item) {
@@ -131,6 +132,44 @@ router.patch("/inventory/:id", authenticate, async (req, res) => {
         });
     }
     res.json(enriched);
+});
+/** Deck 05 — "create demand": notify procurement that an item should be reordered (manual demand signal). */
+router.post("/inventory/procurement-demand", authenticate, requireRole("admin", "manager", "inventory_manager", "sales_manager", "accountant"), async (req, res) => {
+    const body = z.object({
+        inventoryItemId: z.number().int().positive(),
+        quantityRequested: z.number().positive().optional(),
+        notes: z.string().max(2000).optional(),
+    }).safeParse(req.body);
+    if (!body.success) {
+        res.status(400).json({ error: body.error.message });
+        return;
+    }
+    const [item] = await db.select().from(inventoryTable).where(eq(inventoryTable.id, body.data.inventoryItemId));
+    if (!item) {
+        res.status(404).json({ error: "Inventory item not found" });
+        return;
+    }
+    const qty = (body.data.quantityRequested ?? Number(item.reorderLevel)) || 1;
+    const recipients = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(and(eq(usersTable.isActive, true), inArray(usersTable.role, ["admin", "manager", "inventory_manager"])));
+    const title = "Procurement demand";
+    const message = `${item.name}: request to purchase ~${qty} ${item.unit}. ${body.data.notes ? `Notes: ${body.data.notes}` : ""}`.trim();
+    await Promise.all(recipients.map((u) => createNotification({
+        userId: u.id,
+        title,
+        message,
+        type: "info",
+        link: "/inventory",
+    })));
+    await logActivity({
+        userId: req.user?.id,
+        action: "CREATE",
+        module: "inventory",
+        description: `Procurement demand for ${item.name} (qty ${qty})`,
+    });
+    res.status(201).json({ ok: true, inventoryItemId: item.id, quantityRequested: qty });
 });
 router.delete("/inventory/:id", authenticate, async (req, res) => {
     const params = DeleteInventoryItemParams.safeParse(req.params);

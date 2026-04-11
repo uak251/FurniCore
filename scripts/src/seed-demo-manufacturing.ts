@@ -24,6 +24,8 @@ import {
   qcRemarksTable,
   productsTable,
   usersTable,
+  materialUsageTable,
+  inventoryTable,
 } from "@workspace/db";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -62,10 +64,20 @@ interface QcRow {
   visibleToCustomer: boolean;
 }
 
+interface MaterialUsageRow {
+  seedSlug: string;
+  taskSeedSlug: string;
+  inventoryItemName: string;
+  quantityUsed: number;
+  unit: string;
+  notes: string | null;
+}
+
 interface Dataset {
   tasks: TaskRow[];
   productionOrders: OrderRow[];
   qcRemarks: QcRow[];
+  materialUsages?: MaterialUsageRow[];
 }
 
 const data: Dataset = JSON.parse(
@@ -80,6 +92,10 @@ function qcMarker(slug: string): string {
   return `[demo-seed:qc:${slug}]`;
 }
 
+function muMarker(slug: string): string {
+  return `[demo-seed:mu:${slug}]`;
+}
+
 async function resolveProductId(sku: string): Promise<number | null> {
   const [p] = await db.select({ id: productsTable.id }).from(productsTable).where(eq(productsTable.sku, sku)).limit(1);
   return p?.id ?? null;
@@ -91,7 +107,9 @@ async function resolveUserId(email: string): Promise<number | null> {
 }
 
 console.log("\nFurniCore — Seed demo manufacturing");
-console.log(`  Tasks: ${data.tasks.length} · Orders: ${data.productionOrders.length} · QC: ${data.qcRemarks.length}\n`);
+console.log(
+  `  Tasks: ${data.tasks.length} · Orders: ${data.productionOrders.length} · QC: ${data.qcRemarks.length} · Material usage: ${data.materialUsages?.length ?? 0}\n`,
+);
 
 const taskIdBySlug = new Map<string, number>();
 
@@ -219,6 +237,49 @@ for (const q of data.qcRemarks) {
   } else {
     await db.insert(qcRemarksTable).values(row);
     console.log(`  [qc] created  ${q.seedSlug} (${q.result})`);
+  }
+}
+
+for (const mu of data.materialUsages ?? []) {
+  const taskId = taskIdBySlug.get(mu.taskSeedSlug);
+  if (taskId == null) {
+    console.warn(`  [material_usage] SKIP ${mu.seedSlug} — task not found: ${mu.taskSeedSlug}`);
+    continue;
+  }
+  const [inv] = await db
+    .select({ id: inventoryTable.id, name: inventoryTable.name })
+    .from(inventoryTable)
+    .where(eq(inventoryTable.name, mu.inventoryItemName))
+    .limit(1);
+  if (inv == null) {
+    console.warn(`  [material_usage] SKIP ${mu.seedSlug} — inventory not found: ${mu.inventoryItemName}`);
+    continue;
+  }
+  const marker = muMarker(mu.seedSlug);
+  const notes = mu.notes?.trim() ? `${mu.notes.trim()}\n\n${marker}` : marker;
+
+  const [existing] = await db
+    .select({ id: materialUsageTable.id })
+    .from(materialUsageTable)
+    .where(like(materialUsageTable.notes, `%${marker}%`))
+    .limit(1);
+
+  const row = {
+    taskId,
+    inventoryItemId: inv.id,
+    materialName: inv.name,
+    quantityUsed: String(mu.quantityUsed),
+    unit: mu.unit,
+    notes,
+    loggedBy: null as number | null,
+  };
+
+  if (existing) {
+    await db.update(materialUsageTable).set(row).where(eq(materialUsageTable.id, existing.id));
+    console.log(`  [material_usage] updated  ${mu.seedSlug}`);
+  } else {
+    await db.insert(materialUsageTable).values(row);
+    console.log(`  [material_usage] created  ${mu.seedSlug}`);
   }
 }
 

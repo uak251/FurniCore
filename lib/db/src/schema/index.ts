@@ -5,6 +5,7 @@ export * from "./product_manufacturing_events";
 export * from "./suppliers";
 export * from "./inventory";
 export * from "./quotes";
+export * from "./pricing_cogm";
 export * from "./manufacturing";
 export * from "./production";
 export * from "./hr";

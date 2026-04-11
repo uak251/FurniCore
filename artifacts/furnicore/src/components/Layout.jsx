@@ -4,7 +4,7 @@ import { Link, useLocation, Redirect } from "wouter";
 import { useLogout, useGetCurrentUser, useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
 import { clearAuthStorage } from "@/lib/auth";
 import { disconnectSocket } from "@/lib/socket";
-import { LayoutDashboard, Package, Boxes, Truck, FileText, Hammer, Users, Banknote, Receipt, Bell, Activity, Settings, LogOut, UserCircle, Menu, ShoppingCart, BookOpen, } from "lucide-react";
+import { LayoutDashboard, Package, Boxes, Truck, FileText, Hammer, Users, Banknote, Receipt, Bell, Activity, Settings, LogOut, UserCircle, Menu, ShoppingCart, BookOpen, ClipboardList, BadgeCheck, LineChart, Package2, } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -27,6 +27,10 @@ const NAV_GROUPS = [
             { href: "/products", label: "Products", icon: Package },
             { href: "/suppliers", label: "Suppliers", icon: Truck, roles: ["admin", "manager", "accountant"] },
             { href: "/quotes", label: "Quotes", icon: FileText, roles: ["admin", "manager", "accountant"] },
+            { href: "/procurement", label: "Procurement", icon: ClipboardList, roles: ["admin", "manager", "accountant", "employee", "inventory_manager"] },
+            { href: "/price-approvals", label: "Price approvals", icon: BadgeCheck, roles: ["admin", "manager", "accountant", "sales_manager"] },
+            { href: "/cogm-reports", label: "COGM & variance", icon: LineChart, roles: ["admin", "manager", "accountant", "employee", "inventory_manager"] },
+            { href: "/inventory-usage", label: "Inventory usage", icon: Package2, roles: ["admin", "manager", "accountant", "employee", "inventory_manager"] },
             { href: "/manufacturing", label: "Manufacturing", icon: Hammer },
             { href: "/sales", label: "Sales", icon: ShoppingCart, roles: ["admin", "manager", "sales_manager"] },
         ],

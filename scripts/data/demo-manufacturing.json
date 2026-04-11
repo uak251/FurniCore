@@ -112,6 +112,20 @@
       "progress": 100,
       "dueDate": "2026-01-31T17:00:00.000Z",
       "completedAt": "2026-01-29T11:00:00.000Z"
+    },
+    {
+      "seedSlug": "harbor-apr-showcase",
+      "title": "Harbor table — April retail batch (variance demo)",
+      "description": "Retail allocation build; oak top glue-up; matte PU finish line. Used for COGM / consumption reporting in April 2026.",
+      "productSku": "SKU-TBL-HARBOR-6-OAK",
+      "assigneeEmail": "sam.rivera@furnicore.demo",
+      "status": "completed",
+      "priority": "medium",
+      "estimatedHours": 18,
+      "actualHours": 17.25,
+      "progress": 100,
+      "dueDate": "2026-04-10T17:00:00.000Z",
+      "completedAt": "2026-04-08T16:00:00.000Z"
     }
   ],
   "productionOrders": [
@@ -270,6 +284,32 @@
       "result": "pass",
       "remarks": "Showroom pilots: surface flatness 0.4mm/m; edge profile matches golden sample HT-01.",
       "visibleToCustomer": true
+    }
+  ],
+  "materialUsages": [
+    {
+      "seedSlug": "mu-harbor-apr-oak",
+      "taskSeedSlug": "harbor-apr-showcase",
+      "inventoryItemName": "European Oak Planks — Select Grade",
+      "quantityUsed": 85,
+      "unit": "bd_ft",
+      "notes": "April lot OH-APR-01"
+    },
+    {
+      "seedSlug": "mu-harbor-apr-polish",
+      "taskSeedSlug": "harbor-apr-showcase",
+      "inventoryItemName": "Polyurethane Wood Polish — Matte 1L",
+      "quantityUsed": 3,
+      "unit": "L",
+      "notes": null
+    },
+    {
+      "seedSlug": "mu-luna-charcoal",
+      "taskSeedSlug": "luna-armchair-fabric",
+      "inventoryItemName": "Upholstery Fabric Roll — Charcoal Weave",
+      "quantityUsed": 14.5,
+      "unit": "m",
+      "notes": "Pattern match LUNA-01"
     }
   ]
 }

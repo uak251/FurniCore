@@ -11,10 +11,11 @@
  *   4. seed-demo-catalog       — inventory raw materials + finished products
  *   5. seed-demo-suppliers     — 9 suppliers + quotes (incl. diego.alvarez portal user)
  *   6. seed-demo-hr-payroll    — employees + Jan–Apr 2026 payroll (needs users)
- *   7. seed-demo-manufacturing — manufacturing tasks + production orders + QC remarks
- *   8. seed-demo-accounting    — posted journal entries + cash transactions
- *   9. seed-demo-customers     — customer accounts, orders, invoices, payments
- *  10. seed-demo-activity      — activity logs + notifications
+ *   7. seed-demo-manufacturing — manufacturing tasks + production orders + QC remarks + material usage
+ *   8. seed-demo-cogm          — monthly standard costs + demo price proposal
+ *   9. seed-demo-accounting    — posted journal entries + cash transactions
+ *  10. seed-demo-customers     — customer accounts, orders, invoices, payments
+ *  11. seed-demo-activity      — activity logs + notifications
  *
  * Usage:
  *   pnpm --filter @workspace/scripts seed-all-demo
@@ -38,6 +39,7 @@ const scripts = [
   { name: "seed-demo-suppliers",     file: "seed-demo-suppliers.ts"     },
   { name: "seed-demo-hr-payroll",    file: "seed-demo-hr-payroll.ts"    },
   { name: "seed-demo-manufacturing", file: "seed-demo-manufacturing.ts" },
+  { name: "seed-demo-cogm",          file: "seed-demo-cogm.ts"          },
   { name: "seed-demo-accounting",    file: "seed-demo-accounting.ts"    },
   { name: "seed-demo-customers",     file: "seed-demo-customers.ts"     },
   { name: "seed-demo-activity",      file: "seed-demo-activity.ts"      },

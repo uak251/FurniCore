@@ -110,12 +110,25 @@
     {
       "seedSlug": "ply-baltic-pending",
       "supplierEmail": "sales@balticply.demo",
+      "inventoryItemName": "Birch Plywood Sheet — 18mm",
       "description": "Birch plywood 18mm, 120 sheets",
       "quantity": 120,
       "unitPrice": 42.5,
       "status": "PENDING",
       "validUntil": "2026-04-20T23:59:59.000Z",
       "notes": null
+    },
+    {
+      "seedSlug": "ply-greenfield-plywood",
+      "supplierEmail": "forest@greenfieldtimber.demo",
+      "inventoryItemName": "Birch Plywood Sheet — 18mm",
+      "description": "FSC birch plywood 18mm — competitive bid, 120 sheets",
+      "quantity": 120,
+      "unitPrice": 39.99,
+      "status": "PENDING",
+      "validUntil": "2026-05-10T23:59:59.000Z",
+      "workflowStage": "draft",
+      "notes": "Second supplier bid for same SKU — compare in Procurement."
     },
     {
       "seedSlug": "fabric-prima-locked",
@@ -257,6 +270,43 @@
       "approvedAt": "2025-12-03T14:00:00.000Z",
       "paidAt": "2025-12-10T10:00:00.000Z",
       "notes": "Paid in full — historical reference."
+    },
+    {
+      "seedSlug": "oak-baltic-compete",
+      "supplierEmail": "sales@balticply.demo",
+      "inventoryItemName": "European Oak Planks — Select Grade",
+      "description": "Baltic bundled shipment — oak select grade, 200 bd_ft",
+      "quantity": 200,
+      "unitPrice": 8.65,
+      "status": "PENDING",
+      "validUntil": "2026-06-01T23:59:59.000Z",
+      "workflowStage": "draft",
+      "notes": "Procurement draft — submit for purchase manager review."
+    },
+    {
+      "seedSlug": "polish-prima-compete",
+      "supplierEmail": "quotes@primaupholstery.demo",
+      "inventoryItemName": "Polyurethane Wood Polish — Matte 1L",
+      "description": "Promotional line — matte PU 1L cans (48 units)",
+      "quantity": 48,
+      "unitPrice": 9.95,
+      "status": "PENDING",
+      "validUntil": "2026-05-20T23:59:59.000Z",
+      "workflowStage": "pending_pm",
+      "submittedForReviewAt": "2026-04-01T10:00:00.000Z",
+      "notes": "Demo: in PM queue (submitted)."
+    },
+    {
+      "seedSlug": "fabric-cascade-charcoal",
+      "supplierEmail": "vendor@cascadelogistics.demo",
+      "inventoryItemName": "Upholstery Fabric Roll — Charcoal Weave",
+      "description": "Charcoal weave — 88 linear metres, mill direct",
+      "quantity": 88,
+      "unitPrice": 20.5,
+      "status": "PENDING",
+      "validUntil": "2026-05-30T23:59:59.000Z",
+      "workflowStage": "draft",
+      "notes": "Alternate vendor bid for fabric line."
     }
   ]
 }

@@ -238,7 +238,7 @@ router.post("/auth/verify-otp", async (req, res, next) => {
    Rejects unverified accounts with a dedicated error code so the frontend
    can show a "resend verification" prompt.
    ═══════════════════════════════════════════════════════════════════════════ */
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", async (req, res, next) => {
     const parsed = LoginBody.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ error: parsed.error.message });
@@ -246,40 +246,46 @@ router.post("/auth/login", async (req, res) => {
     }
     const { email, password } = parsed.data;
     const emailNorm = email.trim().toLowerCase();
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, emailNorm));
-    if (!user || !user.isActive) {
-        res.status(401).json({ error: "Invalid credentials" });
-        return;
-    }
-    const valid = await comparePassword(password, user.passwordHash);
-    if (!valid) {
-        res.status(401).json({ error: "Invalid credentials" });
-        return;
-    }
-    // Block login until email is verified
-    if (!user.isVerified) {
-        res.status(403).json({
-            error: "EMAIL_NOT_VERIFIED",
-            message: "Please verify your email address before logging in. Check your inbox for the verification link.",
-            email: user.email,
+    try {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.email, emailNorm));
+        if (!user || !user.isActive) {
+            res.status(401).json({ error: "Invalid credentials" });
+            return;
+        }
+        const valid = await comparePassword(password, user.passwordHash);
+        if (!valid) {
+            res.status(401).json({ error: "Invalid credentials" });
+            return;
+        }
+        // Customer self-signup: block until verified. Staff accounts can always sign in
+        // so bootstrap/admin users are not locked out if the DB row is inconsistent.
+        if (!user.isVerified && user.role === "customer") {
+            res.status(403).json({
+                error: "EMAIL_NOT_VERIFIED",
+                message: "Please verify your email address before logging in. Check your inbox for the verification link.",
+                email: user.email,
+            });
+            return;
+        }
+        const accessToken = generateAccessToken({ id: user.id, email: user.email, role: user.role });
+        const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
+        await db.update(usersTable).set({ refreshToken }).where(eq(usersTable.id, user.id));
+        await logActivity({
+            userId: user.id,
+            action: "LOGIN",
+            module: "auth",
+            description: `${user.name} logged in`,
         });
-        return;
+        res.json({
+            accessToken,
+            refreshToken,
+            accessExpiresIn: getAccessExpiresInSeconds(),
+            user: sanitize(user),
+        });
     }
-    const accessToken = generateAccessToken({ id: user.id, email: user.email, role: user.role });
-    const refreshToken = generateRefreshToken({ id: user.id, email: user.email });
-    await db.update(usersTable).set({ refreshToken }).where(eq(usersTable.id, user.id));
-    await logActivity({
-        userId: user.id,
-        action: "LOGIN",
-        module: "auth",
-        description: `${user.name} logged in`,
-    });
-    res.json({
-        accessToken,
-        refreshToken,
-        accessExpiresIn: getAccessExpiresInSeconds(),
-        user: sanitize(user),
-    });
+    catch (err) {
+        next(err);
+    }
 });
 /* ═══════════════════════════════════════════════════════════════════════════
    GET /auth/verify-email?token=<JWT>

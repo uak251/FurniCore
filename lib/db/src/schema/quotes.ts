@@ -1,8 +1,9 @@
-import { pgTable, text, serial, timestamp, numeric, integer, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, numeric, integer, varchar, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { suppliersTable } from "./suppliers";
 import { inventoryTable } from "./inventory";
+import { usersTable } from "./users";
 
 export const supplierQuotesTable = pgTable("supplier_quotes", {
   id: serial("id").primaryKey(),
@@ -18,6 +19,21 @@ export const supplierQuotesTable = pgTable("supplier_quotes", {
   lockedAt: timestamp("locked_at", { withTimezone: true }),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   paidAt: timestamp("paid_at", { withTimezone: true }),
+  /**
+   * ERP workflow: draft → submitted → pm_review → finance_review (optional) → approved | rejected
+   * Legacy quotes use workflow_stage null/legacy and old status values only.
+   */
+  workflowStage: varchar("workflow_stage", { length: 32 }).default("legacy"),
+  submittedForReviewAt: timestamp("submitted_for_review_at", { withTimezone: true }),
+  submittedByUserId: integer("submitted_by_user_id").references(() => usersTable.id),
+  pmReviewedAt: timestamp("pm_reviewed_at", { withTimezone: true }),
+  pmReviewerId: integer("pm_reviewer_id").references(() => usersTable.id),
+  pmDecision: varchar("pm_decision", { length: 20 }),
+  financeReviewedAt: timestamp("finance_reviewed_at", { withTimezone: true }),
+  financeReviewerId: integer("finance_reviewer_id").references(() => usersTable.id),
+  financeDecision: varchar("finance_decision", { length: 20 }),
+  requiresFinanceStep: boolean("requires_finance_step").notNull().default(false),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
