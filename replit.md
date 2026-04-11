@@ -21,8 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 1. Install dependencies from the repo root: `pnpm install`
 2. Copy env templates:
    - Root: copy `.env.example` to `.env` and set `DATABASE_URL`, `PORT`, and `SESSION_SECRET` (see comments in `.env.example`).
-   - FurniCore: copy `artifacts/furnicore/.env.example` to `artifacts/furnicore/.env` (set `PORT` / `BASE_PATH`; use a different `PORT` than the API).
-   - Mockup sandbox (optional): copy `artifacts/mockup-sandbox/.env.example` to `artifacts/mockup-sandbox/.env`.
+   - FurniCore: copy `frontend/furnicore/.env.example` to `frontend/furnicore/.env` (set `PORT` / `BASE_PATH`; Vite uses a different `PORT` than the API, e.g. 5173 vs 3000).
+   - Mockup sandbox (optional): copy `frontend/mockup-sandbox/.env.example` to `frontend/mockup-sandbox/.env` when present.
 3. Ensure PostgreSQL is running and `DATABASE_URL` in the root `.env` is valid.
 4. Apply the schema (dev): `pnpm --filter @workspace/db run push`
 

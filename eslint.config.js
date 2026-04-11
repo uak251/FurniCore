@@ -16,7 +16,7 @@ export default [
   },
   js.configs.recommended,
   {
-    files: ["artifacts/api-server/**/*.js"],
+    files: ["backend/api-server/**/*.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -36,7 +36,7 @@ export default [
     },
   },
   {
-    files: ["artifacts/furnicore/**/*.{js,jsx}"],
+    files: ["frontend/furnicore/**/*.{js,jsx}"],
     ...react.configs.flat.recommended,
     languageOptions: {
       ...react.configs.flat.recommended.languageOptions,

@@ -1,7 +1,7 @@
 /**
  * One-shot TS → JS conversion: strips types, preserves module structure.
  * Run from repo root: node scripts/ts-to-js-convert.mjs <targetDir>
- * Example: node scripts/ts-to-js-convert.mjs artifacts/api-server
+ * Example: node scripts/ts-to-js-convert.mjs backend/api-server
  *
  * Requires: typescript (workspace devDependency)
  */

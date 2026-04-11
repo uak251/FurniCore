@@ -1,0 +1,23 @@
+# Local PostgreSQL for FurniCore. From repo root: pnpm run db:up
+# DATABASE_URL in .env should match (see .env.example).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: furnicore-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: furnicore
+      POSTGRES_PASSWORD: furnicore_dev
+      POSTGRES_DB: furnicore
+    volumes:
+      - furnicore_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U furnicore -d furnicore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  furnicore_pgdata:

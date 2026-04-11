@@ -1,6 +1,124 @@
 import { db, pool } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
+/**
+ * Fresh/empty databases (e.g. new Supabase project) have no `users` or core ERP tables.
+ * Later migration strings assume these exist (`ALTER TABLE users`, `REFERENCES users`, etc.).
+ * This block is idempotent (`IF NOT EXISTS`) and must run first.
+ */
+const foundationTablesV1 = `
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  is_verified BOOLEAN NOT NULL DEFAULT false,
+  refresh_token TEXT,
+  email_verify_token TEXT,
+  email_verify_expiry TIMESTAMPTZ,
+  profile_image_url TEXT,
+  permissions TEXT,
+  dashboard_theme TEXT,
+  phone TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS suppliers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  address TEXT,
+  contact_person TEXT,
+  status TEXT,
+  rating TEXT,
+  payment_terms TEXT,
+  notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  quantity TEXT NOT NULL,
+  reorder_level TEXT NOT NULL,
+  unit_cost TEXT NOT NULL,
+  supplier_id INTEGER REFERENCES suppliers(id)
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  sku TEXT NOT NULL,
+  category TEXT,
+  selling_price TEXT NOT NULL,
+  cost_price TEXT NOT NULL,
+  stock_quantity INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS manufacturing_tasks (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  status TEXT NOT NULL,
+  product_id INTEGER REFERENCES products(id),
+  assignee_id INTEGER REFERENCES users(id),
+  description TEXT,
+  estimated_hours TEXT,
+  actual_hours TEXT,
+  due_date TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS supplier_quotes (
+  id SERIAL PRIMARY KEY,
+  supplier_id INTEGER NOT NULL REFERENCES suppliers(id),
+  inventory_item_id INTEGER REFERENCES inventory(id),
+  quantity TEXT NOT NULL,
+  unit_price TEXT NOT NULL,
+  total_price TEXT NOT NULL,
+  valid_until TIMESTAMPTZ,
+  status TEXT NOT NULL,
+  notes TEXT,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS chart_of_accounts (
+  id SERIAL PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  normal_balance TEXT NOT NULL,
+  description TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  subtype TEXT,
+  parent_id INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS customer_orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES users(id),
+  status TEXT NOT NULL,
+  total_amount TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+`;
+
 /** Idempotent rename: skip if already `type` or legacy column missing. */
 const renameCoaAccountType = `
 DO $$
@@ -272,6 +390,7 @@ CREATE INDEX IF NOT EXISTS cogm_variance_records_period_idx ON cogm_variance_rec
 `;
 
 const migrations = [
+  foundationTablesV1,
   createModuleTables,
   userProfilesPreferredCurrencyNullable,
   "ALTER TABLE users ADD COLUMN IF NOT EXISTS dashboard_theme VARCHAR(64)",

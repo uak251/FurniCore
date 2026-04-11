@@ -35,7 +35,10 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
 
 packages:
-  - artifacts/*
+  - backend/api-server
+  - frontend/furnicore
+  - frontend/mockup-sandbox
+  - frontend/packages/*
   - lib/*
   - lib/integrations/*
   - scripts

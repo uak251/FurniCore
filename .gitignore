@@ -50,3 +50,6 @@ Thumbs.db
 
 # Local secrets (templates are `.env.example`)
 **/.env
+
+# Legacy duplicate tree (removed from repo); do not re-add.
+/artifacts/

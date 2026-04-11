@@ -20,7 +20,7 @@ This maps each slide item to **what exists today**, **how to use it**, and **wha
 
 | Layer | Coverage | Where |
 |-------|------------|--------|
-| **Supplier quotes** | Procurement submits drafts → Purchase Manager (`pending_pm`) → Finance when `requiresFinanceStep` / threshold (`pending_finance`) → approved rates stored as **official supplier rates** | `artifacts/api-server/src/lib/quoteWorkflow.js`, `routes/quotes.js`, UI **Procurement** (`/procurement`) and **Price approvals** (`/price-approvals`) |
+| **Supplier quotes** | Procurement submits drafts → Purchase Manager (`pending_pm`) → Finance when `requiresFinanceStep` / threshold (`pending_finance`) → approved rates stored as **official supplier rates** | `backend/api-server/src/lib/quoteWorkflow.js`, `routes/quotes.js`, UI **Procurement** (`/procurement`) and **Price approvals** (`/price-approvals`) |
 | **Customer / catalog prices** | Sales proposes selling price / discount; Admin/Manager approve or reject; on approve, product selling price updates | `routes/price-proposals.js`, UI **Price approvals** (customer proposals section) |
 | **Audit** | Activity log on create/approve/reject | `logActivity` in quote + price-proposal routes |
 
