@@ -1,0 +1,11 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "watchPatterns": ["backend/api-server/**"]
+  },
+  "deploy": {
+    "restartPolicyType": "on_failure",
+    "restartPolicyMaxRetries": 5,
+    "numReplicas": 1
+  }
+}
