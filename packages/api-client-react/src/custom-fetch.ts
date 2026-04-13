@@ -360,7 +360,27 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  let response: Response;
+  try {
+    response = await fetch(input, { ...init, method, headers });
+  } catch (cause) {
+    // Surface network-level failures with target URL context for deployment debugging.
+    const target = requestInfo.url.startsWith("/")
+      ? `${_baseUrl ?? "<same-origin>"}${requestInfo.url}`
+      : requestInfo.url;
+    if (typeof console !== "undefined" && typeof console.error === "function") {
+      console.error("[api] request_unreachable", {
+        method: requestInfo.method,
+        url: target,
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
+    throw new Error(
+      `API request unreachable: ${requestInfo.method} ${target}. ` +
+        "Check API server status and VITE_API_URL configuration.",
+      { cause },
+    );
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
