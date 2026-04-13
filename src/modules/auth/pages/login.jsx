@@ -93,6 +93,7 @@ export default function Login() {
     const [unverifiedEmail, setUnverifiedEmail] = useState(null);
     const [showPw, setShowPw] = useState(false);
     const [apiReachable, setApiReachable] = useState(null);
+    const [dbReachable, setDbReachable] = useState(null);
     useEffect(() => {
         let cancelled = false;
         fetch(`${API}/api/healthz`)
@@ -103,6 +104,36 @@ export default function Login() {
             .catch(() => {
             if (!cancelled)
                 setApiReachable(false);
+        });
+        fetch(`${API}/api/healthz/db`)
+            .then(async (r) => {
+            if (cancelled)
+                return;
+            // Backends that haven't deployed /healthz/db yet should not show a false "DB down" banner.
+            if (r.status === 404) {
+                setDbReachable(null);
+                return;
+            }
+            if (r.ok) {
+                setDbReachable(true);
+                return;
+            }
+            let payload = null;
+            try {
+                payload = await r.json();
+            }
+            catch {
+                payload = null;
+            }
+            if (payload && typeof payload === "object" && payload.error === "DB_UNAVAILABLE") {
+                setDbReachable(false);
+                return;
+            }
+            setDbReachable(null);
+        })
+            .catch(() => {
+            if (!cancelled)
+                setDbReachable(null);
         });
         return () => {
             cancelled = true;
@@ -167,5 +198,5 @@ export default function Login() {
         }
     };
     const onSubmit = async (values) => submitLogin(values, true);
-    return (_jsx("div", { className: "min-h-screen bg-background flex flex-col justify-center items-center p-4", children: _jsxs("div", { className: "w-full max-w-[400px]", children: [_jsxs("div", { className: "flex flex-col items-center mb-8", children: [_jsx("div", { className: "w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-md", children: _jsx(Hammer, { className: "h-6 w-6 text-primary-foreground" }) }), _jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "FurniCore" }), _jsx("p", { className: "text-muted-foreground mt-2", children: "Furniture manufacturing ERP" })] }), apiReachable === false && (_jsxs(Alert, { variant: "destructive", className: "mb-4", children: [_jsx(AlertTitle, { children: "Cannot reach API" }), _jsx(AlertDescription, { className: "text-sm", children: "Start the API server and ensure Vite proxies to it (see repo `.env` VITE_API_URL). Sign-in will fail until the API is up." })] })), _jsxs(Card, { className: "border-border/40 shadow-xl", children: [_jsxs(CardHeader, { className: "space-y-1 text-center", children: [_jsx(CardTitle, { className: "text-2xl", children: "Sign In" }), _jsx(CardDescription, { children: "Enter your credentials to access the system" })] }), _jsxs(CardContent, { children: [unverifiedEmail && _jsx(UnverifiedEmailBanner, { email: unverifiedEmail }), _jsx(Form, { ...form, children: _jsxs("form", { onSubmit: form.handleSubmit(onSubmit), className: "space-y-4", children: [_jsx(FormField, { control: form.control, name: "email", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Email Address" }), _jsx(FormControl, { children: _jsx(Input, { placeholder: "admin@furnicore.com", ...field }) }), _jsx(FormMessage, {})] })) }), _jsx(FormField, { control: form.control, name: "password", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Password" }), _jsx(FormControl, { children: _jsxs("div", { className: "relative", children: [_jsx(Input, { type: showPw ? "text" : "password", placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022", className: "pr-10", ...field }), _jsx(Button, { type: "button", variant: "ghost", size: "icon", className: "absolute right-0 top-0 h-9 w-9 text-muted-foreground", onClick: () => setShowPw((s) => !s), "aria-label": showPw ? "Hide password" : "Show password", children: showPw ? _jsx(EyeOff, { className: "h-4 w-4" }) : _jsx(Eye, { className: "h-4 w-4" }) })] }) }), _jsx(FormMessage, {})] })) }), _jsx(Button, { type: "submit", className: "w-full mt-6", disabled: login.isPending, children: login.isPending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Authenticating\u2026"] })) : ("Sign In") })] }) })] })] }), _jsxs("p", { className: "text-center text-sm text-muted-foreground mt-6", children: ["Customer?", " ", _jsx(Link, { href: "/signup", className: "text-primary font-medium hover:underline", children: "Create a customer account \u2192" })] })] }) }));
+            return (_jsx("div", { className: "min-h-screen bg-background flex flex-col justify-center items-center p-4", children: _jsxs("div", { className: "w-full max-w-[400px]", children: [_jsxs("div", { className: "flex flex-col items-center mb-8", children: [_jsx("div", { className: "w-12 h-12 bg-primary rounded-xl flex items-center justify-center mb-4 shadow-md", children: _jsx(Hammer, { className: "h-6 w-6 text-primary-foreground" }) }), _jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "FurniCore" }), _jsx("p", { className: "text-muted-foreground mt-2", children: "Furniture manufacturing ERP" })] }), apiReachable === false && (_jsxs(Alert, { variant: "destructive", className: "mb-4", children: [_jsx(AlertTitle, { children: "Cannot reach API" }), _jsx(AlertDescription, { className: "text-sm", children: "Start the API server and ensure Vite proxies to it (see repo `.env` VITE_API_URL). Sign-in will fail until the API is up." })] })), apiReachable !== false && dbReachable === false && (_jsxs(Alert, { variant: "destructive", className: "mb-4", children: [_jsx(AlertTitle, { children: "Database unavailable" }), _jsx(AlertDescription, { className: "text-sm", children: "API is reachable, but database is down. Start Postgres and run migrations/seed before login." })] })), _jsxs(Card, { className: "border-border/40 shadow-xl", children: [_jsxs(CardHeader, { className: "space-y-1 text-center", children: [_jsx(CardTitle, { className: "text-2xl", children: "Sign In" }), _jsx(CardDescription, { children: "Enter your credentials to access the system" })] }), _jsxs(CardContent, { children: [unverifiedEmail && _jsx(UnverifiedEmailBanner, { email: unverifiedEmail }), _jsx(Form, { ...form, children: _jsxs("form", { onSubmit: form.handleSubmit(onSubmit), className: "space-y-4", children: [_jsx(FormField, { control: form.control, name: "email", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Email Address" }), _jsx(FormControl, { children: _jsx(Input, { placeholder: "admin@furnicore.com", ...field }) }), _jsx(FormMessage, {})] })) }), _jsx(FormField, { control: form.control, name: "password", render: ({ field }) => (_jsxs(FormItem, { children: [_jsx(FormLabel, { children: "Password" }), _jsx(FormControl, { children: _jsxs("div", { className: "relative", children: [_jsx(Input, { type: showPw ? "text" : "password", placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022", className: "pr-10", ...field }), _jsx(Button, { type: "button", variant: "ghost", size: "icon", className: "absolute right-0 top-0 h-9 w-9 text-muted-foreground", onClick: () => setShowPw((s) => !s), "aria-label": showPw ? "Hide password" : "Show password", children: showPw ? _jsx(EyeOff, { className: "h-4 w-4" }) : _jsx(Eye, { className: "h-4 w-4" }) })] }) }), _jsx(FormMessage, {})] })) }), _jsx(Button, { type: "submit", className: "w-full mt-6", disabled: login.isPending, children: login.isPending ? (_jsxs(_Fragment, { children: [_jsx(Loader2, { className: "mr-2 h-4 w-4 animate-spin" }), " Authenticating\u2026"] })) : ("Sign In") })] }) })] })] }), _jsxs("p", { className: "text-center text-sm text-muted-foreground mt-6", children: ["Customer?", " ", _jsx(Link, { href: "/signup", className: "text-primary font-medium hover:underline", children: "Create a customer account \u2192" })] })] }) }));
 }
