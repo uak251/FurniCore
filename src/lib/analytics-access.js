@@ -1,22 +1,17 @@
-const FULL_ACCESS = ["admin"];
+import contract from "../../../../contracts/analytics-rbac.v1.json";
 
-const MODULE_ROLE_MAP = {
-  inventory: [...FULL_ACCESS, "inventory_manager", "manager"],
-  finance: [...FULL_ACCESS, "accountant", "manager"],
-  hr: [...FULL_ACCESS, "manager"],
-  "customer-profile": [...FULL_ACCESS, "manager", "sales_manager", "customer"],
-  supplier: [...FULL_ACCESS, "inventory_manager", "accountant", "manager"],
-  production: [...FULL_ACCESS, "manager", "inventory_manager", "employee"],
-  notifications: [...FULL_ACCESS, "manager", "accountant", "inventory_manager", "sales_manager", "employee", "supplier", "worker", "customer"],
-  settings: [...FULL_ACCESS, "manager"],
-};
+const FULL_ACCESS = ["admin"];
 
 export function canAccessAnalyticsModule(role, moduleKey) {
   if (!role || !moduleKey) return false;
   if (FULL_ACCESS.includes(role)) return true;
-  return (MODULE_ROLE_MAP[moduleKey] ?? FULL_ACCESS).includes(role);
+  return (contract.modules?.[moduleKey]?.allowedRoles ?? FULL_ACCESS).includes(role);
 }
 
 export function allowedRolesForAnalyticsModule(moduleKey) {
-  return MODULE_ROLE_MAP[moduleKey] ?? FULL_ACCESS;
+  return contract.modules?.[moduleKey]?.allowedRoles ?? FULL_ACCESS;
+}
+
+export function analyticsContractVersion() {
+  return contract.version ?? "unknown";
 }
