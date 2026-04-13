@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.cursor
+.agents
+/bin/legacy
+bin/legacy
+coverage
+dist
+*.log
+*.tmp
+*.local
+.env
+.env.*
