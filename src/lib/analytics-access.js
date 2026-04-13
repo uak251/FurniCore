@@ -1,4 +1,4 @@
-import contract from "../../../../contracts/analytics-rbac.v1.json";
+import contract from "../../contracts/analytics-rbac.v1.json";
 
 const FULL_ACCESS = ["admin"];
 

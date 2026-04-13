@@ -151,7 +151,7 @@ export default function Login() {
                 toast({
                     variant: "destructive",
                     title: "Server error",
-                    description: detail || "The server could not complete sign-in. Refreshing the page.",
+                    description: "The authentication service is temporarily unavailable. Please try again shortly.",
                 });
                 window.setTimeout(() => window.location.reload(), 1200);
                 return;
