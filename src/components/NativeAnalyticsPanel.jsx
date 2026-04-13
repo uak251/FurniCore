@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getAuthToken } from "@/lib/auth";
 import { apiOriginPrefix } from "@/lib/api-base";
+import { toast } from "@/hooks/use-toast";
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6", "#a855f7"];
 
@@ -60,7 +61,11 @@ function apiPost(path) {
     },
   }).then(async (res) => {
     const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(payload?.error || `HTTP ${res.status}`);
+      error.payload = payload;
+      throw error;
+    }
     return payload;
   });
 }
@@ -128,7 +133,46 @@ function semanticHint(chart) {
   return null;
 }
 
-function QuickActionButton({ moduleKey, action }) {
+const ACTION_ICONS = {
+  "contact-supplier": "📞",
+  "create-demand": "📊",
+  "reorder-now": "📊",
+  "approve-quote": "✅",
+  "assign-worker": "👷",
+  "adjust-payroll": "💰",
+  "allocate-bonus-penalty": "💰",
+  "track-product": "🚚",
+  "generate-report": "📄",
+  "approve-transaction": "✅",
+  "resolve-alert": "✅",
+  "view-audit-log": "📘",
+  "log-qc-check": "🧪",
+  "compare-rates": "📈",
+  "lock-price": "🔒",
+  "view-satisfaction-survey": "📝",
+};
+
+function feedbackMessage(actionId, fallback = "Action logged") {
+  const map = {
+    "create-demand": "Demand created",
+    "approve-quote": "Queue opened",
+    "approve-transaction": "Queue opened",
+    "contact-supplier": "Supplier contact opened",
+    "track-product": "Tracking opened",
+    "assign-worker": "Worker assignment opened",
+    "adjust-payroll": "Payroll adjustment opened",
+  };
+  return map[actionId] || fallback;
+}
+
+function formatActionTime(iso) {
+  if (!iso) return "No recent action";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "No recent action";
+  return d.toLocaleString();
+}
+
+function QuickActionButton({ moduleKey, chartId, action, onActionComplete }) {
   const [, setLocation] = useLocation();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -137,10 +181,22 @@ function QuickActionButton({ moduleKey, action }) {
     setBusy(true);
     try {
       const result = await apiPost(`/api/analytics/native/${moduleKey}/actions/${action.id}`);
+      const icon = ACTION_ICONS[action.id] || "✅";
+      toast({
+        title: `${icon} ${feedbackMessage(action.id, result?.message || "Action logged")}`,
+        description: `Logged at ${formatActionTime(result?.executedAt)}`,
+        duration: 4000,
+      });
+      onActionComplete?.(chartId, action.id, result?.executedAt);
       if (result?.redirectTo) setLocation(result.redirectTo);
     } catch (err) {
-      // eslint-disable-next-line no-alert
-      alert(`Action failed: ${err?.message || "Unknown error"}`);
+      const payload = err?.payload;
+      toast({
+        variant: "destructive",
+        title: "Action failed",
+        description: payload?.error || err?.message || "Unknown error",
+        duration: 5000,
+      });
     } finally {
       setBusy(false);
       setOpen(false);
@@ -151,7 +207,7 @@ function QuickActionButton({ moduleKey, action }) {
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
         <Button size="sm" variant={action.tone === "secondary" ? "outline" : "default"}>
-          {action.label}
+          {(ACTION_ICONS[action.id] || "•")} {action.label}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -180,6 +236,14 @@ export function NativeAnalyticsPanel({ moduleKey, title }) {
 
   const kpis = useMemo(() => data?.kpis ?? [], [data]);
   const charts = useMemo(() => data?.charts ?? [], [data]);
+  const [actionMeta, setActionMeta] = useState({});
+
+  function handleActionComplete(chartId, actionId, executedAt) {
+    setActionMeta((prev) => ({
+      ...prev,
+      [chartId]: { actionId, executedAt },
+    }));
+  }
 
   return (
     <Card className="border-border/60">
@@ -228,13 +292,24 @@ export function NativeAnalyticsPanel({ moduleKey, title }) {
                     {Array.isArray(chart.actions) && chart.actions.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {chart.actions.map((action) => (
-                          <QuickActionButton key={action.id} moduleKey={moduleKey} action={action} />
+                          <QuickActionButton
+                            key={action.id}
+                            moduleKey={moduleKey}
+                            chartId={chart.id}
+                            action={action}
+                            onActionComplete={handleActionComplete}
+                          />
                         ))}
                       </div>
                     )}
                   </CardHeader>
                   <CardContent>
                     <ChartRenderer chart={chart} />
+                    <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+                      {actionMeta[chart.id]
+                        ? `${ACTION_ICONS[actionMeta[chart.id].actionId] || "✅"} Last action: ${formatActionTime(actionMeta[chart.id].executedAt)}`
+                        : "No recent action"}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
