@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
 import { FileText, Plus, Truck, BarChart3, Building2, Star, TrendingUp, DollarSign, Clock, CheckCircle2, AlertTriangle, Pencil, Info, } from "lucide-react";
 /* ─── Constants ─────────────────────────────────────────────────────────────── */
 const QUOTE_STATUS_COLOR = {

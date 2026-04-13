@@ -34,6 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { AdminUnifiedAnalyticsDashboard } from "@/components/AdminUnifiedAnalyticsDashboard";
+import { RoleAnalyticsDashboard } from "@/components/RoleAnalyticsDashboard";
 
 const QUICK_ACTIONS = [
   { href: "/inventory", label: "Add inventory item", icon: Boxes, accent: "from-violet-500/15 to-violet-600/5 border-violet-500/20 text-violet-700 dark:text-violet-300" },
@@ -252,6 +253,9 @@ export default function Dashboard() {
       )}
 
       {user?.role === "admin" && <AdminUnifiedAnalyticsDashboard />}
+      {["manager", "inventory_manager", "accountant"].includes(user?.role || "") && (
+        <RoleAnalyticsDashboard role={user.role} />
+      )}
 
       {/* KPI grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
