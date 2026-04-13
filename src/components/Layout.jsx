@@ -95,12 +95,19 @@ export function Layout({ children }) {
     const userRole = user?.role ?? "";
     const analyticsModuleByRoute = {
         "/inventory": "inventory",
-        "/accounting": "finance",
+        "/procurement": "procurement",
+        "/price-approvals": "procurement",
+        "/accounting": "accounting",
+        "/cogm-reports": "accounting",
         "/hr": "hr",
+        "/payroll": "payroll",
+        "/sales": "customer",
+        "/customer-portal": "customer",
         "/profile": "customer-profile",
         "/suppliers": "supplier",
         "/manufacturing": "production",
         "/notifications": "notifications",
+        "/users": "admin",
         "/settings": "settings",
     };
     const analyticsModule = Object.entries(analyticsModuleByRoute).find(([prefix]) => location === prefix || location.startsWith(`${prefix}/`))?.[1];

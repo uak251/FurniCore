@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer,
@@ -19,6 +20,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { getAuthToken } from "@/lib/auth";
 import { apiOriginPrefix } from "@/lib/api-base";
 
@@ -34,6 +47,21 @@ function apiFetch(path) {
       throw new Error(msg || `HTTP ${res.status}`);
     }
     return res.json();
+  });
+}
+
+function apiPost(path) {
+  const token = getAuthToken() ?? "";
+  return fetch(`${apiOriginPrefix()}${path}`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Content-Type": "application/json",
+    },
+  }).then(async (res) => {
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(payload?.error || `HTTP ${res.status}`);
+    return payload;
   });
 }
 
@@ -92,6 +120,56 @@ function ChartRenderer({ chart }) {
   );
 }
 
+function semanticHint(chart) {
+  if (chart?.semantic) return chart.semantic;
+  if (chart?.data?.some((row) => typeof row?.remark === "string")) {
+    return "Variance remarks: increased / same / decreased.";
+  }
+  return null;
+}
+
+function QuickActionButton({ moduleKey, action }) {
+  const [, setLocation] = useLocation();
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  async function onConfirm() {
+    setBusy(true);
+    try {
+      const result = await apiPost(`/api/analytics/native/${moduleKey}/actions/${action.id}`);
+      if (result?.redirectTo) setLocation(result.redirectTo);
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      alert(`Action failed: ${err?.message || "Unknown error"}`);
+    } finally {
+      setBusy(false);
+      setOpen(false);
+    }
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button size="sm" variant={action.tone === "secondary" ? "outline" : "default"}>
+          {action.label}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Action</AlertDialogTitle>
+          <AlertDialogDescription>{action.confirm || `Run ${action.label}?`}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} disabled={busy}>
+            {busy ? "Running..." : "Continue"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 export function NativeAnalyticsPanel({ moduleKey, title }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["native-analytics", moduleKey],
@@ -144,6 +222,16 @@ export function NativeAnalyticsPanel({ moduleKey, title }) {
                 <Card key={chart.id} className="border-border/60">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">{chart.title}</CardTitle>
+                    {semanticHint(chart) && (
+                      <p className="text-xs text-muted-foreground">{semanticHint(chart)}</p>
+                    )}
+                    {Array.isArray(chart.actions) && chart.actions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {chart.actions.map((action) => (
+                          <QuickActionButton key={action.id} moduleKey={moduleKey} action={action} />
+                        ))}
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent>
                     <ChartRenderer chart={chart} />
