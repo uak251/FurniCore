@@ -8,6 +8,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml* ./
+COPY lib ./lib
 
 RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
 
@@ -20,13 +21,11 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml* ./
+COPY lib ./lib
 
 RUN npm install -g pnpm && pnpm install --no-frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
-
-# file: workspace stubs used at runtime (esbuild external)
-COPY --from=builder /app/lib ./lib
 
 EXPOSE 3000
 
