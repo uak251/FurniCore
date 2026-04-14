@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
+import { AdminCsvTransferPanel } from "@/components/AdminCsvTransferPanel";
 
 const MODULES = [
   { key: "inventory", title: "Inventory" },
@@ -22,6 +23,7 @@ export function AdminUnifiedAnalyticsDashboard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <AdminCsvTransferPanel />
         {MODULES.map((mod) => (
           <NativeAnalyticsPanel
             key={mod.key}
