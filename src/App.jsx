@@ -3,6 +3,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import "@/lib/auth";
 import { CurrencyProvider } from "@/lib/currency";
 import { DashboardThemeProvider } from "@/context/DashboardThemeProvider";
 import { ProtectedRoute } from "@/components/ProtectedRoute";

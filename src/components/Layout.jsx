@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
 import { Link, useLocation, Redirect } from "wouter";
 import { useLogout, useGetCurrentUser, useGetDashboardSummary, getGetDashboardSummaryQueryKey } from "@workspace/api-client-react";
-import { clearAuthStorage } from "@/lib/auth";
+import { clearAuthStorage, getAuthToken } from "@/lib/auth";
 import { disconnectSocket } from "@/lib/socket";
 import { LayoutDashboard, Package, Boxes, Truck, FileText, Hammer, Users, Banknote, Receipt, Bell, Activity, Settings, LogOut, UserCircle, Menu, ShoppingCart, BookOpen, ClipboardList, BadgeCheck, LineChart, Package2, } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -87,9 +87,10 @@ export function Layout({ children }) {
     const [location, setLocation] = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const logout = useLogout();
+    const authed = Boolean(getAuthToken());
     const { data: user } = useGetCurrentUser();
     const { data: summary } = useGetDashboardSummary({
-        query: { queryKey: getGetDashboardSummaryQueryKey() },
+        query: { queryKey: getGetDashboardSummaryQueryKey(), enabled: authed },
     });
     const lowStockCount = summary?.lowStockCount ?? 0;
     const userRole = user?.role ?? "";

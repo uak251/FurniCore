@@ -16,7 +16,8 @@ if (isMonorepoChild) {
     dotenvConfig({ path: path.join(monorepoRoot, ".env") });
 }
 dotenvConfig({ path: path.join(furnicoreDir, ".env"), override: true });
-const apiUrl = process.env.VITE_API_URL ?? "http://localhost:3000";
+const apiUrlRaw = process.env.VITE_API_URL ?? "http://localhost:3000";
+const apiUrl = apiUrlRaw.replace(/\/+$/, "").replace(/\/api$/i, "");
 const rawPort = process.env.PORT ?? "5173";
 const port = Number(rawPort);
 if (Number.isNaN(port) || port <= 0) {

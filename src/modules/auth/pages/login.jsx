@@ -94,6 +94,16 @@ export default function Login() {
     const [showPw, setShowPw] = useState(false);
     const [apiReachable, setApiReachable] = useState(null);
     const [dbReachable, setDbReachable] = useState(null);
+    const shouldCheckDbHealth = (() => {
+        try {
+            const base = API && API.length > 0 ? API : window.location.origin;
+            const host = new URL(base).hostname;
+            return host === "localhost" || host === "127.0.0.1";
+        }
+        catch {
+            return false;
+        }
+    })();
     useEffect(() => {
         let cancelled = false;
         fetch(`${API}/api/healthz`)
@@ -105,6 +115,12 @@ export default function Login() {
             if (!cancelled)
                 setApiReachable(false);
         });
+        if (!shouldCheckDbHealth) {
+            setDbReachable(null);
+            return () => {
+                cancelled = true;
+            };
+        }
         fetch(`${API}/api/healthz/db`)
             .then(async (r) => {
             if (cancelled)

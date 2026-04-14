@@ -6,13 +6,11 @@ import App from "./App";
 import "./index.css";
 import { stripTrailingApiPath } from "@/lib/api-base";
 /**
- * In development, keep relative `/api/...` URLs so they go through the Vite proxy
- * (single target in vite.config). Setting a base URL here would bypass the proxy and
- * hit whatever is on `VITE_API_URL` directly — a common source of 404s when the
- * port did not match the running API.
+ * If VITE_API_URL is configured, always use it as API base (dev + prod).
+ * This avoids local /api proxy 404s when backend is remote (e.g. Railway).
  */
 const rawApi = import.meta.env.VITE_API_URL?.trim();
-if (import.meta.env.PROD && rawApi) {
+if (rawApi) {
     setBaseUrl(stripTrailingApiPath(rawApi));
 }
 else {

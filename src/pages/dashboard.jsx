@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { useCurrency } from "@/lib/currency";
 import { AdminUnifiedAnalyticsDashboard } from "@/components/AdminUnifiedAnalyticsDashboard";
 import { RoleAnalyticsDashboard } from "@/components/RoleAnalyticsDashboard";
+import { RoleLandingStrip } from "@/components/dashboard/RoleLandingStrip";
 
 const QUICK_ACTIONS = [
   { href: "/inventory", label: "Add inventory item", icon: Boxes, accent: "from-violet-500/15 to-violet-600/5 border-violet-500/20 text-violet-700 dark:text-violet-300" },
@@ -85,7 +86,7 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-36 rounded-2xl" />
+            <Skeleton key={`summary-skeleton-${i}`} className="h-36 rounded-2xl" />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -224,6 +225,8 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      <RoleLandingStrip role={user?.role} />
+
       {/* Stock alert */}
       {summary.lowStockCount > 0 && (
         <motion.div
@@ -253,7 +256,7 @@ export default function Dashboard() {
       )}
 
       {user?.role === "admin" && <AdminUnifiedAnalyticsDashboard />}
-      {["manager", "inventory_manager", "accountant"].includes(user?.role || "") && (
+      {["manager", "inventory_manager", "accountant", "sales_manager", "hr_manager"].includes(user?.role || "") && (
         <RoleAnalyticsDashboard role={user.role} />
       )}
 

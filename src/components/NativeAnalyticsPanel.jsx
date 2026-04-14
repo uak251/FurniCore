@@ -38,9 +38,9 @@ import { toast } from "@/hooks/use-toast";
 
 const COLORS = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6", "#a855f7"];
 
-function apiFetch(path) {
+export function fetchNativeAnalytics(moduleKey) {
   const token = getAuthToken() ?? "";
-  return fetch(`${apiOriginPrefix()}${path}`, {
+  return fetch(`${apiOriginPrefix()}/api/analytics/native/${moduleKey}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   }).then(async (res) => {
     if (!res.ok) {
@@ -98,9 +98,10 @@ function ChartRenderer({ chart }) {
       <ResponsiveContainer width="100%" height={260}>
         <PieChart>
           <Pie data={chart.data} dataKey={y} nameKey={chart.xKey} outerRadius={90} label>
-            {chart.data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
+            {chart.data.map((row, i) => {
+              const rowKey = row?.[chart.xKey] ?? row?.name ?? row?.label ?? i;
+              return <Cell key={`${chart.id}-slice-${String(rowKey)}`} fill={COLORS[i % COLORS.length]} />;
+            })}
           </Pie>
           <Tooltip />
           <Legend />
@@ -226,16 +227,26 @@ function QuickActionButton({ moduleKey, chartId, action, onActionComplete }) {
   );
 }
 
-export function NativeAnalyticsPanel({ moduleKey, title }) {
+export function NativeAnalyticsPanel({
+  moduleKey,
+  title,
+  dataOverride,
+  isLoadingOverride,
+  errorOverride,
+}) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["native-analytics", moduleKey],
-    queryFn: () => apiFetch(`/api/analytics/native/${moduleKey}`),
+    queryFn: () => fetchNativeAnalytics(moduleKey),
     enabled: Boolean(moduleKey),
     staleTime: 120_000,
   });
+  const resolvedData = dataOverride ?? data;
+  const resolvedIsLoading = typeof isLoadingOverride === "boolean" ? isLoadingOverride : isLoading;
+  const resolvedError = errorOverride ?? (isError ? error : null);
+  const resolvedIsError = Boolean(resolvedError);
 
-  const kpis = useMemo(() => data?.kpis ?? [], [data]);
-  const charts = useMemo(() => data?.charts ?? [], [data]);
+  const kpis = useMemo(() => resolvedData?.kpis ?? [], [resolvedData]);
+  const charts = useMemo(() => resolvedData?.charts ?? [], [resolvedData]);
   const [actionMeta, setActionMeta] = useState({});
 
   function handleActionComplete(chartId, actionId, executedAt) {
@@ -254,21 +265,21 @@ export function NativeAnalyticsPanel({ moduleKey, title }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {isLoading && (
+        {resolvedIsLoading && (
           <div className="space-y-2">
             <Skeleton className="h-6 w-44" />
             <Skeleton className="h-64 w-full" />
           </div>
         )}
 
-        {isError && (
+        {resolvedIsError && (
           <Alert variant="destructive">
             <AlertTitle>Analytics unavailable</AlertTitle>
-            <AlertDescription>{error?.message ?? "Could not load analytics data"}</AlertDescription>
+            <AlertDescription>{resolvedError?.message ?? "Could not load analytics data"}</AlertDescription>
           </Alert>
         )}
 
-        {!isLoading && !isError && (
+        {!resolvedIsLoading && !resolvedIsError && (
           <>
             {kpis.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

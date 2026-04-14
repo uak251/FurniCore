@@ -1,3 +1,5 @@
+import { getFrontendApiUrl } from "@/config/env";
+
 /**
  * API origin helpers for `fetch`, uploads, and Socket.io.
  *
@@ -24,16 +26,17 @@ export function stripTrailingApiPath(origin) {
  * **HTTPS** (mixed-content blocking).
  */
 export function apiOriginPrefix() {
-    if (import.meta.env.DEV)
+    const raw = getFrontendApiUrl();
+    if (!raw) {
+        if (import.meta.env.DEV)
+            return "";
         return "";
-    const raw = import.meta.env.VITE_API_URL?.trim();
-    if (!raw)
-        return "";
+    }
     return stripTrailingApiPath(raw);
 }
 /** Origin passed to `socket.io-client` `io(origin, { path: "/socket.io" })`. */
 export function socketIoOrigin() {
-    const raw = import.meta.env.VITE_API_URL?.trim();
+    const raw = getFrontendApiUrl();
     if (raw)
         return stripTrailingApiPath(raw);
     if (typeof window !== "undefined")

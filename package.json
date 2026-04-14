@@ -11,6 +11,7 @@
     "deploy:vercel": "node ./scripts/deploy-vercel.mjs",
     "integration:status": "node ./scripts/integration-status.mjs",
     "test:login:integration": "node ./scripts/login-integration-check.mjs",
+    "test:integration:analytics-csv": "node ./scripts/test-integration-analytics-csv.mjs",
     "ci:vercel": "pnpm run check:deploy-env && pnpm run build && pnpm run test",
     "serve": "vite preview --config vite.config.js --host 0.0.0.0",
     "typecheck": "node -e \"process.exit(0)\"",

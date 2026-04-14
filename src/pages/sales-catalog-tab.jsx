@@ -128,7 +128,7 @@ export function CatalogTab() {
             {isLoading ? (
                 <div className="space-y-2">
                     {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-14 w-full" />
+                        <Skeleton key={`catalog-skeleton-${i}`} className="h-14 w-full" />
                     ))}
                 </div>
             ) : (
