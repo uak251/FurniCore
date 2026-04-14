@@ -4,17 +4,11 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { initSocket } from "./lib/socket";
 import { loadSessionPolicy } from "./lib/sessionPolicy.js";
+import { envConfig } from "../config/env.js";
 
 await loadSessionPolicy();
 
-const rawPort = process.env.PORT;
-if (!rawPort) {
-    throw new Error("PORT environment variable is required but was not provided.");
-}
-const port = Number(rawPort);
-if (Number.isNaN(port) || port <= 0) {
-    throw new Error(`Invalid PORT value: "${rawPort}"`);
-}
+const port = envConfig.port;
 const httpServer = createServer(app);
 initSocket(httpServer);
 httpServer.on("error", (err) => {
