@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Loader2, KeyRound } from "lucide-react";
+import { Loader2, KeyRound, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiOriginPrefix } from "@/lib/api-base";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -12,7 +12,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 const API = apiOriginPrefix();
 
 export default function VerifyOtpPage() {
-  const { toast } = useToast();
   const [, navigate] = useLocation();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const initialEmail = params.get("email") ?? "";
@@ -20,11 +19,14 @@ export default function VerifyOtpPage() {
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [inlineStatus, setInlineStatus] = useState("");
 
   const submit = async (e) => {
     e.preventDefault();
     setFieldErrors({});
+    setInlineStatus("");
     if (!/\S+@\S+\.\S+/.test(email.trim())) {
       setFieldErrors((s) => ({ ...s, email: "Invalid email format" }));
       return;
@@ -46,12 +48,38 @@ export default function VerifyOtpPage() {
         setFieldErrors((s) => ({ ...s, code: /expired/i.test(msg) ? "OTP expired" : "Invalid OTP" }));
         return;
       }
-      toast({ title: "Verified", description: json.message || "You can sign in now." });
       navigate("/login");
     } catch {
       setFieldErrors((s) => ({ ...s, code: "Verification failed. Please try again." }));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resendCode = async () => {
+    setInlineStatus("");
+    setFieldErrors((s) => ({ ...s, email: "", code: "" }));
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setFieldErrors((s) => ({ ...s, email: "Invalid email format" }));
+      return;
+    }
+    setResending(true);
+    try {
+      const res = await fetch(`${API}/api/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setFieldErrors((s) => ({ ...s, code: json?.message || "Could not resend code." }));
+        return;
+      }
+      setInlineStatus("A new 6-digit verification code has been sent to your email.");
+    } catch {
+      setFieldErrors((s) => ({ ...s, code: "Could not resend code. Please try again." }));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -68,6 +96,11 @@ export default function VerifyOtpPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
+              {inlineStatus ? (
+                <Alert className="border-green-200 bg-green-50 text-green-800">
+                  <AlertDescription>{inlineStatus}</AlertDescription>
+                </Alert>
+              ) : null}
               <div className="space-y-1">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -123,6 +156,19 @@ export default function VerifyOtpPage() {
                   </>
                 ) : (
                   "Verify & continue"
+                )}
+              </Button>
+              <Button type="button" variant="outline" className="w-full" disabled={resending || loading} onClick={resendCode}>
+                {resending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Resending...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Resend code
+                  </>
                 )}
               </Button>
             </form>

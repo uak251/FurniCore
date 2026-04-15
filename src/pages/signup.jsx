@@ -8,7 +8,6 @@ import { applyAuthSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiOriginPrefix } from "@/lib/api-base";
@@ -61,19 +60,18 @@ async function resendVerification(email) {
 }
 
 function VerifyEmailPrompt({ email }) {
-  const { toast } = useToast();
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [inlineError, setInlineError] = useState("");
 
   const handleResend = async () => {
+    setInlineError("");
     setResending(true);
     try {
       await resendVerification(email);
       setResent(true);
-      toast({ title: "Code resent", description: "Check your inbox for the new 6-digit code." });
     } catch (err) {
-      const msg = err?.data?.message ?? "Could not resend the email. Try again shortly.";
-      toast({ variant: "destructive", title: "Could not resend", description: msg });
+      setInlineError(err?.data?.message ?? "Could not resend the email. Try again shortly.");
     } finally {
       setResending(false);
     }
@@ -99,6 +97,11 @@ function VerifyEmailPrompt({ email }) {
         {resent ? (
           <Alert className="border-green-200 bg-green-50 text-left text-green-800">
             <AlertDescription>A new code has been sent.</AlertDescription>
+          </Alert>
+        ) : null}
+        {inlineError ? (
+          <Alert variant="destructive" className="text-left">
+            <AlertDescription>{inlineError}</AlertDescription>
           </Alert>
         ) : null}
         <div className="flex w-full flex-col gap-2">

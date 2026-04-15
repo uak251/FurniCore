@@ -4,11 +4,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLogin } from "@workspace/api-client-react";
-import { applyAuthSession } from "@/lib/auth";
+import { applyAuthSession, getTrustedDeviceToken, removeTrustedDeviceToken, setTrustedDeviceToken } from "@/lib/auth";
 import { Hammer, Loader2, MailWarning, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -94,7 +96,7 @@ function UnverifiedEmailBanner({ email }) {
 }
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email format"),
+  identifier: z.string().min(1, "Email or username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -112,8 +114,12 @@ export default function Login() {
   const [setupQr, setSetupQr] = useState("");
   const [setupManualKey, setSetupManualKey] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [backupCode, setBackupCode] = useState("");
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const [otpInfo, setOtpInfo] = useState("");
 
   const shouldCheckDbHealth = (() => {
     try {
@@ -127,7 +133,7 @@ export default function Login() {
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
     mode: "onBlur",
   });
 
@@ -178,8 +184,11 @@ export default function Login() {
   }, [shouldCheckDbHealth]);
 
   const clearAuthError = () => {
-    if (form.formState.errors.password?.message === "Incorrect email or password") {
-      form.clearErrors(["email", "password"]);
+    if (
+      form.formState.errors.password?.message === "Incorrect email or password" ||
+      form.formState.errors.password?.message === "Invalid credentials"
+    ) {
+      form.clearErrors(["identifier", "password"]);
     }
   };
 
@@ -213,21 +222,32 @@ export default function Login() {
     setSetupManualKey(json?.data?.manualKey || "");
     setOtpCode("");
     setOtpError("");
+    setOtpInfo("");
   };
 
   const verifyTwoFactor = async () => {
-    if (!/^\d{6}$/.test(otpCode)) {
-      setOtpError("Invalid OTP");
-      return;
+    if (useBackupCode) {
+      if (backupCode.trim().length < 8) {
+        setOtpError("Invalid backup code");
+        return;
+      }
+    } else {
+      if (!/^\d{6}$/.test(otpCode)) {
+        setOtpError("Invalid OTP");
+        return;
+      }
     }
     setOtpLoading(true);
     setOtpError("");
+    setOtpInfo("");
     try {
       const endpoint = twoFactorMode === "setup" ? "/api/auth/2fa/verify-setup" : "/api/auth/2fa/verify";
       const body =
         twoFactorMode === "setup"
           ? { setupToken, otp: otpCode }
-          : { challengeToken, otp: otpCode };
+          : useBackupCode
+            ? { challengeToken, backupCode: backupCode.trim() }
+            : { challengeToken, otp: otpCode };
       const res = await fetch(`${API}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -237,8 +257,14 @@ export default function Login() {
       if (!res.ok) {
         const msg = String(json?.message || "");
         if (/expired/i.test(msg)) setOtpError("OTP expired");
+        else if (/backup/i.test(msg)) setOtpError("Invalid backup code");
         else setOtpError("Invalid OTP");
         return;
+      }
+      if (json?.trustedDeviceToken) {
+        setTrustedDeviceToken(json.trustedDeviceToken);
+      } else if (!rememberDevice) {
+        removeTrustedDeviceToken();
       }
       completeLogin(json);
     } finally {
@@ -251,8 +277,18 @@ export default function Login() {
     clearAuthError();
     setTwoFactorMode(null);
     setOtpError("");
+    setOtpInfo("");
     try {
-      const response = await login.mutateAsync({ data: values });
+      const rememberedDeviceToken = getTrustedDeviceToken();
+      const response = await login.mutateAsync({
+        data: {
+          email: values.identifier,
+          password: values.password,
+          rememberDevice,
+          rememberedDeviceToken: rememberedDeviceToken || undefined,
+          deviceName: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 120) : "Browser device",
+        },
+      });
       if (response?.requiresTwoFactorSetup && response?.setupToken) {
         await startTwoFactorSetup(response.setupToken);
         return;
@@ -261,8 +297,16 @@ export default function Login() {
         setTwoFactorMode("verify");
         setChallengeToken(response.challengeToken);
         setOtpCode("");
+        setBackupCode("");
+        setUseBackupCode(false);
         setOtpError("");
+        if (response?.mode === "email-otp" || /otp sent/i.test(String(response?.message || ""))) {
+          setOtpInfo("OTP sent to your email");
+        }
         return;
+      }
+      if (response?.trustedDeviceAccepted) {
+        setOtpError("");
       }
       completeLogin(response);
     } catch (error) {
@@ -274,14 +318,14 @@ export default function Login() {
         setUnverifiedEmail(
           errData && typeof errData === "object" && typeof errData.email === "string"
             ? errData.email
-            : values.email,
+            : values.identifier,
         );
         return;
       }
 
       if (status === 401) {
-        form.setError("email", { type: "server", message: "Incorrect email or password" });
-        form.setError("password", { type: "server", message: "Incorrect email or password" });
+        form.setError("identifier", { type: "server", message: "Invalid credentials" });
+        form.setError("password", { type: "server", message: "Invalid credentials" });
         return;
       }
 
@@ -297,7 +341,7 @@ export default function Login() {
         return;
       }
 
-      form.setError("password", { type: "server", message: "Incorrect email or password" });
+      form.setError("password", { type: "server", message: "Invalid credentials" });
     }
   };
 
@@ -352,21 +396,60 @@ export default function Login() {
                   </div>
                 )}
                 <div className="space-y-2">
-                  <FormLabel htmlFor="totp-code">6-digit OTP</FormLabel>
-                  <Input
-                    id="totp-code"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={(e) => {
-                      setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
-                      setOtpError("");
-                    }}
-                    className={`text-center font-mono text-lg tracking-[0.35em] ${otpError ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
-                    aria-invalid={Boolean(otpError)}
-                  />
+                  {otpInfo ? <p className="text-sm text-muted-foreground">{otpInfo}</p> : null}
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="totp-code">{useBackupCode ? "Backup code" : "6-digit OTP"}</Label>
+                    {twoFactorMode === "verify" ? (
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:underline"
+                        onClick={() => {
+                          setUseBackupCode((v) => !v);
+                          setOtpError("");
+                        }}
+                      >
+                        {useBackupCode ? "Use authenticator code" : "Use backup code"}
+                      </button>
+                    ) : null}
+                  </div>
+                  {useBackupCode && twoFactorMode === "verify" ? (
+                    <Input
+                      id="backup-code"
+                      placeholder="ABCDE-12345"
+                      value={backupCode}
+                      onChange={(e) => {
+                        setBackupCode(e.target.value.toUpperCase());
+                        setOtpError("");
+                      }}
+                      className={otpError ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                      aria-invalid={Boolean(otpError)}
+                    />
+                  ) : (
+                    <Input
+                      id="totp-code"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="123456"
+                      value={otpCode}
+                      onChange={(e) => {
+                        setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                        setOtpError("");
+                      }}
+                      className={`text-center font-mono text-lg tracking-[0.35em] ${otpError ? "border-destructive focus-visible:ring-destructive/20" : ""}`}
+                      aria-invalid={Boolean(otpError)}
+                    />
+                  )}
                   {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Checkbox
+                      id="remember-device"
+                      checked={rememberDevice}
+                      onCheckedChange={(checked) => setRememberDevice(Boolean(checked))}
+                    />
+                    <label htmlFor="remember-device" className="text-xs text-muted-foreground">
+                      Remember this device for up to 30 days. Do not use on shared computers.
+                    </label>
+                  </div>
                 </div>
                 <Button type="button" className="w-full" onClick={verifyTwoFactor} disabled={otpLoading}>
                   {otpLoading ? (
@@ -383,15 +466,15 @@ export default function Login() {
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
                 <FormField
                   control={form.control}
-                  name="email"
+                  name="identifier"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel htmlFor="login-email">Email Address</FormLabel>
+                      <FormLabel htmlFor="login-email">Email or Username</FormLabel>
                       <FormControl>
                         <Input
                           id="login-email"
-                          type="email"
-                          placeholder="Enter your email"
+                          type="text"
+                          placeholder="Enter email or username"
                           aria-invalid={fieldState.invalid}
                           aria-describedby={fieldState.error ? "login-email-error" : undefined}
                           className={fieldState.error ? "border-destructive focus-visible:ring-destructive/20" : ""}
@@ -403,7 +486,7 @@ export default function Login() {
                           name={field.name}
                           onBlur={field.onBlur}
                           ref={field.ref}
-                          autoComplete="email"
+                          autoComplete="username"
                         />
                       </FormControl>
                       <FormMessage id="login-email-error" />
@@ -465,6 +548,16 @@ export default function Login() {
                 <p className="text-right text-xs">
                   <Link href="/reset-password" className="text-primary hover:underline">Forgot password?</Link>
                 </p>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="remember-device-login"
+                    checked={rememberDevice}
+                    onCheckedChange={(checked) => setRememberDevice(Boolean(checked))}
+                  />
+                  <label htmlFor="remember-device-login" className="text-xs text-muted-foreground">
+                    Remember this device (skip OTP on future sign-ins for up to 30 days)
+                  </label>
+                </div>
                 </form>
               </Form>
             )}
