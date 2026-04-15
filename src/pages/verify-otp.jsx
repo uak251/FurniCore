@@ -8,6 +8,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiOriginPrefix } from "@/lib/api-base";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { DsButton } from "@/components/design-system/DsButton";
+import { DsCard } from "@/components/design-system/DsCard";
+import { DsInput } from "@/components/design-system/DsInput";
 
 const API = apiOriginPrefix();
 
@@ -86,12 +89,12 @@ export default function VerifyOtpPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-[400px]">
-        <Card className="border-border/40 shadow-xl">
+        <DsCard className="shadow-xl">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <KeyRound className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl">Enter verification code</CardTitle>
+            <CardTitle className="ds-auth-heading text-center">Enter verification code</CardTitle>
             <CardDescription>We sent a 6-digit code to your email. It expires in 5 minutes.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -103,7 +106,7 @@ export default function VerifyOtpPage() {
               ) : null}
               <div className="space-y-1">
                 <Label htmlFor="email">Email</Label>
-                <Input
+                <DsInput
                   id="email"
                   type="email"
                   value={email}
@@ -140,7 +143,7 @@ export default function VerifyOtpPage() {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <Input
+                <DsInput
                   id="code"
                   className="sr-only"
                   readOnly
@@ -148,7 +151,7 @@ export default function VerifyOtpPage() {
                 />
                 {fieldErrors.code ? <p className="text-sm text-destructive">{fieldErrors.code}</p> : null}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <DsButton type="submit" intent="primary" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -157,8 +160,8 @@ export default function VerifyOtpPage() {
                 ) : (
                   "Verify & continue"
                 )}
-              </Button>
-              <Button type="button" variant="outline" className="w-full" disabled={resending || loading} onClick={resendCode}>
+              </DsButton>
+              <DsButton type="button" intent="secondary" variant="outline" disabled={resending || loading} onClick={resendCode}>
                 {resending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -170,7 +173,7 @@ export default function VerifyOtpPage() {
                     Resend code
                   </>
                 )}
-              </Button>
+              </DsButton>
             </form>
             <p className="mt-4 text-center text-sm text-muted-foreground">
               <Link href="/login" className="text-primary hover:underline">
@@ -178,7 +181,7 @@ export default function VerifyOtpPage() {
               </Link>
             </p>
           </CardContent>
-        </Card>
+        </DsCard>
       </div>
     </div>
   );

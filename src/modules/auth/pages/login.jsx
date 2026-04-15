@@ -17,6 +17,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { apiOriginPrefix } from "@/lib/api-base";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
+import { DsButton } from "@/components/design-system/DsButton";
+import { DsInput } from "@/components/design-system/DsInput";
+import { DsCard } from "@/components/design-system/DsCard";
+import { Chrome, Facebook } from "lucide-react";
 
 function decodeJwtPayload(token) {
   try {
@@ -375,9 +379,9 @@ export default function Login() {
           </Alert>
         )}
 
-        <Card className="saas-surface-strong border-white/20 bg-white/92 backdrop-blur-md">
+        <DsCard className="border-white/20 bg-white/92 backdrop-blur-md">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="saas-title text-center">Sign In</CardTitle>
+            <CardTitle className="ds-auth-heading text-center">Sign in</CardTitle>
             <CardDescription>
               {twoFactorMode ? "Complete two-factor verification to continue" : "Enter your credentials to access the system"}
             </CardDescription>
@@ -464,17 +468,37 @@ export default function Login() {
             ) : (
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+                <div className="ds-stack-md pb-1">
+                  <DsButton type="button" intent="primary" onClick={() => setLocation("/signup")} className="!bg-[hsl(var(--ds-brand-alt))]">
+                    Continue with shop
+                  </DsButton>
+                  <div className="grid grid-cols-2 gap-2">
+                    <DsButton type="button" intent="social" variant="outline" onClick={() => toast({ title: "Google sign-in", description: "Coming soon" })}>
+                      <Chrome className="mr-2 h-4 w-4" aria-hidden />
+                      Google
+                    </DsButton>
+                    <DsButton type="button" intent="social" variant="outline" onClick={() => toast({ title: "Facebook sign-in", description: "Coming soon" })}>
+                      <Facebook className="mr-2 h-4 w-4" aria-hidden />
+                      Facebook
+                    </DsButton>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    <span>or</span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
+                </div>
                 <FormField
                   control={form.control}
                   name="identifier"
                   render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel htmlFor="login-email">Email or Username</FormLabel>
+                      <FormLabel htmlFor="login-email">Email</FormLabel>
                       <FormControl>
-                        <Input
+                        <DsInput
                           id="login-email"
                           type="text"
-                          placeholder="Enter email or username"
+                          placeholder="Email"
                           aria-invalid={fieldState.invalid}
                           aria-describedby={fieldState.error ? "login-email-error" : undefined}
                           className={fieldState.error ? "border-destructive focus-visible:ring-destructive/20" : ""}
@@ -502,7 +526,7 @@ export default function Login() {
                       <FormLabel htmlFor="login-password">Password</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input
+                        <DsInput
                             id="login-password"
                             type={showPw ? "text" : "password"}
                             placeholder="Enter your password"
@@ -536,7 +560,7 @@ export default function Login() {
                   )}
                 />
 
-                <Button type="submit" className="saas-button touch-target mt-6 w-full" disabled={login.isPending}>
+                <DsButton type="submit" intent="primary" className="mt-6" disabled={login.isPending}>
                   {login.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...
@@ -544,10 +568,15 @@ export default function Login() {
                   ) : (
                     "Sign In"
                   )}
-                </Button>
-                <p className="text-right text-xs">
+                </DsButton>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <Link href="/verify-otp" className="text-primary hover:underline">Verify email code</Link>
+                  <Link href="/verify-email" className="text-primary hover:underline">Verify via email link</Link>
                   <Link href="/reset-password" className="text-primary hover:underline">Forgot password?</Link>
-                </p>
+                </div>
+                <div className="rounded-md bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                  By continuing, you agree to FurniCore terms and can finish verification in sign-in or from email links.
+                </div>
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="remember-device-login"
@@ -562,7 +591,7 @@ export default function Login() {
               </Form>
             )}
           </CardContent>
-        </Card>
+        </DsCard>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Customer?{" "}

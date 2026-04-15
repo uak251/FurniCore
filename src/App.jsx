@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "@/lib/auth";
@@ -17,40 +18,44 @@ import Signup from "@/pages/signup";
 import VerifyEmailPage from "@/pages/verify-email";
 import VerifyOtpPage from "@/pages/verify-otp";
 import ResetPasswordPage from "@/pages/reset-password";
-import Dashboard from "@/pages/dashboard";
-import InventoryPage from "@/pages/inventory";
-import ProductsPage from "@/pages/products";
-import SuppliersPage from "@/pages/suppliers";
-import QuotesPage from "@/pages/quotes";
-import ProcurementPage from "@/pages/procurement";
-import PriceApprovalsDashboardPage from "@/pages/price-approvals-dashboard";
-import CogmReportsPage from "@/pages/cogm-reports";
-import InventoryUsagePage from "@/pages/inventory-usage";
-import ManufacturingPage from "@/pages/manufacturing";
-import HRPage from "@/pages/hr";
-import PayrollPage from "@/pages/payroll";
-import AccountingPage from "@/pages/accounting";
-import NotificationsPage from "@/pages/notifications";
-import ActivityPage from "@/pages/activity";
-import UsersPage from "@/pages/users";
-import SettingsPage from "@/pages/settings";
-import PreferencesPage from "@/pages/preferences";
-import ProfilePage from "@/pages/profile";
-import SupplierPortalPage from "@/pages/supplier-portal";
-import WorkerPortalPage from "@/pages/worker-portal";
-import CustomerPortalPage from "@/pages/customer-portal";
-import CustomerOrdersPage from "@/pages/customer-orders";
-import CustomerPaymentsPage from "@/pages/customer-payments";
-import CustomerAnalyticsPage from "@/pages/customer-analytics";
 import { CustomerShopProvider } from "@/contexts/customer-shop-context";
-import SalesPage from "@/pages/sales";
-import NotFound from "@/pages/not-found";
-import ChartOfAccountsPage from "@/pages/chart-of-accounts";
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const InventoryPage = lazy(() => import("@/pages/inventory"));
+const ProductsPage = lazy(() => import("@/pages/products"));
+const SuppliersPage = lazy(() => import("@/pages/suppliers"));
+const QuotesPage = lazy(() => import("@/pages/quotes"));
+const ProcurementPage = lazy(() => import("@/pages/procurement"));
+const PriceApprovalsDashboardPage = lazy(() => import("@/pages/price-approvals-dashboard"));
+const CogmReportsPage = lazy(() => import("@/pages/cogm-reports"));
+const InventoryUsagePage = lazy(() => import("@/pages/inventory-usage"));
+const ManufacturingPage = lazy(() => import("@/pages/manufacturing"));
+const HRPage = lazy(() => import("@/pages/hr"));
+const PayrollPage = lazy(() => import("@/pages/payroll"));
+const AccountingPage = lazy(() => import("@/pages/accounting"));
+const NotificationsPage = lazy(() => import("@/pages/notifications"));
+const ActivityPage = lazy(() => import("@/pages/activity"));
+const UsersPage = lazy(() => import("@/pages/users"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
+const PreferencesPage = lazy(() => import("@/pages/preferences"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
+const SupplierPortalPage = lazy(() => import("@/pages/supplier-portal"));
+const WorkerPortalPage = lazy(() => import("@/pages/worker-portal"));
+const CustomerPortalPage = lazy(() => import("@/pages/customer-portal"));
+const CustomerOrdersPage = lazy(() => import("@/pages/customer-orders"));
+const CustomerPaymentsPage = lazy(() => import("@/pages/customer-payments"));
+const CustomerAnalyticsPage = lazy(() => import("@/pages/customer-analytics"));
+const SalesPage = lazy(() => import("@/pages/sales"));
+const ChartOfAccountsPage = lazy(() => import("@/pages/chart-of-accounts"));
+const NotFound = lazy(() => import("@/pages/not-found"));
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             retry: 1,
             staleTime: 30_000,
+            gcTime: 5 * 60_000,
+            refetchOnWindowFocus: false,
+            refetchOnReconnect: true,
+            refetchOnMount: false,
         },
     },
 });
@@ -110,6 +115,6 @@ function Router() {
     ] }));
 }
 function App() {
-    return (_jsx(QueryClientProvider, { client: queryClient, children: _jsx(DashboardThemeProvider, { children: _jsx(CurrencyProvider, { children: _jsxs(TooltipProvider, { children: [_jsx(WouterRouter, { base: import.meta.env.BASE_URL.replace(/\/$/, ""), children: _jsx(Router, {}) }), _jsx(Toaster, {})] }) }) }) }));
+    return (_jsx(QueryClientProvider, { client: queryClient, children: _jsx(DashboardThemeProvider, { children: _jsx(CurrencyProvider, { children: _jsxs(TooltipProvider, { children: [_jsx(Suspense, { fallback: _jsx("div", { className: "flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground", children: "Loading module..." }), children: _jsx(WouterRouter, { base: import.meta.env.BASE_URL.replace(/\/$/, ""), children: _jsx(Router, {}) }) }), _jsx(Toaster, {})] }) }) }) }));
 }
 export default App;

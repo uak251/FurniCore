@@ -13,6 +13,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiOriginPrefix } from "@/lib/api-base";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
+import { DsButton } from "@/components/design-system/DsButton";
+import { DsInput } from "@/components/design-system/DsInput";
+import { DsCard } from "@/components/design-system/DsCard";
 
 const signupSchema = z
   .object({
@@ -80,7 +83,7 @@ function VerifyEmailPrompt({ email }) {
   };
 
   return (
-    <Card className="border-border/40 shadow-xl">
+    <DsCard className="shadow-xl">
       <CardContent className="flex flex-col items-center gap-5 py-10 text-center">
         <div className="rounded-full bg-primary/10 p-4">
           <MailCheck className="h-10 w-10 text-primary" />
@@ -107,7 +110,7 @@ function VerifyEmailPrompt({ email }) {
           </Alert>
         ) : null}
         <div className="flex w-full flex-col gap-2">
-          <Button variant="outline" className="w-full" disabled={resending} onClick={handleResend}>
+          <DsButton intent="secondary" variant="outline" className="w-full" disabled={resending} onClick={handleResend}>
             {resending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending...
@@ -117,13 +120,13 @@ function VerifyEmailPrompt({ email }) {
                 <RefreshCw className="mr-2 h-4 w-4" /> Resend code
               </>
             )}
-          </Button>
-          <Button variant="ghost" className="w-full" asChild>
+          </DsButton>
+          <DsButton intent="secondary" variant="ghost" className="w-full" asChild>
             <Link href="/login">Back to Sign In</Link>
-          </Button>
+          </DsButton>
         </div>
       </CardContent>
-    </Card>
+    </DsCard>
   );
 }
 
@@ -196,9 +199,9 @@ export default function Signup() {
         {verifyEmail ? (
           <VerifyEmailPrompt email={verifyEmail} />
         ) : (
-          <Card className="saas-surface-strong border-white/20 bg-white/92 backdrop-blur-md">
+          <DsCard className="saas-surface-strong border-white/20 bg-white/92 backdrop-blur-md">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="saas-title text-center">Create Customer Account</CardTitle>
+              <CardTitle className="ds-auth-heading text-center">Create Customer Account</CardTitle>
               <CardDescription>Register to browse products and track your orders</CardDescription>
             </CardHeader>
             <CardContent className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
@@ -211,7 +214,7 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>Full Name</FormLabel>
                         <FormControl>
-                          <Input
+                          <DsInput
                             placeholder="Enter your full name"
                             aria-invalid={fieldState.invalid}
                             className={fieldState.error ? "border-destructive focus-visible:ring-destructive/20" : ""}
@@ -229,7 +232,7 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>Email Address</FormLabel>
                         <FormControl>
-                          <Input
+                          <DsInput
                             type="email"
                             placeholder="Enter your email"
                             aria-invalid={fieldState.invalid}
@@ -248,7 +251,7 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <Input
+                          <DsInput
                             type="password"
                             placeholder="Enter your password"
                             aria-invalid={fieldState.invalid}
@@ -267,7 +270,7 @@ export default function Signup() {
                       <FormItem>
                         <FormLabel>Confirm Password</FormLabel>
                         <FormControl>
-                          <Input
+                          <DsInput
                             type="password"
                             placeholder="Confirm your password"
                             aria-invalid={fieldState.invalid}
@@ -279,7 +282,7 @@ export default function Signup() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="touch-target mt-6 w-full" disabled={submitting}>
+                  <DsButton type="submit" intent="primary" className="mt-6" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...
@@ -287,7 +290,7 @@ export default function Signup() {
                     ) : (
                       "Create Customer Account"
                     )}
-                  </Button>
+                  </DsButton>
                 </form>
               </Form>
 
@@ -298,7 +301,7 @@ export default function Signup() {
                 </Link>
               </p>
             </CardContent>
-          </Card>
+          </DsCard>
         )}
       </div>
       </div>

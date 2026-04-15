@@ -8,7 +8,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { erpApi } from "@/lib/erp-api";
+import { useCurrency } from "@/lib/currency";
 import { GitCompare } from "lucide-react";
+function normalizeRows(payload) {
+    if (Array.isArray(payload))
+        return payload;
+    if (payload && typeof payload === "object") {
+        if (Array.isArray(payload.data))
+            return payload.data;
+        if (Array.isArray(payload.items))
+            return payload.items;
+        if (Array.isArray(payload.rows))
+            return payload.rows;
+    }
+    return [];
+}
 
 const WF_LABEL = {
     legacy: "Legacy",
@@ -21,6 +35,7 @@ const WF_LABEL = {
 
 export default function ProcurementPage() {
     const { toast } = useToast();
+    const { format: fmtMoney } = useCurrency();
     const qc = useQueryClient();
     const { data: user } = useGetCurrentUser();
     const role = user?.role ?? "";
@@ -45,7 +60,7 @@ export default function ProcurementPage() {
 
     const canSubmit = ["admin", "manager", "accountant", "employee", "inventory_manager", "sales_manager"].includes(role);
 
-    const rows = quotesQ.data ?? [];
+    const rows = normalizeRows(quotesQ.data);
     const wfRows = rows.filter((q) => q.workflowStage && q.workflowStage !== "legacy");
 
     return (_jsxs("div", { className: "space-y-8", children: [
@@ -69,7 +84,7 @@ export default function ProcurementPage() {
                     ] }) }),
                     _jsx(TableBody, { children: g.quotes.map((q) => (_jsxs(TableRow, { children: [
                         _jsx(TableCell, { children: q.supplierName }),
-                        _jsx(TableCell, { className: "text-right tabular-nums", children: `$${Number(q.unitPrice).toFixed(2)}` }),
+                        _jsx(TableCell, { className: "text-right tabular-nums", children: fmtMoney(Number(q.unitPrice ?? 0)) }),
                         _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", children: q.workflowStage ?? "legacy" }) }),
                         _jsx(TableCell, { className: "text-muted-foreground text-sm", children: q.status }),
                     ] }, q.id))) }),
@@ -94,7 +109,7 @@ export default function ProcurementPage() {
                     _jsx(TableCell, { className: "tabular-nums", children: q.id }),
                     _jsx(TableCell, { children: q.supplierName }),
                     _jsx(TableCell, { className: "max-w-[200px] truncate", children: q.itemName ?? "—" }),
-                    _jsx(TableCell, { className: "text-right tabular-nums", children: `$${Number(q.totalPrice).toFixed(2)}` }),
+                    _jsx(TableCell, { className: "text-right tabular-nums", children: fmtMoney(Number(q.totalPrice ?? 0)) }),
                     _jsx(TableCell, { children: _jsx(Badge, { variant: q.workflowStage === "rejected" ? "destructive" : "outline", children: WF_LABEL[q.workflowStage] ?? q.workflowStage }) }),
                     _jsx(TableCell, { children: q.workflowStage === "draft" && canSubmit ? (_jsx(Button, { size: "sm", disabled: submitM.isPending, onClick: () => submitM.mutate(q.id), children: "Submit" })) : "—" }),
                 ] }, q.id))) }),

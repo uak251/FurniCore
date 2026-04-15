@@ -28,7 +28,7 @@ export const CURRENCIES = [
     { code: "KWD", label: "Kuwaiti Dinar", symbol: "KD", locale: "ar-KW" },
 ];
 const LS_KEY = "furnicore_currency";
-const DEFAULT_CODE = "USD";
+const DEFAULT_CODE = "PKR";
 const CurrencyContext = createContext(null);
 /* ─── Provider ─────────────────────────────────────────────────────────────── */
 export function CurrencyProvider({ children }) {

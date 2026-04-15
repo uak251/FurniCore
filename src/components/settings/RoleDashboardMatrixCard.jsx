@@ -66,21 +66,31 @@ function formatTs(value) {
 
 async function apiFetch(path) {
   const token = getAuthToken();
-  const res = await fetch(`${apiOriginPrefix}${path}`, {
+  const res = await fetch(`${apiOriginPrefix()}${path}`, {
     credentials: "include",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+  const raw = await res.text();
+  if (!contentType.includes("application/json")) {
+    const preview = raw.slice(0, 140).replace(/\s+/g, " ").trim();
+    throw new Error(
+      `Unexpected non-JSON response from ${path} (status ${res.status}, content-type: ${contentType || "unknown"}). Response preview: ${preview}`,
+    );
+  }
+  let payload = null;
+  try {
+    payload = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(
+      `Invalid JSON response from ${path} (status ${res.status}). Response preview: ${raw.slice(0, 140).replace(/\s+/g, " ").trim()}`,
+    );
+  }
   if (!res.ok) {
-    let payload = null;
-    try {
-      payload = await res.json();
-    } catch {
-      payload = null;
-    }
-    const message = payload?.error || `Request failed (${res.status})`;
+    const message = payload?.error || payload?.message || `Request failed (${res.status})`;
     throw new Error(message);
   }
-  return res.json();
+  return payload;
 }
 
 export function RoleDashboardMatrixCard() {

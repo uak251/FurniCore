@@ -17,11 +17,12 @@ import { profilePathForRole } from "@/lib/profile-path";
 import { ThemeSwitcher } from "@/components/dashboard/ThemeSwitcher";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
 import { useCustomerStorefront } from "@/hooks/use-customer-portal";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { CustomerShopContext } from "@/contexts/customer-shop-context";
 import { cn } from "@/lib/utils";
-import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
 import { BrandLogo } from "@/components/branding/BrandLogo";
+import { GlobalCommandPalette } from "@/components/navigation/GlobalCommandPalette";
+import { preloadRoute } from "@/lib/route-preload";
 
 function useShopOptional() {
     return useContext(CustomerShopContext);
@@ -57,13 +58,18 @@ export function CustomerLayout({ children }) {
     const scrollToShop = () => {
         document.getElementById("shop-all")?.scrollIntoView({ behavior: "smooth" });
     };
-    const customerNav = [
+    const customerNav = useMemo(() => [
         { href: "/customer-portal", label: "Dashboard" },
         { href: "/customer-portal/orders", label: "Orders" },
         { href: "/customer-portal/activity", label: "Analytics" },
         { href: "/customer-portal/payments", label: "Payments" },
         { href: "/customer-portal/profile", label: "Profile" },
-    ];
+    ], []);
+    const customerCommandItems = useMemo(() => customerNav.map((item) => ({
+        ...item,
+        group: "Customer Portal",
+        keywords: `${item.label} customer`,
+    })), [customerNav]);
 
     return (
         <div className="flex min-h-screen flex-col bg-background">
@@ -114,6 +120,11 @@ export function CustomerLayout({ children }) {
                             <Button variant="ghost" size="sm" className="hidden h-10 text-muted-foreground lg:inline-flex" asChild>
                                 <Link href="/customer-portal/preferences">Appearance</Link>
                             </Button>
+                            <GlobalCommandPalette
+                                items={customerCommandItems}
+                                triggerLabel="Jump"
+                                className="hidden h-10 lg:inline-flex"
+                            />
                             <ThemeSwitcher />
                             <ProfileNavButton href={profilePathForRole(user?.role)} />
                             <NotificationBell />
@@ -157,6 +168,7 @@ export function CustomerLayout({ children }) {
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    onMouseEnter={() => preloadRoute(item.href)}
                                     className={cn(
                                         "whitespace-nowrap rounded-full px-3 py-2 font-medium transition",
                                         isActive
@@ -205,11 +217,15 @@ export function CustomerLayout({ children }) {
                             ))}
                         </nav>
                     )}
+                    <div className="flex flex-wrap items-center gap-2 border-t border-amber-200/40 pt-2 text-[11px] text-muted-foreground">
+                        <span className="rounded-full bg-emerald-900/10 px-2 py-1 font-medium text-emerald-900 dark:text-emerald-200">Secure checkout</span>
+                        <span className="rounded-full bg-blue-900/10 px-2 py-1 font-medium text-blue-900 dark:text-blue-200">Live order tracking</span>
+                        <span className="rounded-full bg-amber-900/10 px-2 py-1 font-medium text-amber-900 dark:text-amber-200">Dedicated support</span>
+                    </div>
                 </div>
             </header>
             <main className="min-h-0 min-w-0 flex-1 overflow-auto">
                 <div className="saas-shell min-w-0 space-y-5 py-5 md:space-y-6 md:py-10">
-                    <NativeAnalyticsPanel moduleKey="customer" title="Customer Dashboard Analytics" />
                     {children}
                 </div>
             </main>

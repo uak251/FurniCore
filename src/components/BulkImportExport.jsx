@@ -14,7 +14,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *  - templateSample  one or two sample data rows for the template
  *  - onImported      called after a successful import so the parent can refetch
  */
-import { useState, useRef, useCallback } from "react";
+import { memo, useState, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -96,7 +96,7 @@ function downloadCsv(filename, content) {
     a.click();
     URL.revokeObjectURL(url);
 }
-export function BulkImportExport({ module, importEndpoint, exportEndpoint, exportFilename, templateHeaders, templateSample, onImported, }) {
+export const BulkImportExport = memo(function BulkImportExport({ module, importEndpoint, exportEndpoint, exportFilename, templateHeaders, templateSample, onImported, }) {
     const fileRef = useRef(null);
     const [dragging, setDragging] = useState(false);
     const [csvText, setCsvText] = useState(null);
@@ -107,7 +107,7 @@ export function BulkImportExport({ module, importEndpoint, exportEndpoint, expor
     const [result, setResult] = useState(null);
     const [showErrors, setShowErrors] = useState(true);
     /* row indices that have errors (1-based, matches data rows not header) */
-    const errorRows = new Set((result?.errors ?? []).map((e) => e.row));
+    const errorRows = useMemo(() => new Set((result?.errors ?? []).map((e) => e.row)), [result?.errors]);
     /* ── file handling ── */
     const loadFile = useCallback((file) => {
         if (!file.name.endsWith(".csv"))
@@ -235,4 +235,4 @@ export function BulkImportExport({ module, importEndpoint, exportEndpoint, expor
                                     }) })] }) }), rowCount > 200 && (_jsxs("p", { className: "text-xs text-muted-foreground text-center", children: ["Showing first 200 rows of ", rowCount, " \u2014 all will be imported."] }))] })), result && (_jsxs("div", { className: cn("rounded-lg border p-4 space-y-3", (result.errors ?? []).length === 0 ? "border-green-300 bg-green-50 dark:bg-green-950/20" : "border-amber-300 bg-amber-50 dark:bg-amber-950/20"), children: [_jsxs("div", { className: "flex items-center gap-2", children: [(result.errors ?? []).length === 0
                                 ? _jsx(CheckCircle2, { className: "h-5 w-5 text-green-600" })
                                 : _jsx(AlertTriangle, { className: "h-5 w-5 text-amber-600" }), _jsxs("p", { className: "font-semibold text-sm", children: [result.imported, " row", result.imported !== 1 ? "s" : "", " imported", result.updated ? `, ${result.updated} updated` : "", result.skipped ? `, ${result.skipped} skipped` : "", (result.errors ?? []).length > 0 ? `, ${(result.errors ?? []).length} error${(result.errors ?? []).length !== 1 ? "s" : ""}` : ""] })] }), (result.errors ?? []).length > 0 && (_jsxs("div", { children: [_jsxs("button", { onClick: () => setShowErrors((v) => !v), className: "flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline", children: [showErrors ? _jsx(ChevronUp, { className: "h-3.5 w-3.5" }) : _jsx(ChevronDown, { className: "h-3.5 w-3.5" }), showErrors ? "Hide" : "Show", " errors"] }), showErrors && (_jsx("ul", { className: "mt-2 space-y-1 max-h-40 overflow-y-auto", children: (result.errors ?? []).map((e, i) => (_jsxs("li", { className: "flex gap-2 text-xs text-amber-800 dark:text-amber-300", children: [_jsxs("span", { className: "shrink-0 font-mono font-medium", children: [e.row > 0 ? `Row ${e.row}` : "Global", e.column ? ` (${e.column})` : "", ":"] }), _jsx("span", { children: e.message })] }, i))) }))] }))] })), preview && (_jsx("div", { className: "flex justify-end", children: _jsx(Button, { onClick: runImport, disabled: importing || rowCount === 0, children: importing ? (_jsxs(_Fragment, { children: [_jsx(Progress, { className: "mr-2 h-3 w-16", value: undefined }), "Importing\u2026"] })) : (_jsxs(_Fragment, { children: [_jsx(Upload, { className: "mr-1.5 h-4 w-4", "aria-hidden": true }), "Import ", rowCount, " row", rowCount !== 1 ? "s" : ""] })) }) }))] }));
-}
+});

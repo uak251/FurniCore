@@ -43,11 +43,25 @@ export function fetchNativeAnalytics(moduleKey) {
   return fetch(`${apiOriginPrefix()}/api/analytics/native/${moduleKey}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   }).then(async (res) => {
-    if (!res.ok) {
-      const msg = await res.text().catch(() => "");
-      throw new Error(msg || `HTTP ${res.status}`);
+    const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+    const raw = await res.text().catch(() => "");
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        `Analytics API returned non-JSON (status ${res.status}, content-type: ${contentType || "unknown"}). Response preview: ${raw.slice(0, 140).replace(/\s+/g, " ").trim()}`,
+      );
     }
-    return res.json();
+    let payload = null;
+    try {
+      payload = raw ? JSON.parse(raw) : {};
+    } catch {
+      throw new Error(
+        `Analytics API returned invalid JSON (status ${res.status}). Response preview: ${raw.slice(0, 140).replace(/\s+/g, " ").trim()}`,
+      );
+    }
+    if (!res.ok) {
+      throw new Error(payload?.error || payload?.message || `HTTP ${res.status}`);
+    }
+    return payload;
   });
 }
 
@@ -207,7 +221,12 @@ function QuickActionButton({ moduleKey, chartId, action, onActionComplete }) {
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button size="sm" variant={action.tone === "secondary" ? "outline" : "default"}>
+        <Button
+          size="sm"
+          variant={action.tone === "secondary" ? "outline" : "default"}
+          className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={`Quick action: ${action.label}`}
+        >
           {(ACTION_ICONS[action.id] || "•")} {action.label}
         </Button>
       </AlertDialogTrigger>
@@ -235,7 +254,7 @@ export function NativeAnalyticsPanel({
   errorOverride,
   visibleConfig,
 }) {
-  const { data, isLoading, isError, error } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["native-analytics", moduleKey],
     queryFn: () => fetchNativeAnalytics(moduleKey),
     enabled: Boolean(moduleKey),
@@ -248,9 +267,11 @@ export function NativeAnalyticsPanel({
   const showKpis = visibleConfig?.showKpis !== false;
   const showCharts = visibleConfig?.showCharts !== false;
   const showActions = visibleConfig?.showActions !== false;
+  const allSectionsHidden = !showKpis && !showCharts;
 
   const kpis = useMemo(() => resolvedData?.kpis ?? [], [resolvedData]);
   const charts = useMemo(() => resolvedData?.charts ?? [], [resolvedData]);
+  const updatedAt = resolvedData?.updatedAt;
   const [actionMeta, setActionMeta] = useState({});
 
   function handleActionComplete(chartId, actionId, executedAt) {
@@ -261,10 +282,16 @@ export function NativeAnalyticsPanel({
   }
 
   return (
+    <section aria-label={`${moduleKey} analytics panel`}>
     <Card className="border-border/60">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">{title ?? "Native Analytics"}</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-base">{title ?? "Native Analytics"}</CardTitle>
+            <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+              {updatedAt ? `Updated ${new Date(updatedAt).toLocaleString()}` : "Live analytics"}
+            </p>
+          </div>
           <Badge variant="secondary" className="capitalize">{moduleKey}</Badge>
         </div>
       </CardHeader>
@@ -277,14 +304,31 @@ export function NativeAnalyticsPanel({
         )}
 
         {resolvedIsError && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" role="alert">
             <AlertTitle>Analytics unavailable</AlertTitle>
-            <AlertDescription>{resolvedError?.message ?? "Could not load analytics data"}</AlertDescription>
+            <AlertDescription className="space-y-2">
+              <p>{resolvedError?.message ?? "Could not load analytics data"}</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                className="focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                aria-label={`Retry loading ${moduleKey} analytics`}
+              >
+                {isFetching ? "Retrying..." : "Try again"}
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
 
         {!resolvedIsLoading && !resolvedIsError && (
           <>
+            {allSectionsHidden && (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                KPIs and charts are hidden for this module. Update visibility controls in Admin Settings to show data.
+              </div>
+            )}
             {showKpis && kpis.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {kpis.map((kpi, idx) => (
@@ -299,7 +343,7 @@ export function NativeAnalyticsPanel({
             {showCharts && (
               <div className="grid gap-4 xl:grid-cols-2">
                 {charts.map((chart) => (
-                  <Card key={chart.id} className="border-border/60">
+                  <Card key={chart.id} className="border-border/60" role="region" aria-label={`Chart: ${chart.title}`}>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm">{chart.title}</CardTitle>
                       {semanticHint(chart) && (
@@ -320,7 +364,12 @@ export function NativeAnalyticsPanel({
                       )}
                     </CardHeader>
                     <CardContent>
-                      <ChartRenderer chart={chart} />
+                      <div tabIndex={0} className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                        <ChartRenderer chart={chart} />
+                      </div>
+                      <p className="sr-only">
+                        {chart.title} chart with {Array.isArray(chart.data) ? chart.data.length : 0} data points.
+                      </p>
                       {showActions && (
                         <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
                           {actionMeta[chart.id]
@@ -333,9 +382,15 @@ export function NativeAnalyticsPanel({
                 ))}
               </div>
             )}
+            {showCharts && charts.length === 0 && (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                No chart data available for this module yet.
+              </div>
+            )}
           </>
         )}
       </CardContent>
     </Card>
+    </section>
   );
 }

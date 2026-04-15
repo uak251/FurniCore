@@ -10,12 +10,17 @@ import { ProfileNavButton } from "@/components/ProfileNavButton";
 import { profilePathForRole } from "@/lib/profile-path";
 import { ThemeSwitcher } from "@/components/dashboard/ThemeSwitcher";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
-import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
+import { GlobalCommandPalette } from "@/components/navigation/GlobalCommandPalette";
 
 export function SupplierLayout({ children }) {
   const [, setLocation] = useLocation();
   const logout = useLogout();
   const { data: user } = useGetCurrentUser();
+  const supplierCommandItems = [
+    { href: "/supplier-portal", label: "Supplier Dashboard", group: "Supplier Portal", keywords: "supplier dashboard" },
+    { href: "/supplier-portal/profile", label: "Profile", group: "Supplier Portal", keywords: "profile account" },
+    { href: "/supplier-portal/preferences", label: "Preferences", group: "Supplier Portal", keywords: "theme appearance" },
+  ];
 
   const handleLogout = async () => {
     try {
@@ -45,6 +50,11 @@ export function SupplierLayout({ children }) {
           <Button variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex" asChild>
             <Link href="/supplier-portal/preferences">Appearance</Link>
           </Button>
+          <GlobalCommandPalette
+            items={supplierCommandItems}
+            triggerLabel="Jump"
+            className="hidden lg:inline-flex"
+          />
           <ThemeSwitcher />
           <ProfileNavButton href={profilePathForRole(user?.role)} />
           <NotificationBell />
@@ -74,7 +84,6 @@ export function SupplierLayout({ children }) {
       </header>
       <main className="min-h-0 min-w-0 flex-1 overflow-auto">
         <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6 px-4 py-8 md:px-8">
-          <NativeAnalyticsPanel moduleKey="supplier" title="Supplier Dashboard Analytics" />
           {children}
         </div>
       </main>

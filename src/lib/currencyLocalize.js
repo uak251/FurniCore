@@ -1,10 +1,10 @@
 /**
  * Format a numeric amount for display using Intl (symbol + grouping).
  * @param amount - raw number in major units (e.g. dollars)
- * @param currencyCode - ISO 4217 (default USD)
- * @param locale - BCP 47 locale (default en-US)
+ * @param currencyCode - ISO 4217 (default PKR)
+ * @param locale - BCP 47 locale (default ur-PK)
  */
-export function currencyLocalize(amount, currencyCode = "USD", locale = "en-US") {
+export function currencyLocalize(amount, currencyCode = "PKR", locale = "ur-PK") {
   const n = Number(amount);
   if (!Number.isFinite(n)) return "";
   return new Intl.NumberFormat(locale, {

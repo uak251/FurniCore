@@ -68,6 +68,16 @@
 
 /* LIGHT MODE - Amber and Slate */
 :root {
+  --ds-brand: 215 82% 46%;
+  --ds-brand-foreground: 0 0% 100%;
+  --ds-brand-alt: 252 72% 55%;
+  --ds-surface: 0 0% 100%;
+  --ds-border: 220 16% 84%;
+  --ds-text: 222 25% 12%;
+  --ds-text-muted: 220 10% 40%;
+  --ds-success: 142 70% 35%;
+  --ds-danger: 0 72% 46%;
+
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
   --opaque-button-border-intensity: -8;
@@ -138,6 +148,16 @@
 }
 
 .dark {
+  --ds-brand: 214 90% 60%;
+  --ds-brand-foreground: 220 25% 10%;
+  --ds-brand-alt: 252 72% 62%;
+  --ds-surface: 222 28% 14%;
+  --ds-border: 222 18% 28%;
+  --ds-text: 220 18% 92%;
+  --ds-text-muted: 220 10% 68%;
+  --ds-success: 142 72% 50%;
+  --ds-danger: 0 74% 58%;
+
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
   --opaque-button-border-intensity: 9;
@@ -469,6 +489,58 @@ html[data-dashboard-theme="sky-client"] {
   .saas-button {
     @apply rounded-lg transition-colors;
   }
+  .ds-card {
+    @apply rounded-2xl border shadow-sm;
+    background-color: hsl(var(--ds-surface));
+    border-color: hsl(var(--ds-border));
+  }
+  .ds-btn-primary {
+    @apply w-full rounded-xl font-semibold;
+    min-height: 44px;
+    min-width: 44px;
+    background-color: hsl(var(--ds-brand));
+    color: hsl(var(--ds-brand-foreground));
+  }
+  .ds-btn-primary:hover {
+    filter: brightness(0.96);
+  }
+  .ds-btn-secondary {
+    @apply w-full rounded-xl font-semibold border;
+    min-height: 44px;
+    min-width: 44px;
+    border-color: hsl(var(--ds-border));
+    background-color: hsl(var(--ds-surface));
+    color: hsl(var(--ds-text));
+  }
+  .ds-btn-social {
+    @apply rounded-xl border;
+    min-height: 44px;
+    min-width: 44px;
+    border-color: hsl(var(--ds-border));
+    background-color: hsl(var(--ds-surface));
+    color: hsl(var(--ds-text));
+  }
+  .ds-input {
+    @apply rounded-xl;
+    min-height: 44px;
+    min-width: 44px;
+    border-color: hsl(var(--ds-border));
+    background-color: hsl(var(--ds-surface));
+    color: hsl(var(--ds-text));
+  }
+  .ds-input::placeholder {
+    color: hsl(var(--ds-text-muted));
+  }
+  .ds-auth-heading {
+    color: hsl(var(--ds-text));
+    @apply text-[1.9rem] leading-tight font-semibold tracking-tight;
+  }
+  .ds-auth-subtitle {
+    color: hsl(var(--ds-text-muted));
+    @apply text-sm;
+  }
+  .ds-stack-md { @apply space-y-4; }
+  .ds-stack-lg { @apply space-y-6; }
   .touch-target {
     min-height: 44px;
     min-width: 44px;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import {
@@ -36,6 +37,7 @@ import { useCurrency } from "@/lib/currency";
 import { AdminUnifiedAnalyticsDashboard } from "@/components/AdminUnifiedAnalyticsDashboard";
 import { RoleAnalyticsDashboard } from "@/components/RoleAnalyticsDashboard";
 import { RoleLandingStrip } from "@/components/dashboard/RoleLandingStrip";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const QUICK_ACTIONS = [
   { href: "/inventory", label: "Add inventory item", icon: Boxes, accent: "from-violet-500/15 to-violet-600/5 border-violet-500/20 text-violet-700 dark:text-violet-300" },
@@ -64,6 +66,7 @@ function formatWhen(iso) {
 }
 
 export default function Dashboard() {
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const { format: fmtMoney } = useCurrency();
   const { data: user } = useGetCurrentUser();
   const {
@@ -255,10 +258,36 @@ export default function Dashboard() {
         </motion.div>
       )}
 
-      {user?.role === "admin" && <AdminUnifiedAnalyticsDashboard />}
-      {["manager", "inventory_manager", "accountant", "sales_manager", "hr_manager"].includes(user?.role || "") && (
-        <RoleAnalyticsDashboard role={user.role} />
-      )}
+      <Card className="rounded-2xl border-border/80 shadow-sm">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle className="text-lg">Analytics</CardTitle>
+            <CardDescription>
+              Open analytics in a focused right-side panel for cleaner dashboard navigation.
+            </CardDescription>
+          </div>
+          <Button type="button" className="touch-target w-full sm:w-auto" onClick={() => setAnalyticsOpen(true)}>
+            Open analytics hub
+          </Button>
+        </CardHeader>
+      </Card>
+
+      <Sheet open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
+          <SheetHeader>
+            <SheetTitle>Analytics Hub</SheetTitle>
+            <SheetDescription>
+              Role-based analytics in a dedicated right-side panel.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-6">
+            {user?.role === "admin" && <AdminUnifiedAnalyticsDashboard />}
+            {["manager", "inventory_manager", "accountant", "sales_manager", "hr_manager"].includes(user?.role || "") && (
+              <RoleAnalyticsDashboard role={user.role} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* KPI grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

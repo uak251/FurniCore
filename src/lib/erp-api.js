@@ -5,16 +5,32 @@ import { apiOriginPrefix } from "@/lib/api-base";
 import { getAuthToken } from "@/lib/auth";
 
 const API_BASE = apiOriginPrefix();
+const DEFAULT_TIMEOUT_MS = 15000;
 
 export async function erpApi(path, init) {
-    const res = await fetch(`${API_BASE}${path}`, {
-        ...init,
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${getAuthToken() ?? ""}`,
-            ...(init?.headers ?? {}),
-        },
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken() ?? ""}`,
+        ...(init?.headers ?? {}),
+    };
+    let res;
+    try {
+        res = await fetch(`${API_BASE}${path}`, {
+            ...init,
+            headers,
+            signal: init?.signal ?? controller.signal,
+        });
+    }
+    catch (err) {
+        clearTimeout(timeout);
+        if (err?.name === "AbortError") {
+            throw new Error("NETWORK_TIMEOUT: Request took too long. Please retry.");
+        }
+        throw new Error("NETWORK_ERROR: Unable to reach server.");
+    }
+    clearTimeout(timeout);
     const text = await res.text();
     let data;
     try {

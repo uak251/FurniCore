@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { apiOriginPrefix } from "@/lib/api-base";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
+import { DsButton } from "@/components/design-system/DsButton";
+import { DsCard } from "@/components/design-system/DsCard";
+import { DsInput } from "@/components/design-system/DsInput";
 
 const API = apiOriginPrefix();
 
@@ -126,12 +129,12 @@ export default function ResetPasswordPage() {
           <p className="mt-2 text-sm text-slate-200">Reset access securely in a few steps</p>
         </div>
 
-        <Card className="saas-surface-strong border-white/20 bg-white/92 shadow-2xl backdrop-blur-md">
+        <DsCard className="saas-surface-strong border-white/20 bg-white/92 shadow-2xl backdrop-blur-md">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               {hasToken ? <KeyRound className="h-6 w-6 text-primary" /> : <Mail className="h-6 w-6 text-primary" />}
             </div>
-            <CardTitle className="saas-title text-center">{hasToken ? "Set a new password" : "Forgot your password?"}</CardTitle>
+            <CardTitle className="ds-auth-heading text-center">{hasToken ? "Set a new password" : "Forgot your password?"}</CardTitle>
             <CardDescription>
               {hasToken
                 ? "Enter your new password to complete reset."
@@ -143,9 +146,9 @@ export default function ResetPasswordPage() {
               passwordReset ? (
                 <div className="space-y-4 text-center">
                   <p className="text-sm text-muted-foreground">Your password has been reset successfully.</p>
-                  <Button className="touch-target w-full" onClick={() => navigate("/login")}>
+                  <DsButton intent="primary" onClick={() => navigate("/login")}>
                     Go to sign in
-                  </Button>
+                  </DsButton>
                 </div>
               ) : (
                 <form onSubmit={submitReset} className="space-y-4">
@@ -156,7 +159,7 @@ export default function ResetPasswordPage() {
                   ) : null}
                   <div className="space-y-1">
                     <Label htmlFor="new-password">New password</Label>
-                    <Input
+                    <DsInput
                       id="new-password"
                       type="password"
                       placeholder="Enter new password"
@@ -173,7 +176,7 @@ export default function ResetPasswordPage() {
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="confirm-new-password">Confirm new password</Label>
-                    <Input
+                    <DsInput
                       id="confirm-new-password"
                       type="password"
                       placeholder="Confirm new password"
@@ -188,7 +191,7 @@ export default function ResetPasswordPage() {
                     />
                     {fieldErrors.confirmPassword ? <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p> : null}
                   </div>
-                  <Button type="submit" className="touch-target w-full" disabled={loading}>
+                  <DsButton type="submit" intent="primary" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -197,7 +200,7 @@ export default function ResetPasswordPage() {
                     ) : (
                       "Reset password"
                     )}
-                  </Button>
+                  </DsButton>
                 </form>
               )
             ) : (
@@ -209,7 +212,7 @@ export default function ResetPasswordPage() {
                 ) : null}
                 <div className="space-y-1">
                   <Label htmlFor="email">Email</Label>
-                  <Input
+                  <DsInput
                     id="email"
                     type="email"
                     placeholder="Enter your email"
@@ -224,7 +227,7 @@ export default function ResetPasswordPage() {
                   />
                   {fieldErrors.email ? <p className="text-sm text-destructive">{fieldErrors.email}</p> : null}
                 </div>
-                <Button type="submit" className="touch-target w-full" disabled={loading}>
+                <DsButton type="submit" intent="primary" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -233,7 +236,7 @@ export default function ResetPasswordPage() {
                   ) : (
                     "Send reset link"
                   )}
-                </Button>
+                </DsButton>
                 {requestSent ? (
                   <p className="text-sm text-center text-muted-foreground">
                     Request received. Check your email or server logs for the reset token link.
@@ -247,7 +250,7 @@ export default function ResetPasswordPage() {
               </Link>
             </p>
           </CardContent>
-        </Card>
+        </DsCard>
       </div>
     </AuthBackdrop>
   );
