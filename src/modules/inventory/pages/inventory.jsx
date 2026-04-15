@@ -77,11 +77,14 @@ export default function InventoryPage() {
                     return false;
                 const qty = Number(row.quantity);
                 const reorder = Number(row.reorderLevel);
-                const low = qty <= reorder;
+                const out = qty <= 0;
+                const low = !out && qty <= reorder;
                 if (statusFilter === "low")
                     return low;
-                if (statusFilter === "ok")
-                    return !low;
+                if (statusFilter === "in")
+                    return !low && !out;
+                if (statusFilter === "out")
+                    return out;
                 return true;
             },
             sortKey,
@@ -112,7 +115,8 @@ export default function InventoryPage() {
         const data = sorted.map((item) => {
             const qty = Number(item.quantity);
             const reorder = Number(item.reorderLevel);
-            const low = qty <= reorder;
+            const out = qty <= 0;
+            const low = !out && qty <= reorder;
             return {
                 name: item.name,
                 type: item.type,
@@ -120,7 +124,7 @@ export default function InventoryPage() {
                 quantity: qty,
                 reorderLevel: reorder,
                 unitCost: Number(item.unitCost),
-                status: low ? "Low stock" : "OK",
+                status: out ? "Out of stock" : low ? "Low stock" : "In stock",
             };
         });
         exportRowsToCsv(`furnicore-inventory-${new Date().toISOString().slice(0, 10)}`, headers, data);
@@ -175,7 +179,8 @@ export default function InventoryPage() {
     return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "Inventory" }), _jsx("p", { className: "text-muted-foreground", children: "Manage raw materials and stock levels" })] }), _jsxs("div", { className: "flex gap-2", children: [_jsxs(Button, { variant: "outline", onClick: () => setShowGallery(true), children: [_jsx(Images, { className: "mr-2 h-4 w-4" }), "Gallery"] }), _jsxs(Button, { variant: "outline", onClick: () => setShowBulk(true), children: [_jsx(Upload, { className: "mr-2 h-4 w-4", "aria-hidden": true }), "Bulk import/export"] }), _jsxs(Button, { onClick: openCreate, children: [_jsx(Plus, { className: "mr-2 h-4 w-4", "aria-hidden": true }), "Add item"] })] })] }), lowStock && lowStock.length > 0 && (_jsxs("div", { className: "flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-destructive", role: "status", children: [_jsx(AlertTriangle, { className: "h-5 w-5 shrink-0", "aria-hidden": true }), _jsxs("p", { className: "text-sm font-medium", children: [lowStock.length, " item(s) below reorder level:", " ", _jsx("span", { className: "break-words", children: lowStock.map((i) => i.name).join(", ") })] })] })), valuation && (_jsx(Card, { className: "border-primary/20 bg-primary/5", children: _jsx(CardHeader, { className: "py-3 px-4", children: _jsxs("div", { className: "flex items-center gap-2", children: [_jsx(TrendingUp, { className: "h-4 w-4 text-primary", "aria-hidden": true }), _jsxs(CardTitle, { className: "text-sm font-semibold", children: ["Total Inventory Value:", " ", _jsx("span", { className: "text-primary", children: formatCurrency(valuation.totalValue) })] }), _jsxs("span", { className: "ml-auto text-xs text-muted-foreground font-normal", children: ["Method: ", _jsx("span", { className: "font-semibold", children: valuation.method })] })] }) }) })), _jsx(TableToolbar, { id: TABLE_ID, entityLabel: "inventory", searchValue: search, onSearchChange: setSearch, searchPlaceholder: "Search by name, type, or unit\u2026", filterLabel: "Stock status", filterValue: statusFilter, onFilterChange: setStatusFilter, filterOptions: [
                     { value: "all", label: "All items" },
                     { value: "low", label: "Low stock" },
-                    { value: "ok", label: "OK" },
+                    { value: "in", label: "In stock" },
+                    { value: "out", label: "Out of stock" },
                 ], sortKey: sortKey, onSortKeyChange: setSortKey, sortOptions: [
                     { value: "name", label: "Name" },
                     { value: "type", label: "Type" },
@@ -187,8 +192,15 @@ export default function InventoryPage() {
                     : `Showing ${from}–${to} of ${total} matching items` }), _jsx(Card, { children: _jsx(CardContent, { className: "p-0", children: isLoading ? (_jsx("div", { className: "space-y-3 p-6", children: [1, 2, 3, 4].map((i) => (_jsx(Skeleton, { className: "h-14 w-full" }, i))) })) : pageRows.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center py-16 text-muted-foreground", children: [_jsx(Package, { className: "mb-3 h-10 w-10", "aria-hidden": true }), _jsx("p", { children: "No inventory items match your filters" })] })) : (_jsxs(_Fragment, { children: [_jsx("div", { className: "overflow-x-auto", id: `${TABLE_ID}-table`, children: _jsxs(Table, { children: [_jsx(TableHeader, { children: _jsxs(TableRow, { children: [_jsx(TableHead, { scope: "col", className: "w-12" }), _jsx(TableHead, { scope: "col", children: "Name" }), _jsx(TableHead, { scope: "col", children: "Type" }), _jsx(TableHead, { scope: "col", children: "Unit" }), _jsx(TableHead, { scope: "col", className: "text-right", children: "Quantity" }), _jsx(TableHead, { scope: "col", className: "text-right", children: "Reorder at" }), _jsx(TableHead, { scope: "col", className: "text-right", children: "Unit cost" }), _jsx(TableHead, { scope: "col", children: "Status" }), _jsx(TableHead, { scope: "col", className: "w-[100px] text-right", children: "Actions" })] }) }), _jsx(TableBody, { children: pageRows.map((item) => {
                                                 const qty = Number(item.quantity);
                                                 const reorder = Number(item.reorderLevel);
-                                                const low = qty <= reorder;
-                                                return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "px-3 py-2", children: _jsx(RecordAvatar, { entityType: "inventory", entityId: item.id, className: "h-9 w-9" }) }), _jsx(TableCell, { className: "font-medium", children: item.name }), _jsx(TableCell, { className: "capitalize text-muted-foreground", children: String(item.type ?? "").replace(/_/g, " ") }), _jsx(TableCell, { className: "text-muted-foreground", children: item.unit }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: qty.toLocaleString() }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: reorder.toLocaleString() }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: formatCurrency(Number(item.unitCost)) }), _jsx(TableCell, { children: _jsx(Badge, { variant: low ? "destructive" : "secondary", children: low ? "Low stock" : "OK" }) }), _jsx(TableCell, { className: "text-right", children: _jsxs("div", { className: "flex justify-end gap-1", children: [_jsx(Button, { size: "icon", variant: "ghost", "aria-label": `Edit ${item.name}`, onClick: () => openEdit(item), children: _jsx(Pencil, { className: "h-4 w-4" }) }), _jsx(Button, { size: "icon", variant: "ghost", className: "text-destructive", "aria-label": `Delete ${item.name}`, onClick: () => handleDelete(item.id), children: _jsx(Trash2, { className: "h-4 w-4" }) })] }) })] }, item.id));
+                                                const out = qty <= 0;
+                                                const low = !out && qty <= reorder;
+                                                const statusText = out ? "Out of stock" : low ? `Low Stock: ${qty.toLocaleString()} remaining` : `${qty.toLocaleString()} in stock`;
+                                                const statusClass = out
+                                                    ? "bg-destructive/10 text-destructive border-destructive/30"
+                                                    : low
+                                                        ? "bg-amber-100 text-amber-800 border-amber-300"
+                                                        : "bg-emerald-100 text-emerald-800 border-emerald-300";
+                                                return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "px-3 py-2", children: _jsx(RecordAvatar, { entityType: "inventory", entityId: item.id, className: "h-9 w-9" }) }), _jsx(TableCell, { className: "font-medium", children: item.name }), _jsx(TableCell, { className: "capitalize text-muted-foreground", children: String(item.type ?? "").replace(/_/g, " ") }), _jsx(TableCell, { className: "text-muted-foreground", children: item.unit }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: qty.toLocaleString() }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: reorder.toLocaleString() }), _jsx(TableCell, { className: "text-right font-mono tabular-nums", children: formatCurrency(Number(item.unitCost)) }), _jsx(TableCell, { children: _jsx(Badge, { variant: "outline", className: statusClass, children: statusText }) }), _jsx(TableCell, { className: "text-right", children: _jsxs("div", { className: "flex justify-end gap-1", children: [_jsx(Button, { size: "icon", variant: "ghost", "aria-label": `Edit ${item.name}`, onClick: () => openEdit(item), children: _jsx(Pencil, { className: "h-4 w-4" }) }), _jsx(Button, { size: "icon", variant: "ghost", className: "text-destructive", "aria-label": `Delete ${item.name}`, onClick: () => handleDelete(item.id), children: _jsx(Trash2, { className: "h-4 w-4" }) })] }) })] }, item.id));
                                             }) })] }) }), _jsx(TablePaginationBar, { id: TABLE_ID, page: safePage, totalPages: totalPages, onPageChange: setPage })] })) }) }), _jsx(Dialog, { open: showBulk, onOpenChange: setShowBulk, children: _jsxs(DialogContent, { className: "max-w-3xl", children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Bulk Import / Export \u2014 Raw Materials" }) }), _jsx(BulkImportExport, { module: "Inventory", importEndpoint: "/api/bulk/inventory/import", exportEndpoint: "/api/bulk/inventory/export", exportFilename: "inventory-export.csv", templateHeaders: ["name", "type", "unit", "quantity", "reorderLevel", "unitCost"], templateSample: [
                                 ["Oak Wood", "raw_material", "kg", "500", "100", "2.50"],
                                 ["Steel Bolts", "raw_material", "units", "2000", "500", "0.05"],

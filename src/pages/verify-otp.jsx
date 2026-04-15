@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiOriginPrefix } from "@/lib/api-base";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const API = apiOriginPrefix();
 
@@ -19,11 +20,17 @@ export default function VerifyOtpPage() {
   const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const submit = async (e) => {
     e.preventDefault();
+    setFieldErrors({});
+    if (!/\S+@\S+\.\S+/.test(email.trim())) {
+      setFieldErrors((s) => ({ ...s, email: "Invalid email format" }));
+      return;
+    }
     if (!/^\d{6}$/.test(code.trim())) {
-      toast({ variant: "destructive", title: "Invalid code", description: "Enter the 6-digit code from your email." });
+      setFieldErrors((s) => ({ ...s, code: "Invalid OTP" }));
       return;
     }
     setLoading(true);
@@ -35,12 +42,14 @@ export default function VerifyOtpPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json.message || json.error || "Verification failed");
+        const msg = String(json.message || json.error || "Verification failed");
+        setFieldErrors((s) => ({ ...s, code: /expired/i.test(msg) ? "OTP expired" : "Invalid OTP" }));
+        return;
       }
       toast({ title: "Verified", description: json.message || "You can sign in now." });
       navigate("/login");
-    } catch (err) {
-      toast({ variant: "destructive", title: "Verification failed", description: err.message });
+    } catch {
+      setFieldErrors((s) => ({ ...s, code: "Verification failed. Please try again." }));
     } finally {
       setLoading(false);
     }
@@ -65,25 +74,46 @@ export default function VerifyOtpPage() {
                   id="email"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((s) => ({ ...s, email: "" }));
+                  }}
+                  placeholder="Enter your email"
+                  aria-invalid={Boolean(fieldErrors.email)}
+                  className={fieldErrors.email ? "border-destructive focus-visible:ring-destructive/20" : ""}
                   required
                   autoComplete="email"
                 />
+                {fieldErrors.email ? <p className="text-sm text-destructive">{fieldErrors.email}</p> : null}
               </div>
               <div className="space-y-1">
                 <Label htmlFor="code">6-digit code</Label>
+                <div className="flex justify-center py-1">
+                  <InputOTP
+                    maxLength={6}
+                    value={code}
+                    onChange={(val) => {
+                      setCode(val.replace(/\D/g, "").slice(0, 6));
+                      setFieldErrors((s) => ({ ...s, code: "" }));
+                    }}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
                 <Input
                   id="code"
-                  inputMode="numeric"
-                  pattern="\d{6}"
-                  maxLength={6}
+                  className="sr-only"
+                  readOnly
                   value={code}
-                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  className="text-center font-mono text-lg tracking-[0.4em]"
-                  required
                 />
+                {fieldErrors.code ? <p className="text-sm text-destructive">{fieldErrors.code}</p> : null}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { getAuthToken } from "@/lib/auth";
 export function ProtectedRoute({ children }) {
-    const [location, setLocation] = useLocation();
+    const [, setLocation] = useLocation();
     const [isChecking, setIsChecking] = useState(true);
     useEffect(() => {
         const token = getAuthToken();
@@ -13,9 +13,9 @@ export function ProtectedRoute({ children }) {
         else {
             setIsChecking(false);
         }
-    }, [location, setLocation]);
+    }, [setLocation]);
     if (isChecking) {
-        return (_jsx("div", { className: "min-h-screen flex items-center justify-center bg-background", children: _jsx("div", { className: "animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" }) }));
+        return (_jsx("div", { className: "min-h-screen flex items-center justify-center bg-background", "aria-live": "polite", children: _jsx("div", { className: "animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full", "aria-label": "Checking authentication" }) }));
     }
     return _jsx(_Fragment, { children: children });
 }
