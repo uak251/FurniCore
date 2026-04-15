@@ -233,6 +233,7 @@ export function NativeAnalyticsPanel({
   dataOverride,
   isLoadingOverride,
   errorOverride,
+  visibleConfig,
 }) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["native-analytics", moduleKey],
@@ -244,6 +245,9 @@ export function NativeAnalyticsPanel({
   const resolvedIsLoading = typeof isLoadingOverride === "boolean" ? isLoadingOverride : isLoading;
   const resolvedError = errorOverride ?? (isError ? error : null);
   const resolvedIsError = Boolean(resolvedError);
+  const showKpis = visibleConfig?.showKpis !== false;
+  const showCharts = visibleConfig?.showCharts !== false;
+  const showActions = visibleConfig?.showActions !== false;
 
   const kpis = useMemo(() => resolvedData?.kpis ?? [], [resolvedData]);
   const charts = useMemo(() => resolvedData?.charts ?? [], [resolvedData]);
@@ -281,7 +285,7 @@ export function NativeAnalyticsPanel({
 
         {!resolvedIsLoading && !resolvedIsError && (
           <>
-            {kpis.length > 0 && (
+            {showKpis && kpis.length > 0 && (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {kpis.map((kpi, idx) => (
                   <div key={`${kpi.label}-${idx}`} className="rounded-lg border bg-card px-3 py-2">
@@ -292,39 +296,43 @@ export function NativeAnalyticsPanel({
               </div>
             )}
 
-            <div className="grid gap-4 xl:grid-cols-2">
-              {charts.map((chart) => (
-                <Card key={chart.id} className="border-border/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">{chart.title}</CardTitle>
-                    {semanticHint(chart) && (
-                      <p className="text-xs text-muted-foreground">{semanticHint(chart)}</p>
-                    )}
-                    {Array.isArray(chart.actions) && chart.actions.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {chart.actions.map((action) => (
-                          <QuickActionButton
-                            key={action.id}
-                            moduleKey={moduleKey}
-                            chartId={chart.id}
-                            action={action}
-                            onActionComplete={handleActionComplete}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <ChartRenderer chart={chart} />
-                    <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
-                      {actionMeta[chart.id]
-                        ? `${ACTION_ICONS[actionMeta[chart.id].actionId] || "✅"} Last action: ${formatActionTime(actionMeta[chart.id].executedAt)}`
-                        : "No recent action"}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {showCharts && (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {charts.map((chart) => (
+                  <Card key={chart.id} className="border-border/60">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">{chart.title}</CardTitle>
+                      {semanticHint(chart) && (
+                        <p className="text-xs text-muted-foreground">{semanticHint(chart)}</p>
+                      )}
+                      {showActions && Array.isArray(chart.actions) && chart.actions.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {chart.actions.map((action) => (
+                            <QuickActionButton
+                              key={action.id}
+                              moduleKey={moduleKey}
+                              chartId={chart.id}
+                              action={action}
+                              onActionComplete={handleActionComplete}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+                      <ChartRenderer chart={chart} />
+                      {showActions && (
+                        <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+                          {actionMeta[chart.id]
+                            ? `${ACTION_ICONS[actionMeta[chart.id].actionId] || "✅"} Last action: ${formatActionTime(actionMeta[chart.id].executedAt)}`
+                            : "No recent action"}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
       </CardContent>

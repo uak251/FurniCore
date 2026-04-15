@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useLogin } from "@workspace/api-client-react";
 import { applyAuthSession, getTrustedDeviceToken, removeTrustedDeviceToken, setTrustedDeviceToken } from "@/lib/auth";
-import { Hammer, Loader2, MailWarning, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { Loader2, MailWarning, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { apiOriginPrefix } from "@/lib/api-base";
+import { BrandLogo } from "@/components/branding/BrandLogo";
+import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
 
 function decodeJwtPayload(token) {
   try {
@@ -346,14 +348,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 sm:py-14">
-      <div className="mx-auto w-full max-w-[420px]">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
-            <Hammer className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">FurniCore</h1>
-          <p className="mt-2 text-muted-foreground">Furniture manufacturing ERP</p>
+    <AuthBackdrop>
+      <div className="w-full max-w-[460px] px-1 sm:px-0">
+        <div className="mb-10 flex flex-col items-center text-center">
+          <BrandLogo imageClassName="h-14 w-14 shadow-lg" />
+          <h1 className="mt-4 text-white">Welcome to FurniCore</h1>
+          <p className="mt-2 text-sm text-slate-200">Secure sign-in to your workspace</p>
         </div>
 
         {apiReachable === false && (
@@ -375,14 +375,14 @@ export default function Login() {
           </Alert>
         )}
 
-        <Card className="border-border/40 shadow-xl">
+        <Card className="saas-surface-strong border-white/20 bg-white/92 backdrop-blur-md">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">Sign In</CardTitle>
+            <CardTitle className="saas-title text-center">Sign In</CardTitle>
             <CardDescription>
               {twoFactorMode ? "Complete two-factor verification to continue" : "Enter your credentials to access the system"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
             {unverifiedEmail && <UnverifiedEmailBanner email={unverifiedEmail} />}
             {twoFactorMode ? (
               <div className="space-y-4">
@@ -395,7 +395,7 @@ export default function Login() {
                     <p className="text-xs text-muted-foreground">Manual key: <span className="font-mono text-foreground">{setupManualKey}</span></p>
                   </div>
                 )}
-                <div className="space-y-2">
+                  <div className="space-y-3">
                   {otpInfo ? <p className="text-sm text-muted-foreground">{otpInfo}</p> : null}
                   <div className="flex items-center justify-between">
                     <Label htmlFor="totp-code">{useBackupCode ? "Backup code" : "6-digit OTP"}</Label>
@@ -440,18 +440,18 @@ export default function Login() {
                     />
                   )}
                   {otpError ? <p className="text-sm text-destructive">{otpError}</p> : null}
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-start gap-2 pt-1">
                     <Checkbox
                       id="remember-device"
                       checked={rememberDevice}
                       onCheckedChange={(checked) => setRememberDevice(Boolean(checked))}
                     />
-                    <label htmlFor="remember-device" className="text-xs text-muted-foreground">
+                    <label htmlFor="remember-device" className="pt-0.5 text-xs leading-relaxed text-muted-foreground">
                       Remember this device for up to 30 days. Do not use on shared computers.
                     </label>
                   </div>
                 </div>
-                <Button type="button" className="w-full" onClick={verifyTwoFactor} disabled={otpLoading}>
+                <Button type="button" className="touch-target w-full" onClick={verifyTwoFactor} disabled={otpLoading}>
                   {otpLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
@@ -523,7 +523,7 @@ export default function Login() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="absolute right-0 top-0 h-9 w-9 text-muted-foreground"
+                            className="touch-target absolute right-0 top-0 h-10 w-10 text-muted-foreground"
                             onClick={() => setShowPw((s) => !s)}
                             aria-label={showPw ? "Hide password" : "Show password"}
                           >
@@ -536,7 +536,7 @@ export default function Login() {
                   )}
                 />
 
-                <Button type="submit" className="mt-6 w-full" disabled={login.isPending}>
+                <Button type="submit" className="saas-button touch-target mt-6 w-full" disabled={login.isPending}>
                   {login.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Authenticating...
@@ -548,13 +548,13 @@ export default function Login() {
                 <p className="text-right text-xs">
                   <Link href="/reset-password" className="text-primary hover:underline">Forgot password?</Link>
                 </p>
-                <div className="flex items-center gap-2">
+                <div className="flex items-start gap-2">
                   <Checkbox
                     id="remember-device-login"
                     checked={rememberDevice}
                     onCheckedChange={(checked) => setRememberDevice(Boolean(checked))}
                   />
-                  <label htmlFor="remember-device-login" className="text-xs text-muted-foreground">
+                  <label htmlFor="remember-device-login" className="pt-0.5 text-xs leading-relaxed text-muted-foreground">
                     Remember this device (skip OTP on future sign-ins for up to 30 days)
                   </label>
                 </div>
@@ -571,6 +571,6 @@ export default function Login() {
           </Link>
         </p>
       </div>
-    </div>
+    </AuthBackdrop>
   );
 }

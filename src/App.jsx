@@ -39,6 +39,9 @@ import ProfilePage from "@/pages/profile";
 import SupplierPortalPage from "@/pages/supplier-portal";
 import WorkerPortalPage from "@/pages/worker-portal";
 import CustomerPortalPage from "@/pages/customer-portal";
+import CustomerOrdersPage from "@/pages/customer-orders";
+import CustomerPaymentsPage from "@/pages/customer-payments";
+import CustomerAnalyticsPage from "@/pages/customer-analytics";
 import { CustomerShopProvider } from "@/contexts/customer-shop-context";
 import SalesPage from "@/pages/sales";
 import NotFound from "@/pages/not-found";
@@ -74,6 +77,9 @@ function Router() {
         _jsx(Route, { path: "/worker-portal/profile", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["worker"], children: _jsx(WorkerLayout, { children: _jsx(ProfilePage, {}) }) }) }) }),
         _jsx(Route, { path: "/customer-portal/preferences", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerLayout, { children: _jsx(PreferencesPage, {}) }) }) }) }),
         _jsx(Route, { path: "/customer-portal/profile", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerLayout, { children: _jsx(ProfilePage, {}) }) }) }) }),
+        _jsx(Route, { path: "/customer-portal/orders", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerShopProvider, { children: _jsx(CustomerLayout, { children: _jsx(CustomerOrdersPage, {}) }) }) }) }) }),
+        _jsx(Route, { path: "/customer-portal/payments", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerShopProvider, { children: _jsx(CustomerLayout, { children: _jsx(CustomerPaymentsPage, {}) }) }) }) }) }),
+        _jsx(Route, { path: "/customer-portal/activity", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerShopProvider, { children: _jsx(CustomerLayout, { children: _jsx(CustomerAnalyticsPage, {}) }) }) }) }) }),
         _jsx(Route, { path: "/supplier-portal", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["supplier"], children: _jsx(SupplierLayout, { children: _jsx(SupplierPortalPage, {}) }) }) }) }),
         _jsx(Route, { path: "/worker-portal", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["worker"], children: _jsx(WorkerLayout, { children: _jsx(WorkerPortalPage, {}) }) }) }) }),
         _jsx(Route, { path: "/customer-portal", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["customer"], children: _jsx(CustomerShopProvider, { children: _jsx(CustomerLayout, { children: _jsx(CustomerPortalPage, {}) }) }) }) }) }),

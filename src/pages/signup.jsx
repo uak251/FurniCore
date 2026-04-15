@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Hammer, Loader2, MailCheck, RefreshCw } from "lucide-react";
+import { Loader2, MailCheck, RefreshCw } from "lucide-react";
 import { applyAuthSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiOriginPrefix } from "@/lib/api-base";
+import { BrandLogo } from "@/components/branding/BrandLogo";
+import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
 
 const signupSchema = z
   .object({
@@ -86,7 +88,7 @@ function VerifyEmailPrompt({ email }) {
         <div>
           <h2 className="text-xl font-semibold">Check your inbox</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            We've sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
+            We&apos;ve sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>.
             <br />
             Enter it on the verification page to activate your account.
           </p>
@@ -182,25 +184,24 @@ export default function Signup() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="w-full max-w-[420px]">
-        <div className="mb-8 flex flex-col items-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
-            <Hammer className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">FurniCore</h1>
-          <p className="mt-2 text-muted-foreground">Customer Portal</p>
+    <AuthBackdrop>
+      <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-4">
+      <div className="w-full max-w-[460px] px-1 sm:px-0">
+        <div className="mb-10 flex flex-col items-center text-center">
+          <BrandLogo imageClassName="h-14 w-14 shadow-lg" />
+          <h1 className="mt-4 text-white">Create your account</h1>
+          <p className="mt-2 text-sm text-slate-200">Get started with a modern furniture portal</p>
         </div>
 
         {verifyEmail ? (
           <VerifyEmailPrompt email={verifyEmail} />
         ) : (
-          <Card className="border-border/40 shadow-xl">
+          <Card className="saas-surface-strong border-white/20 bg-white/92 backdrop-blur-md">
             <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl">Create Customer Account</CardTitle>
+              <CardTitle className="saas-title text-center">Create Customer Account</CardTitle>
               <CardDescription>Register to browse products and track your orders</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -278,7 +279,7 @@ export default function Signup() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="mt-6 w-full" disabled={submitting}>
+                  <Button type="submit" className="touch-target mt-6 w-full" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account...
@@ -300,6 +301,7 @@ export default function Signup() {
           </Card>
         )}
       </div>
-    </div>
+      </div>
+    </AuthBackdrop>
   );
 }

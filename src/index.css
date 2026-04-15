@@ -398,12 +398,88 @@ html[data-dashboard-theme="sky-client"] {
   * {
     @apply border-border;
   }
+  :root {
+    color-scheme: light;
+  }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+  h1, h2, h3, h4 {
+    @apply tracking-tight text-foreground;
+  }
+  h1 {
+    font-size: clamp(1.85rem, 2.5vw, 2.6rem);
+    line-height: 1.15;
+  }
+  h2 {
+    font-size: clamp(1.4rem, 1.9vw, 2rem);
+    line-height: 1.2;
+  }
+  h3 {
+    font-size: clamp(1.1rem, 1.4vw, 1.45rem);
+    line-height: 1.28;
+  }
+  p {
+    @apply text-[0.95rem] text-muted-foreground;
+  }
+  small {
+    @apply text-xs text-muted-foreground;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.28);
+    border-radius: 0.55rem;
   }
 }
 
 @layer utilities {
+  .saas-shell {
+    @apply mx-auto w-full max-w-7xl px-4 md:px-8;
+  }
+  .saas-surface {
+    @apply rounded-2xl border border-border/70 bg-card shadow-sm;
+  }
+  .saas-surface-strong {
+    @apply rounded-2xl border border-border/70 bg-card shadow-lg;
+  }
+  .saas-section {
+    @apply space-y-2;
+  }
+  .saas-title {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+  .saas-subtitle {
+    @apply text-sm text-muted-foreground;
+  }
+  .saas-grid {
+    @apply grid gap-4 md:gap-6;
+  }
+  .saas-grid-3 {
+    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3 md:gap-6;
+  }
+  .saas-grid-4 {
+    @apply grid gap-4 md:grid-cols-2 xl:grid-cols-4 md:gap-6;
+  }
+  .saas-card-hover {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+  .saas-button {
+    @apply rounded-lg transition-colors;
+  }
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Hammer, Loader2, KeyRound, Mail } from "lucide-react";
+import { Loader2, KeyRound, Mail } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiOriginPrefix } from "@/lib/api-base";
+import { BrandLogo } from "@/components/branding/BrandLogo";
+import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
 
 const API = apiOriginPrefix();
 
@@ -116,34 +118,32 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 sm:py-14">
-      <div className="mx-auto w-full max-w-[420px]">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-md">
-            <Hammer className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">FurniCore</h1>
-          <p className="mt-2 text-muted-foreground">Password recovery</p>
+    <AuthBackdrop>
+      <div className="w-full max-w-[460px] px-1 sm:px-0">
+        <div className="mb-10 flex flex-col items-center text-center">
+          <BrandLogo imageClassName="h-14 w-14 shadow-lg" />
+          <h1 className="mt-4 text-white">Password recovery</h1>
+          <p className="mt-2 text-sm text-slate-200">Reset access securely in a few steps</p>
         </div>
 
-        <Card className="border-border/40 shadow-xl">
+        <Card className="saas-surface-strong border-white/20 bg-white/92 shadow-2xl backdrop-blur-md">
           <CardHeader className="space-y-1 text-center">
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               {hasToken ? <KeyRound className="h-6 w-6 text-primary" /> : <Mail className="h-6 w-6 text-primary" />}
             </div>
-            <CardTitle className="text-2xl">{hasToken ? "Set a new password" : "Forgot your password?"}</CardTitle>
+            <CardTitle className="saas-title text-center">{hasToken ? "Set a new password" : "Forgot your password?"}</CardTitle>
             <CardDescription>
               {hasToken
                 ? "Enter your new password to complete reset."
                 : "Enter your account email and we'll generate a reset link."}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
             {hasToken ? (
               passwordReset ? (
                 <div className="space-y-4 text-center">
                   <p className="text-sm text-muted-foreground">Your password has been reset successfully.</p>
-                  <Button className="w-full" onClick={() => navigate("/login")}>
+                  <Button className="touch-target w-full" onClick={() => navigate("/login")}>
                     Go to sign in
                   </Button>
                 </div>
@@ -188,7 +188,7 @@ export default function ResetPasswordPage() {
                     />
                     {fieldErrors.confirmPassword ? <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p> : null}
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="touch-target w-full" disabled={loading}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -224,7 +224,7 @@ export default function ResetPasswordPage() {
                   />
                   {fieldErrors.email ? <p className="text-sm text-destructive">{fieldErrors.email}</p> : null}
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="touch-target w-full" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -249,6 +249,6 @@ export default function ResetPasswordPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AuthBackdrop>
   );
 }

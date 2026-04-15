@@ -5,8 +5,9 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  *   My Orders — order list with production timeline + remarks/images
  *   Invoices  — invoice list + pay
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useCustomerProfile, useProductCatalog, useValidateDiscount, useCustomerOrders, usePlaceOrder, useCustomerInvoices, usePayInvoice, } from "@/hooks/use-customer-portal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +29,7 @@ import { useCustomerShop } from "@/contexts/customer-shop-context";
 import { useCustomerStorefront } from "@/hooks/use-customer-portal";
 import { useCurrency } from "@/lib/currency";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
-import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
+import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 /* ─── Shared helpers ──────────────────────────────────────────────────────── */
 const SHELF_BADGE_CLASS = {
     AVAILABLE: "bg-emerald-800 text-white",
@@ -74,7 +75,7 @@ const INVOICE_STATUS_COLORS = {
 function ProfileHeader() {
     const { data: user } = useCustomerProfile();
     const { cartCount } = useCustomerShop();
-    return (_jsxs(Card, { className: "overflow-hidden", children: [_jsx("div", { className: "h-1.5 bg-gradient-to-r from-emerald-800/80 to-primary" }), _jsxs(CardContent, { className: "flex items-center gap-4 p-4", children: [_jsx("div", { className: "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/15 text-lg font-bold text-primary", children: user?.name?.slice(0, 2).toUpperCase() ?? "CU" }), _jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-semibold", children: user?.name ?? "—" }), _jsx("p", { className: "text-sm text-muted-foreground", children: user?.email })] }), cartCount > 0 && (_jsxs("div", { className: "flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), cartCount, " item", cartCount !== 1 ? "s" : "", " in cart"] }))] })] }));
+    return (_jsxs(Card, { className: "overflow-hidden", children: [_jsx("div", { className: "h-1.5 bg-gradient-to-r from-emerald-800/80 to-primary" }), _jsxs(CardContent, { className: "flex flex-wrap items-center gap-3 p-4 sm:gap-4", children: [_jsx("div", { className: "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/15 text-base font-bold text-primary sm:h-12 sm:w-12 sm:text-lg", children: user?.name?.slice(0, 2).toUpperCase() ?? "CU" }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "truncate font-semibold", children: user?.name ?? "—" }), _jsx("p", { className: "truncate text-sm text-muted-foreground", children: user?.email })] }), cartCount > 0 && (_jsxs("div", { className: "ml-auto flex items-center gap-2 rounded-full bg-primary/10 px-3 py-2 text-xs font-medium text-primary sm:text-sm", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), cartCount, " item", cartCount !== 1 ? "s" : "", " in cart"] }))] })] }));
 }
 /** Post-checkout summary (order totals + ship-to) — uses API-enriched order payload. */
 function OrderInvoiceDialog({ open, onOpenChange, order }) {
@@ -210,7 +211,6 @@ function BrowseTab({ onOrderPlaced }) {
         }
     };
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ defaultValues: { shippingAddress: "", notes: "", requestPaymentPlan: false, paymentPlanNotes: "" } });
-    const wantPlan = watch("requestPaymentPlan");
     const onCheckout = async (data) => {
         if (cart.length === 0) {
             toast({ variant: "destructive", title: "Cart is empty" });
@@ -278,10 +278,20 @@ function OrderTimeline({ order }) {
             }) }) }));
 }
 function MyOrdersTab() {
+    const [location] = useLocation();
     const { format: fmt } = useCurrency();
     const { data: orders = [], isLoading } = useCustomerOrders();
     const [expandedId, setExpandedId] = useState(null);
     const [statusF, setStatusF] = useState("all");
+    useEffect(() => {
+        const query = location.split("?")[1] ?? "";
+        const params = new URLSearchParams(query);
+        const queryStatus = params.get("status");
+        if (queryStatus === "pending")
+            setStatusF("active");
+        else if (["all", "delivered", "cancelled", "active"].includes(queryStatus ?? ""))
+            setStatusF(queryStatus);
+    }, [location]);
     const filtered = useMemo(() => {
         if (statusF === "active")
             return orders.filter(o => !["delivered", "cancelled"].includes(o.status));
@@ -289,7 +299,7 @@ function MyOrdersTab() {
             return orders.filter(o => o.status === statusF);
         return orders;
     }, [orders, statusF]);
-    return (_jsxs("div", { className: "space-y-4", children: [_jsx("div", { className: "flex gap-2", children: [
+    return (_jsxs("div", { className: "space-y-4", children: [_jsx("div", { className: "hide-scrollbar flex gap-2 overflow-x-auto pb-1", children: [
                     { value: "active", label: "Active" },
                     { value: "all", label: "All" },
                     { value: "delivered", label: "Delivered" },
@@ -338,12 +348,12 @@ function InvoicesTab() {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  MAIN PAGE                                                                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-export default function CustomerPortalPage() {
-    const [activeTab, setActiveTab] = useState("browse");
+export default function CustomerPortalPage({ initialTab = "browse", hideTabs = false }) {
+    const [activeTab, setActiveTab] = useState(initialTab);
     const { cart } = useCustomerShop();
     const { data: orders = [] } = useCustomerOrders();
     const { data: invoices = [] } = useCustomerInvoices();
     const activeOrderCount = orders.filter(o => !["delivered", "cancelled"].includes(o.status)).length;
     const unpaidInvoiceCount = invoices.filter(i => i.status !== "paid" && i.status !== "cancelled").length;
-    return (_jsxs("div", { className: "space-y-5", children: [_jsx(ProfileHeader, {}), _jsx(NativeAnalyticsPanel, { moduleKey: "customer", title: "Customer Dashboard Analytics" }), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [_jsxs(TabsList, { className: "w-full sm:w-auto", children: [_jsxs(TabsTrigger, { value: "browse", className: "relative gap-1.5", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), "Browse", cart.length > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: cart.length })] }), _jsxs(TabsTrigger, { value: "orders", className: "relative gap-1.5", children: [_jsx(Package, { className: "h-4 w-4" }), "My Orders", activeOrderCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: activeOrderCount })] }), _jsxs(TabsTrigger, { value: "invoices", className: "relative gap-1.5", children: [_jsx(FileText, { className: "h-4 w-4" }), "Invoices", unpaidInvoiceCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums", children: unpaidInvoiceCount })] })] }), _jsx(TabsContent, { value: "browse", className: "mt-4", children: _jsx(BrowseTab, { onOrderPlaced: () => setActiveTab("orders") }) }), _jsx(TabsContent, { value: "orders", className: "mt-4", children: _jsx(MyOrdersTab, {}) }), _jsx(TabsContent, { value: "invoices", className: "mt-4", children: _jsx(InvoicesTab, {}) })] })] }));
+    return (_jsxs("div", { className: "space-y-5", children: [_jsx(ProfileHeader, {}), _jsx("div", { className: "flex justify-end", children: _jsx(ModuleInsightsDrawer, { moduleName: "customer", title: "Customer Dashboard Analytics", reportId: "customer-overview", filters: { tab: activeTab } }) }), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, children: [!hideTabs && (_jsx("div", { className: "hide-scrollbar overflow-x-auto pb-1", children: _jsxs(TabsList, { className: "inline-flex min-w-max", children: [_jsxs(TabsTrigger, { value: "browse", className: "relative gap-1.5", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), "Browse", cart.length > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: cart.length })] }), _jsxs(TabsTrigger, { value: "orders", className: "relative gap-1.5", children: [_jsx(Package, { className: "h-4 w-4" }), "My Orders", activeOrderCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground tabular-nums", children: activeOrderCount })] }), _jsxs(TabsTrigger, { value: "invoices", className: "relative gap-1.5", children: [_jsx(FileText, { className: "h-4 w-4" }), "Invoices", unpaidInvoiceCount > 0 && _jsx("span", { className: "ml-1 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums", children: unpaidInvoiceCount })] })] }) })), _jsx(TabsContent, { value: "browse", className: "mt-4", children: _jsx(BrowseTab, { onOrderPlaced: () => setActiveTab("orders") }) }), _jsx(TabsContent, { value: "orders", className: "mt-4", children: _jsx(MyOrdersTab, {}) }), _jsx(TabsContent, { value: "invoices", className: "mt-4", children: _jsx(InvoicesTab, {}) })] })] }));
 }

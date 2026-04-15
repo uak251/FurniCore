@@ -7,7 +7,6 @@ import {
     ShoppingBag,
     Search,
     ShoppingCart,
-    Leaf,
     MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,7 @@ import { useContext } from "react";
 import { CustomerShopContext } from "@/contexts/customer-shop-context";
 import { cn } from "@/lib/utils";
 import { NativeAnalyticsPanel } from "@/components/NativeAnalyticsPanel";
+import { BrandLogo } from "@/components/branding/BrandLogo";
 
 function useShopOptional() {
     return useContext(CustomerShopContext);
@@ -31,7 +31,7 @@ function useShopOptional() {
  * Storefront shell: wide layout, category nav, search synced to shop context when present.
  */
 export function CustomerLayout({ children }) {
-    const [, setLocation] = useLocation();
+    const [location, setLocation] = useLocation();
     const logout = useLogout();
     const { data: user } = useGetCurrentUser();
     const shop = useShopOptional();
@@ -57,19 +57,25 @@ export function CustomerLayout({ children }) {
     const scrollToShop = () => {
         document.getElementById("shop-all")?.scrollIntoView({ behavior: "smooth" });
     };
+    const customerNav = [
+        { href: "/customer-portal", label: "Dashboard" },
+        { href: "/customer-portal/orders", label: "Orders" },
+        { href: "/customer-portal/activity", label: "Analytics" },
+        { href: "/customer-portal/payments", label: "Payments" },
+        { href: "/customer-portal/profile", label: "Profile" },
+    ];
 
     return (
-        <div className="flex min-h-screen flex-col bg-[#faf9f7] dark:bg-background">
+        <div className="flex min-h-screen flex-col bg-background">
             <header className="sticky top-0 z-50 border-b border-amber-200/60 bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90">
-                <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 md:px-8">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-3 py-3 sm:px-4 md:px-8">
+                    <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
                         <Link href="/customer-portal" className="flex items-center gap-2 no-underline">
-                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-800 text-primary-foreground shadow">
-                                <Leaf className="h-5 w-5" aria-hidden />
-                            </span>
-                            <span className="text-xl font-semibold tracking-tight text-emerald-900 dark:text-emerald-100">
-                                FurniCore
-                            </span>
+                            <BrandLogo
+                                imageClassName="h-10 w-10 rounded-lg object-contain shadow-sm"
+                                showWordmark
+                                wordmarkClassName="text-emerald-950 dark:text-emerald-100"
+                            />
                         </Link>
                         {storefront?.announcement && (
                             <button
@@ -80,12 +86,12 @@ export function CustomerLayout({ children }) {
                                 {storefront.announcement.label}
                             </button>
                         )}
-                        <div className="flex flex-1 flex-wrap items-center justify-end gap-2 sm:gap-3">
-                            <div className="relative min-w-[140px] max-w-xs flex-1">
+                        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-1 sm:gap-3">
+                            <div className="relative min-w-0 flex-1 sm:max-w-xs">
                                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     placeholder="Search furniture…"
-                                    className="h-9 border-emerald-900/15 bg-background pl-9"
+                                    className="h-10 border-emerald-900/15 bg-background pl-9"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery?.(e.target.value)}
                                 />
@@ -94,7 +100,7 @@ export function CustomerLayout({ children }) {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="relative shrink-0 border-emerald-900/20"
+                                className="touch-target relative h-10 w-10 shrink-0 border-emerald-900/20"
                                 onClick={scrollToShop}
                                 aria-label="Shopping cart"
                             >
@@ -105,7 +111,7 @@ export function CustomerLayout({ children }) {
                                     </span>
                                 )}
                             </Button>
-                            <Button variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex" asChild>
+                            <Button variant="ghost" size="sm" className="hidden h-10 text-muted-foreground lg:inline-flex" asChild>
                                 <Link href="/customer-portal/preferences">Appearance</Link>
                             </Button>
                             <ThemeSwitcher />
@@ -136,7 +142,7 @@ export function CustomerLayout({ children }) {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-muted-foreground hover:text-foreground"
+                                className="touch-target h-10 text-muted-foreground hover:text-foreground"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="mr-1.5 h-4 w-4" aria-hidden />
@@ -144,9 +150,28 @@ export function CustomerLayout({ children }) {
                             </Button>
                         </div>
                     </div>
+                    <nav className="hide-scrollbar flex items-center gap-2 overflow-x-auto border-t border-amber-200/40 pt-2 text-sm" aria-label="Client portal">
+                        {customerNav.map((item) => {
+                            const isActive = location === item.href || (item.href !== "/customer-portal" && location.startsWith(item.href));
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={cn(
+                                        "whitespace-nowrap rounded-full px-3 py-2 font-medium transition",
+                                        isActive
+                                            ? "bg-emerald-900 text-white shadow-sm"
+                                            : "text-emerald-900 hover:bg-emerald-900/10 dark:text-emerald-100 dark:hover:bg-emerald-100/10",
+                                    )}
+                                >
+                                    {item.label}
+                                </Link>
+                            );
+                        })}
+                    </nav>
                     {storefront?.collections && storefront.collections.length > 0 && (
                         <nav
-                            className="flex flex-wrap items-center gap-1 border-t border-amber-200/40 pt-2 text-sm"
+                            className="hide-scrollbar flex items-center gap-1 overflow-x-auto border-t border-amber-200/40 pt-2 text-sm"
                             aria-label="Collections"
                         >
                             <button
@@ -156,7 +181,7 @@ export function CustomerLayout({ children }) {
                                     scrollToShop();
                                 }}
                                 className={cn(
-                                    "rounded-full px-3 py-1 font-medium transition hover:bg-emerald-900/10",
+                                    "whitespace-nowrap rounded-full px-3 py-2 font-medium transition hover:bg-emerald-900/10",
                                     shop?.categoryFilter === "all" && "bg-emerald-900/15 text-emerald-900",
                                 )}
                             >
@@ -171,7 +196,7 @@ export function CustomerLayout({ children }) {
                                         scrollToShop();
                                     }}
                                     className={cn(
-                                        "rounded-full px-3 py-1 font-medium transition hover:bg-emerald-900/10",
+                                        "whitespace-nowrap rounded-full px-3 py-2 font-medium transition hover:bg-emerald-900/10",
                                         shop?.categoryFilter === c.name && "bg-emerald-900/15 text-emerald-900",
                                     )}
                                 >
@@ -183,7 +208,7 @@ export function CustomerLayout({ children }) {
                 </div>
             </header>
             <main className="min-h-0 min-w-0 flex-1 overflow-auto">
-                <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6 px-4 py-6 md:px-8 md:py-10">
+                <div className="saas-shell min-w-0 space-y-5 py-5 md:space-y-6 md:py-10">
                     <NativeAnalyticsPanel moduleKey="customer" title="Customer Dashboard Analytics" />
                     {children}
                 </div>
