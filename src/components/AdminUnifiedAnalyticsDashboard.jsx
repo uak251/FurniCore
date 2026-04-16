@@ -23,14 +23,18 @@ export function AdminUnifiedAnalyticsDashboard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <AdminCsvTransferPanel />
-        {MODULES.map((mod) => (
-          <NativeAnalyticsPanel
-            key={mod.key}
-            moduleKey={mod.key}
-            title={`${mod.title} · Global Analytics`}
-          />
-        ))}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="lg:col-span-2">
+            <AdminCsvTransferPanel />
+          </div>
+          {MODULES.map((mod) => (
+            <NativeAnalyticsPanel
+              key={mod.key}
+              moduleKey={mod.key}
+              title={`${mod.title} · Global Analytics`}
+            />
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

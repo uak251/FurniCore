@@ -84,7 +84,7 @@ function apiPost(path) {
   });
 }
 
-function ChartRenderer({ chart }) {
+function ChartRenderer({ chart, onDrill }) {
   if (!chart?.data?.length) {
     return <p className="text-xs text-muted-foreground">No data yet.</p>;
   }
@@ -111,7 +111,14 @@ function ChartRenderer({ chart }) {
     return (
       <ResponsiveContainer width="100%" height={260}>
         <PieChart>
-          <Pie data={chart.data} dataKey={y} nameKey={chart.xKey} outerRadius={90} label>
+          <Pie
+            data={chart.data}
+            dataKey={y}
+            nameKey={chart.xKey}
+            outerRadius={90}
+            label
+            onClick={(entry) => onDrill?.(chart, entry)}
+          >
             {chart.data.map((row, i) => {
               const rowKey = row?.[chart.xKey] ?? row?.name ?? row?.label ?? i;
               return <Cell key={`${chart.id}-slice-${String(rowKey)}`} fill={COLORS[i % COLORS.length]} />;
@@ -133,7 +140,14 @@ function ChartRenderer({ chart }) {
         <Tooltip />
         <Legend />
         {(chart.yKeys || []).map((y, i) => (
-          <Bar key={y} dataKey={y} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />
+          <Bar
+            key={y}
+            dataKey={y}
+            fill={COLORS[i % COLORS.length]}
+            radius={[4, 4, 0, 0]}
+            onClick={(entry) => onDrill?.(chart, entry)}
+            className={chart?.drillTo ? "cursor-pointer" : ""}
+          />
         ))}
       </BarChart>
     </ResponsiveContainer>
@@ -254,6 +268,7 @@ export function NativeAnalyticsPanel({
   errorOverride,
   visibleConfig,
 }) {
+  const [, setLocation] = useLocation();
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["native-analytics", moduleKey],
     queryFn: () => fetchNativeAnalytics(moduleKey),
@@ -273,6 +288,15 @@ export function NativeAnalyticsPanel({
   const charts = useMemo(() => resolvedData?.charts ?? [], [resolvedData]);
   const updatedAt = resolvedData?.updatedAt;
   const [actionMeta, setActionMeta] = useState({});
+
+  const handleDrill = (chart, entry) => {
+    const drill = chart?.drillTo;
+    if (!drill?.href || !drill?.queryParam) return;
+    const key = drill.dataKey || chart?.xKey;
+    const value = entry?.payload?.[key] ?? entry?.[key] ?? entry?.name ?? entry?.label;
+    if (value === null || value === undefined || String(value).trim() === "") return;
+    setLocation(`${drill.href}?${encodeURIComponent(drill.queryParam)}=${encodeURIComponent(String(value))}`);
+  };
 
   function handleActionComplete(chartId, actionId, executedAt) {
     setActionMeta((prev) => ({
@@ -365,7 +389,7 @@ export function NativeAnalyticsPanel({
                     </CardHeader>
                     <CardContent>
                       <div tabIndex={0} className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-                        <ChartRenderer chart={chart} />
+                        <ChartRenderer chart={chart} onDrill={handleDrill} />
                       </div>
                       <p className="sr-only">
                         {chart.title} chart with {Array.isArray(chart.data) ? chart.data.length : 0} data points.

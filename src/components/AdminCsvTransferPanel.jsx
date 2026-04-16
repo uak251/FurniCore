@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { getAuthToken } from "@/lib/auth";
 import { apiOriginPrefix } from "@/lib/api-base";
 import { toast } from "@/hooks/use-toast";
+import { ChevronDown, Download } from "lucide-react";
 
 const MODULES = [
   "inventory",
@@ -168,12 +170,25 @@ export function AdminCsvTransferPanel() {
         ))}
       </CardContent>
       <CardContent className="pt-0">
-        <div className="flex flex-wrap gap-2 border-t pt-3">
-          {MODULES.map((moduleKey) => (
-            <Button key={`${moduleKey}-template`} size="sm" variant="ghost" onClick={() => downloadTemplate(moduleKey)}>
-              Download {moduleKey} template
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <p className="text-xs text-muted-foreground">Templates</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-2">
+                <Download className="h-4 w-4" aria-hidden />
+                Download template
+                <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {MODULES.map((moduleKey) => (
+                <DropdownMenuItem key={`${moduleKey}-template`} onSelect={() => downloadTemplate(moduleKey)}>
+                  <span className="capitalize">{moduleKey}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">CSV</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>
