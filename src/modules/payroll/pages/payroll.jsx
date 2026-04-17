@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, Download, FileText, LineChart, MoreHorizontal, Plus, Printer } from "lucide-react";
+import { AlertTriangle, CheckCircle, ChevronDown, Download, FileText, LineChart, MoreHorizontal, Plus, Printer } from "lucide-react";
 import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -268,6 +268,18 @@ export default function PayrollPage() {
                                 <Printer className="h-4 w-4" aria-hidden />
                                 Print pay slip
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  savePayrollSlipAsPdf(row, { months: MONTHS, format });
+                                  toast({
+                                    title: "Save as PDF",
+                                    description: "In the print dialog, choose Save as PDF as the printer destination.",
+                                  });
+                                }}
+                              >
+                                <Download className="h-4 w-4" aria-hidden />
+                                Save pay slip as PDF…
+                              </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setPayslipRow(row)}>
                                 <FileText className="h-4 w-4" aria-hidden />
                                 Open detailed pay slip
@@ -361,21 +373,49 @@ export default function PayrollPage() {
               </div>
             </div>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setPayslipRow(null)}>Close</Button>
-            <Button
-              onClick={() => {
-                if (!payslipRow) return;
-                const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
-                printPayrollSlip(
-                  { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
-                  { months: MONTHS, format },
-                );
-              }}
-            >
-              <Printer className="mr-1 h-4 w-4" aria-hidden />
-              Print standard slip
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Printer className="mr-1 h-4 w-4" aria-hidden />
+                  Slip actions
+                  <ChevronDown className="ml-1 h-4 w-4 opacity-70" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!payslipRow) return;
+                    const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
+                    printPayrollSlip(
+                      { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
+                      { months: MONTHS, format },
+                    );
+                  }}
+                >
+                  <Printer className="h-4 w-4" aria-hidden />
+                  Print standard slip
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    if (!payslipRow) return;
+                    const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
+                    savePayrollSlipAsPdf(
+                      { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
+                      { months: MONTHS, format },
+                    );
+                    toast({
+                      title: "Save as PDF",
+                      description: "In the print dialog, choose Save as PDF as the printer destination.",
+                    });
+                  }}
+                >
+                  <Download className="h-4 w-4" aria-hidden />
+                  Save as PDF…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </DialogFooter>
         </DialogContent>
       </Dialog>

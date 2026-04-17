@@ -79,3 +79,54 @@ export function useSupplierLedger() {
         queryFn: () => apiFetch("/supplier-portal/ledger"),
     });
 }
+/** Shipment / packing photos for a supplier quote (multipart upload). */
+export function useSupplierQuoteShipmentImages(quoteId, enabled = true) {
+    return useQuery({
+        queryKey: ["supplierQuoteShipmentImages", quoteId],
+        queryFn: () => apiFetch(`/supplier-portal/quotes/${quoteId}/shipment-images`),
+        enabled: Boolean(enabled && quoteId),
+    });
+}
+export function useUploadSupplierQuoteShipmentImages(quoteId) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async (/** @type {File[]} */ files) => {
+            if (quoteId == null || Number.isNaN(Number(quoteId))) {
+                throw new Error("No quote selected.");
+            }
+            const fd = new FormData();
+            for (const f of files)
+                fd.append("images", f);
+            const res = await fetch(`${API}/api/supplier-portal/quotes/${quoteId}/shipment-images`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+                body: fd,
+            });
+            const json = await res.json();
+            if (!res.ok)
+                throw new Error(json?.error ?? json?.message ?? `HTTP ${res.status}`);
+            return json;
+        },
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ["supplierQuoteShipmentImages", quoteId] });
+        },
+    });
+}
+export function useDeleteSupplierQuoteShipmentImage() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async (/** @type {number} */ imageId) => {
+            const res = await fetch(`${API}/api/supplier-portal/shipment-images/${imageId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok)
+                throw new Error(json?.error ?? `HTTP ${res.status}`);
+            return json;
+        },
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ["supplierQuoteShipmentImages"] });
+        },
+    });
+}
