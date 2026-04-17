@@ -53,6 +53,23 @@ export function useAddOrderUpdate() {
         onSuccess: () => qc.invalidateQueries({ queryKey: ["salesOrders"] }),
     });
 }
+export function useUploadOrderUpdateImage() {
+    return useMutation({
+        mutationFn: async ({ orderId, file }) => {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch(`${API}/api/sales-manager/orders/${orderId}/updates/upload-image`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+                body: form,
+            });
+            const json = await res.json();
+            if (!res.ok)
+                throw new Error(json?.error ?? `HTTP ${res.status}`);
+            return json;
+        },
+    });
+}
 /* ─── Invoices ───────────────────────────────────────────────────────────── */
 export function useSalesInvoices() {
     return useQuery({ queryKey: ["salesInvoices"], queryFn: () => apiFetch("/sales-manager/invoices") });

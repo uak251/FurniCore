@@ -35,7 +35,7 @@ const NAV_GROUPS = [
             { href: "/cogm-reports", label: "COGM & variance", icon: LineChart, roles: ["admin", "manager", "accountant", "employee", "inventory_manager"] },
             { href: "/inventory-usage", label: "Inventory usage", icon: Package2, roles: ["admin", "manager", "accountant", "employee", "inventory_manager"] },
             { href: "/manufacturing", label: "Manufacturing", icon: Hammer },
-            { href: "/sales", label: "Sales", icon: ShoppingCart, roles: ["admin", "manager", "sales_manager"] },
+            { href: "/sales", label: "Sales", icon: ShoppingCart, roles: ["admin", "manager", "sales_manager", "accountant"] },
         ],
     },
     {

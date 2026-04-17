@@ -190,7 +190,7 @@ function feedbackMessage(actionId, fallback = "Action logged") {
     "approve-quote": "Queue opened",
     "approve-transaction": "Queue opened",
     "contact-supplier": "Supplier contact opened",
-    "track-product": "Tracking opened",
+    "track-product": "Tracking view opened",
     "assign-worker": "Worker assignment opened",
     "adjust-payroll": "Payroll adjustment opened",
   };

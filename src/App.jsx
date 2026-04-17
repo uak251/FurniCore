@@ -102,7 +102,7 @@ function Router() {
             _jsx(Route, { path: "/price-approvals", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager", "accountant", "sales_manager"], children: _jsx(PriceApprovalsDashboardPage, {}) }) }),
             _jsx(Route, { path: "/cogm-reports", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager", "accountant", "employee", "inventory_manager"], children: _jsx(CogmReportsPage, {}) }) }),
             _jsx(Route, { path: "/inventory-usage", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager", "accountant", "employee", "inventory_manager"], children: _jsx(InventoryUsagePage, {}) }) }),
-            _jsx(Route, { path: "/sales", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager", "sales_manager"], children: _jsx(SalesPage, {}) }) }),
+            _jsx(Route, { path: "/sales", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager", "sales_manager", "accountant"], children: _jsx(SalesPage, {}) }) }),
             _jsx(Route, { path: "/hr", children: _jsx(RoleGuard, { allowedRoles: ["admin", "manager"], children: _jsx(HRPage, {}) }) }),
             _jsx(Route, { path: "/payroll", children: _jsx(RoleGuard, { allowedRoles: ["admin", "accountant"], children: _jsx(PayrollPage, {}) }) }),
             _jsx(Route, { path: "/chart-of-accounts", children: _jsx(RoleGuard, { allowedRoles: ["admin", "accountant"], children: _jsx(ChartOfAccountsPage, {}) }) }),

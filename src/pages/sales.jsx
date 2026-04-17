@@ -2,9 +2,9 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm, Controller } from "react-hook-form";
-import { useListProducts } from "@workspace/api-client-react";
+import { useListProducts, useGetCurrentUser } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSalesOverview, useSalesOrders, useCreateSalesOrder, useUpdateSalesOrder, useAddOrderUpdate, useSalesInvoices, useGenerateInvoice, useUpdateInvoice, useUploadInvoicePdf, useSalesDiscounts, useCreateDiscount, useUpdateDiscount, useDeleteDiscount, useSalesReceivables, } from "@/hooks/use-sales-manager";
+import { useSalesOverview, useSalesOrders, useCreateSalesOrder, useUpdateSalesOrder, useAddOrderUpdate, useUploadOrderUpdateImage, useSalesInvoices, useGenerateInvoice, useUpdateInvoice, useUploadInvoicePdf, useSalesDiscounts, useCreateDiscount, useUpdateDiscount, useDeleteDiscount, useSalesReceivables, } from "@/hooks/use-sales-manager";
 import { CatalogTab } from "./sales-catalog-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,8 @@ const ORDER_STATUS_CONFIG = {
 const INVOICE_STATUS_CONFIG = {
     draft: { label: "Draft", color: "bg-slate-100 text-slate-600" },
     sent: { label: "Sent", color: "bg-blue-100 text-blue-700" },
+    pending_verification: { label: "Awaiting verification", color: "bg-amber-100 text-amber-700" },
+    sales_verified: { label: "Sales verified", color: "bg-cyan-100 text-cyan-700" },
     paid: { label: "Paid", color: "bg-green-100 text-green-700" },
     overdue: { label: "Overdue", color: "bg-red-100 text-red-700" },
     cancelled: { label: "Cancelled", color: "bg-slate-100 text-slate-500" },
@@ -143,12 +145,20 @@ function OrdersTab() {
                 } }, children: _jsxs(DialogContent, { className: "max-h-[90vh] max-w-3xl overflow-y-auto", children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Create customer order" }) }), _jsxs("form", { onSubmit: cSubmit(onCreateSubmit), className: "space-y-5", children: [_jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Customer name *" }), _jsx(Input, { ...creg("customerName", { required: true }) })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Customer email *" }), _jsx(Input, { type: "email", ...creg("customerEmail", { required: true }) })] }), _jsxs("div", { className: "space-y-1 sm:col-span-2", children: [_jsx(Label, { children: "Shipping address *" }), _jsx(Textarea, { rows: 2, ...creg("shippingAddress", { required: true }) })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Discount code" }), _jsx(Input, { ...creg("discountCode"), placeholder: "SAVE10" })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Tax rate (%)" }), _jsx(Input, { type: "number", step: "0.01", min: 0, max: 100, ...creg("taxRate", { valueAsNumber: true }) })] }), _jsxs("div", { className: "space-y-1 sm:col-span-2", children: [_jsx(Label, { children: "Notes" }), _jsx(Textarea, { rows: 2, ...creg("notes") })] })] }), _jsxs("div", { children: [_jsx("p", { className: "mb-2 text-sm font-semibold", children: "Products" }), _jsx("div", { className: "mb-3 flex flex-wrap gap-2", children: products.map((p) => (_jsxs(Button, { type: "button", size: "sm", variant: "outline", onClick: () => addCartLine(p.id), children: [_jsx(Plus, { className: "mr-1 h-3 w-3" }), p.name, " (", fmt(Number(p.sellingPrice)), ")"] }, p.id))) }), cartLines.length > 0 && (_jsxs("div", { className: "rounded-lg border divide-y text-sm", children: [cartLines.map(l => (_jsxs("div", { className: "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2", children: [_jsx("span", { className: "min-w-0 flex-1", children: l.name }), _jsx(Input, { type: "number", min: 1, value: l.quantity, onChange: e => setCartLines(prev => prev.map(x => x.productId === l.productId ? { ...x, quantity: Math.max(1, Number(e.target.value)) } : x)), className: "h-7 w-16 text-xs" }), _jsx("span", { className: "w-8 text-center text-muted-foreground", children: "@" }), _jsx("span", { className: "w-20 text-right font-mono tabular-nums", children: fmt(l.price) }), _jsx(Input, { type: "number", min: 0, max: 100, value: l.discountPercent, onChange: e => setCartLines(prev => prev.map(x => x.productId === l.productId ? { ...x, discountPercent: Number(e.target.value) } : x)), placeholder: "Disc%", className: "h-7 w-16 text-xs" }), _jsx("span", { className: "w-20 text-right font-semibold tabular-nums", children: fmt(l.price * l.quantity * (1 - l.discountPercent / 100)) }), _jsx(Button, { type: "button", size: "icon", variant: "ghost", className: "h-6 w-6 text-destructive", onClick: () => removeCartLine(l.productId), children: _jsx(Trash2, { className: "h-3 w-3" }) })] }, l.productId))), _jsxs("div", { className: "flex justify-between px-3 py-2 font-semibold", children: [_jsx("span", { children: "Subtotal" }), _jsx("span", { className: "font-mono", children: fmt(cartSubtotal) })] })] }))] }), _jsxs(DialogFooter, { children: [_jsx(Button, { variant: "outline", type: "button", onClick: () => { setShowCreate(false); cReset(); setCartLines([]); }, children: "Cancel" }), _jsx(Button, { type: "submit", disabled: createOrder.isPending, children: "Create order" })] })] })] }) }), updateOrderId && (_jsx(AddUpdateDialog, { orderId: updateOrderId, onClose: () => setUpdateOrderId(null), addUpdate: addUpdate, toast: toast }))] }));
 }
 function AddUpdateDialog({ orderId, onClose, addUpdate, toast }) {
+    const uploadOrderUpdateImage = useUploadOrderUpdateImage();
+    const [imageFile, setImageFile] = useState(null);
     const { register, handleSubmit, reset } = useForm({ defaultValues: { message: "", status: "", imageUrl: "", visibleToCustomer: true } });
     const onSubmit = async (data) => {
         try {
-            await addUpdate.mutateAsync({ orderId, message: data.message, status: data.status || undefined, imageUrl: data.imageUrl || undefined, visibleToCustomer: data.visibleToCustomer });
+            let uploadedImageUrl = data.imageUrl || undefined;
+            if (imageFile) {
+                const uploaded = await uploadOrderUpdateImage.mutateAsync({ orderId, file: imageFile });
+                uploadedImageUrl = uploaded?.imageUrl || uploadedImageUrl;
+            }
+            await addUpdate.mutateAsync({ orderId, message: data.message, status: data.status || undefined, imageUrl: uploadedImageUrl, visibleToCustomer: data.visibleToCustomer });
             toast({ title: "Update added" });
             onClose();
+            setImageFile(null);
             reset();
         }
         catch (e) {
@@ -156,13 +166,14 @@ function AddUpdateDialog({ orderId, onClose, addUpdate, toast }) {
         }
     };
     return (_jsx(Dialog, { open: true, onOpenChange: v => { if (!v)
-            onClose(); }, children: _jsxs(DialogContent, { children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Add production update" }) }), _jsxs("form", { onSubmit: handleSubmit(onSubmit), className: "space-y-4", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Message *" }), _jsx(Textarea, { rows: 3, ...register("message", { required: true }), placeholder: "What happened with this order\u2026" })] }), _jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Status change (optional)" }), _jsxs("select", { className: "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring", ...register("status"), children: [_jsx("option", { value: "", children: "No change" }), Object.entries(ORDER_STATUS_CONFIG).map(([k, v]) => _jsx("option", { value: k, children: v.label }, k))] })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Image URL" }), _jsx(Input, { ...register("imageUrl"), placeholder: "https://\u2026" })] })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("input", { type: "checkbox", id: "vis", ...register("visibleToCustomer"), defaultChecked: true, className: "h-4 w-4 rounded" }), _jsx(Label, { htmlFor: "vis", children: "Visible to customer" })] }), _jsxs(DialogFooter, { children: [_jsx(Button, { variant: "outline", type: "button", onClick: onClose, children: "Cancel" }), _jsx(Button, { type: "submit", disabled: addUpdate.isPending, children: "Post update" })] })] })] }) }));
+            onClose(); }, children: _jsxs(DialogContent, { children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Add production update" }) }), _jsxs("form", { onSubmit: handleSubmit(onSubmit), className: "space-y-4", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Message *" }), _jsx(Textarea, { rows: 3, ...register("message", { required: true }), placeholder: "What happened with this order\u2026" })] }), _jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Status change (optional)" }), _jsxs("select", { className: "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring", ...register("status"), children: [_jsx("option", { value: "", children: "No change" }), Object.entries(ORDER_STATUS_CONFIG).map(([k, v]) => _jsx("option", { value: k, children: v.label }, k))] })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Image URL (optional)" }), _jsx(Input, { ...register("imageUrl"), placeholder: "https://\u2026" })] })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Upload progress image (optional)" }), _jsx(Input, { type: "file", accept: "image/*", onChange: (e) => setImageFile(e.target.files?.[0] ?? null) }), _jsx("p", { className: "text-xs text-muted-foreground", children: "Attach production photo from Sales/Production manager portal." })] }), _jsxs("div", { className: "flex items-center gap-2", children: [_jsx("input", { type: "checkbox", id: "vis", ...register("visibleToCustomer"), defaultChecked: true, className: "h-4 w-4 rounded" }), _jsx(Label, { htmlFor: "vis", children: "Visible to customer" })] }), _jsxs(DialogFooter, { children: [_jsx(Button, { variant: "outline", type: "button", onClick: onClose, children: "Cancel" }), _jsx(Button, { type: "submit", disabled: addUpdate.isPending || uploadOrderUpdateImage.isPending, children: "Post update" })] })] })] }) }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  TAB 3 — INVOICES                                                           */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 function InvoicesTab() {
     const { toast } = useToast();
+    const { data: currentUser } = useGetCurrentUser();
     const { data: invoices = [], isLoading } = useSalesInvoices();
     const { data: orders = [] } = useSalesOrders();
     const generateInvoice = useGenerateInvoice();
@@ -187,14 +198,28 @@ function InvoicesTab() {
             toast({ variant: "destructive", title: "Error", description: e.message });
         }
     };
-    const markPaid = async (inv) => {
-        const method = prompt("Payment method (e.g. Bank Transfer, Credit Card):");
-        if (!method)
-            return;
-        const ref = prompt("Payment reference (optional):") ?? undefined;
+    const salesVerify = async (inv) => {
         try {
-            await updateInvoice.mutateAsync({ id: inv.id, status: "paid", paymentMethod: method, paymentReference: ref });
-            toast({ title: "Invoice marked as paid" });
+            await updateInvoice.mutateAsync({ id: inv.id, status: "sales_verified" });
+            toast({ title: "Sales verification done", description: "Accounts can now confirm payment and close invoice." });
+        }
+        catch (e) {
+            toast({ variant: "destructive", title: "Error", description: e.message });
+        }
+    };
+    const accountMarkPaid = async (inv) => {
+        try {
+            await updateInvoice.mutateAsync({ id: inv.id, status: "paid" });
+            toast({ title: "Payment posted", description: "Invoice is marked paid by accounts." });
+        }
+        catch (e) {
+            toast({ variant: "destructive", title: "Error", description: e.message });
+        }
+    };
+    const rejectPayment = async (inv) => {
+        try {
+            await updateInvoice.mutateAsync({ id: inv.id, status: "sent" });
+            toast({ title: "Verification rejected", description: "Customer can resubmit payment details." });
         }
         catch (e) {
             toast({ variant: "destructive", title: "Error", description: e.message });
@@ -218,10 +243,13 @@ function InvoicesTab() {
         };
         input.click();
     };
+    const role = currentUser?.role ?? "";
+    const canSalesVerify = ["admin", "manager", "sales_manager"].includes(role);
+    const canAccountsPost = ["admin", "accountant"].includes(role);
     return (_jsxs("div", { className: "space-y-4 min-w-0", children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center", children: [_jsxs(Select, { value: statusF, onValueChange: setStatusF, children: [_jsx(SelectTrigger, { className: "w-full sm:w-36", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All" }), Object.entries(INVOICE_STATUS_CONFIG).map(([k, v]) => _jsx(SelectItem, { value: k, children: v.label }, k))] })] }), _jsxs(Button, { className: "w-full sm:ml-auto sm:w-auto", onClick: () => setShowGen(true), children: [_jsx(Plus, { className: "mr-1.5 h-4 w-4" }), "Generate invoice"] })] }), isLoading ? _jsx(Skeleton, { className: "h-48 w-full" }) : (_jsx(Card, { children: _jsx(CardContent, { className: "p-0", children: _jsx("div", { className: "overflow-x-auto", children: _jsxs(Table, { children: [_jsx(TableHeader, { children: _jsxs(TableRow, { children: [_jsx(TableHead, { children: "Invoice #" }), _jsx(TableHead, { children: "Customer" }), _jsx(TableHead, { className: "text-right", children: "Amount" }), _jsx(TableHead, { children: "Due Date" }), _jsx(TableHead, { children: "Status" }), _jsx(TableHead, { children: "Actions" })] }) }), _jsx(TableBody, { children: filtered.map(inv => {
                                         const cfg = INVOICE_STATUS_CONFIG[inv.status] ?? { label: inv.status, color: "bg-muted" };
                                         const isOverdue = inv.dueDate && new Date(inv.dueDate) < new Date() && inv.status !== "paid";
-                                    return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "font-mono text-xs", children: inv.invoiceNumber }), _jsxs(TableCell, { children: [_jsx("p", { className: "font-medium", children: inv.customerName }), _jsx("p", { className: "text-xs text-muted-foreground", children: inv.customerEmail })] }), _jsx(TableCell, { className: "text-right font-semibold tabular-nums", children: fmt(inv.totalAmount) }), _jsxs(TableCell, { className: cn("text-sm", isOverdue && "font-semibold text-red-600"), children: [inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—", isOverdue && " (Overdue)"] }), _jsx(TableCell, { children: _jsx(Badge, { className: cn("text-[11px]", cfg.color), children: cfg.label }) }), _jsx(TableCell, { children: _jsxs("div", { className: "flex flex-wrap gap-1", children: [inv.status !== "paid" && inv.status !== "cancelled" && (_jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => markPaid(inv), children: [_jsx(CheckCircle2, { className: "mr-1 h-3.5 w-3.5" }), "Mark paid"] })), inv.status === "draft" && (_jsx(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => updateInvoice.mutateAsync({ id: inv.id, status: "sent" }).then(() => toast({ title: "Invoice sent" })).catch((e) => toast({ variant: "destructive", title: "Error", description: e.message })), children: "Send" })), _jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => uploadPdf(inv), children: [_jsx(Upload, { className: "mr-1 h-3.5 w-3.5" }), "Upload PDF"] }), inv.pdfUrl && (_jsx("a", { href: inv.pdfUrl, target: "_blank", rel: "noreferrer", className: "inline-flex h-7 items-center rounded-md border px-2 text-xs hover:bg-muted", children: "Open PDF" }))] }) })] }, inv.id));
+                                    return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "font-mono text-xs", children: inv.invoiceNumber }), _jsxs(TableCell, { children: [_jsx("p", { className: "font-medium", children: inv.customerName }), _jsx("p", { className: "text-xs text-muted-foreground", children: inv.customerEmail }), inv.paymentMethod && _jsxs("p", { className: "text-xs text-muted-foreground", children: ["Via ", inv.paymentMethod, inv.paymentReference ? ` · Ref: ${inv.paymentReference}` : ""] }), inv.paymentProofUrl && _jsx("a", { href: inv.paymentProofUrl, target: "_blank", rel: "noreferrer", className: "text-xs text-primary hover:underline", children: "View payment proof" })] }), _jsx(TableCell, { className: "text-right font-semibold tabular-nums", children: fmt(inv.totalAmount) }), _jsxs(TableCell, { className: cn("text-sm", isOverdue && "font-semibold text-red-600"), children: [inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—", isOverdue && " (Overdue)"] }), _jsx(TableCell, { children: _jsx(Badge, { className: cn("text-[11px]", cfg.color), children: cfg.label }) }), _jsx(TableCell, { children: _jsxs("div", { className: "flex flex-wrap gap-1", children: [inv.status === "pending_verification" && canSalesVerify && (_jsxs(_Fragment, { children: [_jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => salesVerify(inv), children: [_jsx(CheckCircle2, { className: "mr-1 h-3.5 w-3.5" }), "Sales verify"] }), _jsx(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => rejectPayment(inv), children: "Reject / Request re-submit" })] })), inv.status === "sales_verified" && canAccountsPost && (_jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => accountMarkPaid(inv), children: [_jsx(CheckCircle2, { className: "mr-1 h-3.5 w-3.5" }), "Accounts mark paid"] })), inv.status === "draft" && (_jsx(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => updateInvoice.mutateAsync({ id: inv.id, status: "sent" }).then(() => toast({ title: "Invoice sent" })).catch((e) => toast({ variant: "destructive", title: "Error", description: e.message })), children: "Send" })), _jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => uploadPdf(inv), children: [_jsx(Upload, { className: "mr-1 h-3.5 w-3.5" }), "Upload PDF"] }), inv.pdfUrl && (_jsx("a", { href: inv.pdfUrl, target: "_blank", rel: "noreferrer", className: "inline-flex h-7 items-center rounded-md border px-2 text-xs hover:bg-muted", children: "Open PDF" }))] }) })] }, inv.id));
                                     }) })] }) }) }) })), _jsx(Dialog, { open: showGen, onOpenChange: setShowGen, children: _jsxs(DialogContent, { children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Generate invoice from order" }) }), _jsxs("form", { onSubmit: gSubmit(onGenerate), className: "space-y-4", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Order *" }), _jsxs("select", { className: "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1", ...greg("orderId", { required: true, valueAsNumber: true }), children: [_jsx("option", { value: 0, children: "Select order\u2026" }), orders.filter(o => o.status !== "cancelled").map(o => _jsxs("option", { value: o.id, children: [o.orderNumber, " \u2014 ", o.customerName, " (", fmt(o.totalAmount), ")"] }, o.id))] })] }), _jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Due date" }), _jsx(Input, { type: "datetime-local", ...greg("dueDate") })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Tax rate (%)" }), _jsx(Input, { type: "number", step: "0.01", ...greg("taxRate", { valueAsNumber: true }) })] })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Notes" }), _jsx(Textarea, { ...greg("notes") })] }), _jsxs(DialogFooter, { children: [_jsx(Button, { variant: "outline", type: "button", onClick: () => setShowGen(false), children: "Cancel" }), _jsx(Button, { type: "submit", disabled: generateInvoice.isPending, children: "Generate" })] })] })] }) })] }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════ */
