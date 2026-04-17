@@ -6,7 +6,8 @@
     "accountant": "Finance Manager",
     "customer": "Customer",
     "supplier": "Supplier",
-    "manager": "Production Manager"
+    "manager": "Production Manager",
+    "sales_manager": "Sales Manager"
   },
   "modules": {
     "inventory": {
@@ -14,9 +15,13 @@
       "scope": "module"
     },
     "procurement": {
-      "allowedRoles": ["admin", "inventory_manager", "accountant", "manager"],
+      "allowedRoles": ["admin", "inventory_manager", "accountant", "manager", "sales_manager"],
       "scope": "module",
       "analyticsSource": "supplier"
+    },
+    "production": {
+      "allowedRoles": ["admin", "manager", "inventory_manager"],
+      "scope": "module"
     },
     "hr": {
       "allowedRoles": ["admin", "manager"],
@@ -37,24 +42,20 @@
       "scope": "module"
     },
     "customer": {
-      "allowedRoles": ["admin", "customer", "manager"],
+      "allowedRoles": ["admin", "customer", "manager", "sales_manager"],
       "scope": "self_or_admin",
       "analyticsSource": "customer-profile"
     },
     "customer-profile": {
-      "allowedRoles": ["admin", "manager", "customer"],
+      "allowedRoles": ["admin", "manager", "customer", "sales_manager"],
       "scope": "self_or_admin"
     },
     "supplier": {
       "allowedRoles": ["admin", "inventory_manager", "accountant", "supplier", "manager"],
       "scope": "module"
     },
-    "production": {
-      "allowedRoles": ["admin", "manager", "inventory_manager"],
-      "scope": "module"
-    },
     "notifications": {
-      "allowedRoles": ["admin", "inventory_manager", "accountant", "customer", "supplier", "manager"],
+      "allowedRoles": ["admin", "inventory_manager", "accountant", "customer", "supplier", "manager", "sales_manager"],
       "scope": "module"
     },
     "admin": {

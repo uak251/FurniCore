@@ -52,7 +52,10 @@ export default function QuotesPage() {
     useEffect(() => {
         setPage(1);
     }, [search, statusFilter, sortKey, sortDir, pageSize]);
-    const rows = quotes ?? [];
+    const listPayload = quotes;
+    const rows = Array.isArray(listPayload)
+        ? listPayload
+        : (listPayload?.data ?? listPayload?.rows ?? []);
     const sorted = useMemo(() => {
         return filterAndSortRows(rows, {
             search,

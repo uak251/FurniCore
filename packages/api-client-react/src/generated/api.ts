@@ -3521,10 +3521,18 @@ export const listQuotes = async (
   params?: ListQuotesParams,
   options?: RequestInit,
 ): Promise<SupplierQuote[]> => {
-  return customFetch<SupplierQuote[]>(getListQuotesUrl(params), {
+  const res = await customFetch<
+    SupplierQuote[] | { data?: SupplierQuote[]; rows?: SupplierQuote[] }
+  >(getListQuotesUrl(params), {
     ...options,
     method: "GET",
   });
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === "object") {
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.rows)) return res.rows;
+  }
+  return [];
 };
 
 export const getListQuotesQueryKey = (params?: ListQuotesParams) => {

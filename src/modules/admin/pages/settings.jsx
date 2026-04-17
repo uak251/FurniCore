@@ -1,53 +1,17 @@
 import { useMemo, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  ShieldCheck,
-  Warehouse,
-  ClipboardList,
-  Factory,
-  Users,
-  Wallet,
-  User,
-  Truck,
-  CheckCircle2,
-  XCircle,
-  Grid3X3,
-  RotateCcw,
-  SlidersHorizontal,
-} from "lucide-react";
+import { RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getAuthToken } from "@/lib/auth";
-import { apiOriginPrefix } from "@/lib/api-base";
+import { RoleDashboardMatrixCard } from "@/components/settings/RoleDashboardMatrixCard";
 import {
   ANALYTICS_MODULE_KEYS,
   defaultAnalyticsPreferences,
   loadAnalyticsPreferences,
   saveAnalyticsPreferences,
 } from "@/lib/analytics-preferences";
-
-const MATRIX_ROLES = [
-  { key: "admin", label: "Admin", icon: ShieldCheck },
-  { key: "inventory_manager", label: "Inventory Manager", icon: Warehouse },
-  { key: "procurement_manager", label: "Procurement Manager", icon: ClipboardList },
-  { key: "production_manager", label: "Production Manager", icon: Factory },
-  { key: "hr_manager", label: "HR Manager", icon: Users },
-  { key: "finance_manager", label: "Finance Manager", icon: Wallet },
-  { key: "customer", label: "Customer", icon: User },
-  { key: "supplier", label: "Supplier", icon: Truck },
-];
-
-const ROLE_FALLBACKS = {
-  procurement_manager: "manager",
-  hr_manager: "manager",
-  finance_manager: "accountant",
-};
 
 const ANALYTICS_PRESETS = {
   minimal: { showKpis: true, showCharts: false, showActions: false },
@@ -70,44 +34,9 @@ function moduleLabel(moduleKey) {
       notifications: "Notifications",
       settings: "Settings",
       admin: "Admin",
+      "customer-profile": "Customer profile",
     }[moduleKey] || moduleKey
   );
-}
-
-function formatTs(value) {
-  if (!value) return "—";
-  const dt = new Date(value);
-  if (Number.isNaN(dt.getTime())) return "—";
-  return dt.toLocaleString();
-}
-
-async function apiFetch(path) {
-  const token = getAuthToken();
-  const res = await fetch(`${apiOriginPrefix()}${path}`, {
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
-  const raw = await res.text();
-  if (!contentType.includes("application/json")) {
-    const preview = raw.slice(0, 140).replace(/\s+/g, " ").trim();
-    throw new Error(
-      `Unexpected non-JSON response from ${path} (status ${res.status}, content-type: ${contentType || "unknown"}). Response preview: ${preview}`,
-    );
-  }
-  let payload = null;
-  try {
-    payload = raw ? JSON.parse(raw) : {};
-  } catch {
-    throw new Error(
-      `Invalid JSON response from ${path} (status ${res.status}). Response preview: ${raw.slice(0, 140).replace(/\s+/g, " ").trim()}`,
-    );
-  }
-  if (!res.ok) {
-    const message = payload?.error || payload?.message || `Request failed (${res.status})`;
-    throw new Error(message);
-  }
-  return payload;
 }
 
 export default function SettingsPage() {
@@ -115,25 +44,6 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [moduleSearch, setModuleSearch] = useState("");
 
-  const { data, isLoading, isError, error, refetch, isRefetching } = useQuery({
-    queryKey: ["analytics-dashboard-matrix"],
-    queryFn: async () => {
-      const contract = await apiFetch("/api/analytics/rbac-contract");
-      const rolePayloads = await Promise.all(
-        MATRIX_ROLES.map((role, idx) => {
-          const queryRole = ROLE_FALLBACKS[role.key] || role.key;
-          const auditFlag = idx === 0 ? "&audit=matrix" : "";
-          return apiFetch(`/api/analytics/native-dashboard?role=${encodeURIComponent(queryRole)}${auditFlag}`);
-        }),
-      );
-      return { contract, rolePayloads };
-    },
-  });
-
-  const modules = useMemo(() => {
-    const fromContract = Object.keys(data?.contract?.modules ?? {});
-    return fromContract.sort((a, b) => moduleLabel(a).localeCompare(moduleLabel(b)));
-  }, [data]);
   const filteredModules = useMemo(() => {
     const query = moduleSearch.trim().toLowerCase();
     if (!query) return ANALYTICS_MODULE_KEYS;
@@ -141,14 +51,6 @@ export default function SettingsPage() {
       moduleLabel(moduleKey).toLowerCase().includes(query) || moduleKey.toLowerCase().includes(query),
     );
   }, [moduleSearch]);
-
-  const matrix = useMemo(() => {
-    const byRole = new Map();
-    for (let i = 0; i < MATRIX_ROLES.length; i += 1) {
-      byRole.set(MATRIX_ROLES[i].key, data?.rolePayloads?.[i]?.access ?? []);
-    }
-    return byRole;
-  }, [data]);
 
   function updateAnalyticsPref(moduleKey, field, value) {
     const next = {
@@ -203,29 +105,6 @@ export default function SettingsPage() {
     const timer = setTimeout(() => setSaveMessage(""), 3000);
     return () => clearTimeout(timer);
   }, [saveMessage]);
-
-  if (isLoading) {
-    return (
-      <main className="space-y-4" aria-busy="true" aria-live="polite">
-        <Skeleton className="h-12 w-64" />
-        <Skeleton className="h-80 w-full" />
-      </main>
-    );
-  }
-
-  if (isError) {
-    return (
-      <Alert variant="destructive" role="alert">
-        <AlertTitle>Matrix unavailable</AlertTitle>
-        <AlertDescription className="space-y-2">
-          <p>{error?.message || "Failed to load role dashboard matrix."}</p>
-          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isRefetching}>
-            {isRefetching ? "Retrying..." : "Retry"}
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
   return (
     <main className="space-y-6" aria-label="Analytics settings">
@@ -355,77 +234,11 @@ export default function SettingsPage() {
       </Card>
       </section>
 
-      <section aria-labelledby="role-dashboard-matrix">
-      <Card className="border-border/70">
-        <CardHeader>
-          <CardTitle id="role-dashboard-matrix" className="flex items-center gap-2">
-            <Grid3X3 className="h-5 w-5" aria-hidden />
-            Role to Dashboard Matrix
-          </CardTitle>
-          <CardDescription>
-            Admin-only RBAC verification grid using live contract and role dashboard definitions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <caption className="sr-only">
-              Role-based analytics access matrix with access state and last action timestamp.
-            </caption>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[200px]">Role</TableHead>
-                {modules.map((moduleKey) => (
-                  <TableHead key={moduleKey} className="min-w-[130px] text-center">
-                    <div className="font-medium">{moduleLabel(moduleKey)}</div>
-                    <div className="text-[10px] text-muted-foreground">{moduleKey}</div>
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MATRIX_ROLES.map((role) => {
-                const RoleIcon = role.icon;
-                const accessRows = matrix.get(role.key) ?? [];
-                const accessMap = new Map(accessRows.map((row) => [row.dashboard, row]));
-                return (
-                  <TableRow key={role.key}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <RoleIcon className="h-4 w-4 text-primary" aria-hidden />
-                        <span className="font-medium">{role.label}</span>
-                      </div>
-                    </TableCell>
-                    {modules.map((moduleKey) => {
-                      const row = accessMap.get(moduleKey);
-                      const allowed = Boolean(row?.access);
-                      return (
-                        <TableCell key={`${role.key}-${moduleKey}`} className="align-top text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            {allowed ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-hidden />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-rose-500" aria-hidden />
-                            )}
-                            <Badge variant={allowed ? "default" : "secondary"} className="text-[10px]">
-                              {allowed ? "Access" : "No access"}
-                            </Badge>
-                            <span className="text-[10px] font-medium text-foreground">
-                              {allowed ? "Allowed" : "Blocked"}
-                            </span>
-                            <div className="text-[10px] text-muted-foreground">
-                              {allowed ? formatTs(row?.lastActionTimestamp) : "—"}
-                            </div>
-                          </div>
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <section aria-labelledby="role-dashboard-matrix" className="min-w-0">
+        <div id="role-dashboard-matrix" className="sr-only">
+          Role to dashboard matrix
+        </div>
+        <RoleDashboardMatrixCard />
       </section>
     </main>
   );
