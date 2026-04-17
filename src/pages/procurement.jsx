@@ -42,7 +42,7 @@ export default function ProcurementPage() {
 
     const quotesQ = useQuery({
         queryKey: ["erp-quotes-all"],
-        queryFn: () => erpApi("/api/quotes"),
+        queryFn: () => erpApi("/api/quotes/workflow-queue"),
     });
     const comparisonQ = useQuery({
         queryKey: ["erp-quotes-rate-comparison"],
@@ -103,14 +103,16 @@ export default function ProcurementPage() {
                     _jsx(TableHead, { children: "Item" }),
                     _jsx(TableHead, { className: "text-right", children: "Total" }),
                     _jsx(TableHead, { children: "Stage" }),
+                    _jsx(TableHead, { children: "Source" }),
                     _jsx(TableHead, { className: "w-[140px]", children: "Action" }),
                 ] }) }),
-                _jsx(TableBody, { children: wfRows.length === 0 ? (_jsx(TableRow, { children: _jsx(TableCell, { colSpan: 6, className: "text-muted-foreground", children: "No workflow quotes yet — seed data includes draft and pending_pm examples." }) })) : wfRows.map((q) => (_jsxs(TableRow, { children: [
+                _jsx(TableBody, { children: wfRows.length === 0 ? (_jsx(TableRow, { children: _jsx(TableCell, { colSpan: 7, className: "text-muted-foreground", children: "No workflow quotes yet — inventory demand or manual draft quotes will appear here." }) })) : wfRows.map((q) => (_jsxs(TableRow, { children: [
                     _jsx(TableCell, { className: "tabular-nums", children: q.id }),
                     _jsx(TableCell, { children: q.supplierName }),
                     _jsx(TableCell, { className: "max-w-[200px] truncate", children: q.itemName ?? "—" }),
                     _jsx(TableCell, { className: "text-right tabular-nums", children: fmtMoney(Number(q.totalPrice ?? 0)) }),
                     _jsx(TableCell, { children: _jsx(Badge, { variant: q.workflowStage === "rejected" ? "destructive" : "outline", children: WF_LABEL[q.workflowStage] ?? q.workflowStage }) }),
+                    _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", children: q.source === "inventory_demand" ? "Inventory demand" : "Manual quote" }) }),
                     _jsx(TableCell, { children: q.workflowStage === "draft" && canSubmit ? (_jsx(Button, { size: "sm", disabled: submitM.isPending, onClick: () => submitM.mutate(q.id), children: "Submit" })) : "—" }),
                 ] }, q.id))) }),
             ] })) }),

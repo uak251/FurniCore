@@ -322,8 +322,8 @@ export default function ManufacturingPage() {
                 quantity: Number(data.quantity),
                 status: data.status,
                 notes: data.notes || null,
-                taskId: data.taskId ? Number(data.taskId) : null,
-                targetDate: data.targetDate || null,
+                taskId: data.taskId ? Number(data.taskId) : undefined,
+                targetDate: data.targetDate || undefined,
             };
             if (editOrder) {
                 await updateOrder.mutateAsync({ id: editOrder.id, data: payload });

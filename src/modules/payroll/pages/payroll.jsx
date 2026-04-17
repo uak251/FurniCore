@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, LineChart, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle, Download, FileText, LineChart, MoreHorizontal, Plus, Printer } from "lucide-react";
 import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,20 @@ import { ModulePageHeader } from "@/components/module/ModulePageHeader";
 import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { ModuleTableState } from "@/components/module/ModuleTableState";
 import { usePayrollPageModel } from "@/hooks/modules/usePayrollPageModel";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { downloadPayrollRowsCsv, parsePayrollBreakdown, printPayrollSlip } from "@/modules/payroll/lib/payroll-export";
 
 export default function PayrollPage() {
     const { toast } = useToast();
     const qc = useQueryClient();
   const [insightsOpen, setInsightsOpen] = useState(false);
+  const [breakdownRow, setBreakdownRow] = useState(null);
   const { format } = useCurrency();
   const {
     MONTHS,
@@ -60,6 +69,17 @@ export default function PayrollPage() {
     }
   };
 
+  const exportFilteredCsv = () => {
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "Adjust filters or generate payroll first.", variant: "destructive" });
+      return;
+    }
+    const y = yearFilter === "all" ? "all-years" : yearFilter;
+    const m = monthFilter === "all" ? "all-months" : monthFilter;
+    downloadPayrollRowsCsv(rows, `payroll-export-${y}-${m}.csv`);
+    toast({ title: "Export started", description: `${rows.length} row(s) in CSV.` });
+  };
+
   const onGenerate = async () => {
     const month = Number(genMonth);
     const year = Number(genYear);
@@ -88,6 +108,12 @@ export default function PayrollPage() {
                   label: "Generate payroll",
                   icon: Plus,
                   onSelect: () => setShowGenerateDialog(true),
+                },
+                {
+                  label: "Export filtered view (CSV)",
+                  icon: Download,
+                  separatorBefore: true,
+                  onSelect: exportFilteredCsv,
                 },
                 {
                   label: "View analytics",
@@ -180,6 +206,7 @@ export default function PayrollPage() {
                 <TableBody>
                   {rows.map((row) => {
                     const isApproved = row.status === "approved";
+                    const breakdown = parsePayrollBreakdown(row.notes);
                     return (
                       <TableRow key={row.id}>
                         <TableCell className="font-medium">
@@ -207,19 +234,54 @@ export default function PayrollPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {isApproved ? (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onApprove(row.id)}
-                              disabled={approvePayroll.isPending}
-                            >
-                              <CheckCircle className="mr-1 h-3.5 w-3.5" aria-hidden />
-                              Approve
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="gap-1" aria-label={`Actions for ${row.employeeName || row.employeeId}`}>
+                                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                                Actions
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  downloadPayrollRowsCsv([row], `payroll-${row.id}-${row.year}-${row.month}.csv`);
+                                  toast({ title: "Row exported" });
+                                }}
+                              >
+                                <Download className="h-4 w-4" aria-hidden />
+                                Export row (CSV)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  printPayrollSlip(row, { months: MONTHS, format });
+                                }}
+                              >
+                                <Printer className="h-4 w-4" aria-hidden />
+                                Print pay slip
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={!breakdown}
+                                onSelect={() => {
+                                  if (breakdown) setBreakdownRow(row);
+                                }}
+                              >
+                                <FileText className="h-4 w-4" aria-hidden />
+                                View calculation breakdown
+                              </DropdownMenuItem>
+                              {!isApproved ? (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onSelect={() => onApprove(row.id)}
+                                    disabled={approvePayroll.isPending}
+                                  >
+                                    <CheckCircle className="h-4 w-4" aria-hidden />
+                                    Approve payroll
+                                  </DropdownMenuItem>
+                                </>
+                              ) : null}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -230,6 +292,27 @@ export default function PayrollPage() {
           </ModuleTableState>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(breakdownRow)} onOpenChange={(open) => { if (!open) setBreakdownRow(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Calculation breakdown</DialogTitle>
+          </DialogHeader>
+          {breakdownRow ? (
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                {breakdownRow.employeeName || `Employee #${breakdownRow.employeeId}`} — {MONTHS[(breakdownRow.month ?? 1) - 1]} {breakdownRow.year}
+              </p>
+              <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-3 text-xs">
+                {JSON.stringify(parsePayrollBreakdown(breakdownRow.notes), null, 2)}
+              </pre>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBreakdownRow(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
         <DialogContent>
