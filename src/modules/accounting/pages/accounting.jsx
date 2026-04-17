@@ -1,22 +1,67 @@
 import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 import { Badge } from "@/components/ui/badge";
+import { RecordImagePanel } from "@/components/images";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { LineChart } from "lucide-react";
+import { LineChart, Plus } from "lucide-react";
 import { ModulePageHeader } from "@/components/module/ModulePageHeader";
 import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { ModuleTableState } from "@/components/module/ModuleTableState";
 import { useAccountingPageModel } from "@/hooks/modules/useAccountingPageModel";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AccountingPage() {
   const { format } = useCurrency();
+  const { toast } = useToast();
   const [insightsOpen, setInsightsOpen] = useState(false);
-  const { query, setQuery, type, setType, status, setStatus, rows, isLoading, isError, error, refetch } = useAccountingPageModel();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [evidenceTx, setEvidenceTx] = useState(null);
+  const [form, setForm] = useState({
+    description: "",
+    amount: "",
+    type: "expense",
+    status: "pending",
+    transactionDate: new Date().toISOString().slice(0, 10),
+    reference: "",
+  });
+  const { query, setQuery, type, setType, status, setStatus, rows, createTransaction, isLoading, isError, error, refetch } = useAccountingPageModel();
+
+  const submitCreate = async () => {
+    if (!form.description.trim() || !form.amount) {
+      toast({ title: "Description and amount are required", variant: "destructive" });
+      return;
+    }
+    try {
+      const created = await createTransaction.mutateAsync({
+        description: form.description.trim(),
+        amount: Number(form.amount),
+        type: form.type,
+        status: form.status,
+        transactionDate: form.transactionDate,
+        reference: form.reference.trim() || undefined,
+      });
+      setCreateOpen(false);
+      setEvidenceTx(created);
+      setForm({
+        description: "",
+        amount: "",
+        type: "expense",
+        status: "pending",
+        transactionDate: new Date().toISOString().slice(0, 10),
+        reference: "",
+      });
+      toast({ title: "Cashbook entry added", description: "Attach evidence image(s) in the next step." });
+    } catch (e) {
+      toast({ title: "Create failed", description: String(e?.message ?? e), variant: "destructive" });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -29,8 +74,14 @@ export default function AccountingPage() {
               label="Actions"
               items={[
                 {
+                  label: "Add cashbook entry",
+                  icon: Plus,
+                  onSelect: () => setCreateOpen(true),
+                },
+                {
                   label: "View analytics",
                   icon: LineChart,
+                  separatorBefore: true,
                   onSelect: () => setInsightsOpen(true),
                 },
               ]}
@@ -94,6 +145,7 @@ export default function AccountingPage() {
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -117,6 +169,11 @@ export default function AccountingPage() {
                       <TableCell>
                         <Badge variant="outline" className="capitalize">{tx.status || "pending"}</Badge>
                       </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setEvidenceTx(tx)}>
+                          Evidence
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -126,6 +183,75 @@ export default function AccountingPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add daily cashbook entry</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1">
+              <Label>Description</Label>
+              <Input value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Type</Label>
+              <Select value={form.type} onValueChange={(v) => setForm((p) => ({ ...p, type: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Amount</Label>
+              <Input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <Label>Date</Label>
+              <Input type="date" value={form.transactionDate} onChange={(e) => setForm((p) => ({ ...p, transactionDate: e.target.value }))} />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label>Reference (optional)</Label>
+              <Input value={form.reference} onChange={(e) => setForm((p) => ({ ...p, reference: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={submitCreate} disabled={createTransaction.isPending}>Save entry</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(evidenceTx)} onOpenChange={(open) => { if (!open) setEvidenceTx(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Entry evidence gallery</DialogTitle>
+          </DialogHeader>
+          {evidenceTx ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Attach receipt/proof for: <span className="font-medium">{evidenceTx.description}</span> ({format(Number(evidenceTx.amount ?? 0))})
+              </p>
+              <RecordImagePanel entityType="transaction" entityId={evidenceTx.id} canUpload canDelete />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEvidenceTx(null)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { erpApi } from "@/lib/erp-api";
 
 export function useAccountingPageModel() {
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("all");
   const [status, setStatus] = useState("all");
@@ -13,6 +14,13 @@ export function useAccountingPageModel() {
   });
 
   const transactions = Array.isArray(txQ.data) ? txQ.data : [];
+  const createTransaction = useMutation({
+    mutationFn: (payload) => erpApi("/api/transactions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["accounting-transactions"] }),
+  });
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -35,6 +43,7 @@ export function useAccountingPageModel() {
     status,
     setStatus,
     rows,
+    createTransaction,
     isLoading: txQ.isLoading,
     isError: txQ.isError,
     error: txQ.error,
