@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useListNotifications, useMarkNotificationRead, useMarkAllNotificationsRead, } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,6 +28,7 @@ const TYPE_COLORS = {
 const TABLE_ID = "notifications";
 export default function NotificationsPage() {
     const { toast } = useToast();
+    const [, setLocation] = useLocation();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState("");
     const [readFilter, setReadFilter] = useState("all");
@@ -41,7 +43,7 @@ export default function NotificationsPage() {
     useEffect(() => {
         setPage(1);
     }, [search, readFilter, sortKey, sortDir, pageSize]);
-    const rows = notifications ?? [];
+    const rows = useMemo(() => notifications ?? [], [notifications]);
     const sorted = useMemo(() => {
         return filterAndSortRows(rows, {
             search,
@@ -96,6 +98,25 @@ export default function NotificationsPage() {
             toast({ variant: "destructive", title: "Error", description: e.message });
         }
     };
+    const openLinkedWorkflow = async (n) => {
+        try {
+            if (!n.isRead) {
+                await markRead.mutateAsync({ id: n.id });
+                invalidate();
+            }
+        }
+        catch {
+            // ignore mark-read error when navigating to target workflow
+        }
+        const href = String(n.link || "").trim();
+        if (!href)
+            return;
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+            window.open(href, "_blank", "noopener,noreferrer");
+            return;
+        }
+        setLocation(href.startsWith("/") ? href : `/${href}`);
+    };
     const exportCsv = () => {
         const headers = ["title", "message", "type", "isRead", "createdAt"];
         const data = sorted.map((n) => ({
@@ -126,6 +147,6 @@ export default function NotificationsPage() {
                     : `Showing ${from}–${to} of ${total} matching notifications` }), isLoading ? (_jsx("div", { className: "space-y-3", children: [1, 2, 3].map((i) => (_jsx(Skeleton, { className: "h-20 w-full rounded-xl" }, i))) })) : pageRows.length === 0 ? (_jsxs("div", { className: "flex flex-col items-center justify-center py-20 text-muted-foreground", children: [_jsx(Bell, { className: "mb-4 h-12 w-12", "aria-hidden": true }), _jsx("p", { className: "text-lg font-medium", children: "No notifications" }), _jsx("p", { className: "text-sm", children: "You're all caught up." })] })) : (_jsxs(_Fragment, { children: [_jsx("ul", { className: "space-y-2", "aria-label": "Notification list", children: pageRows.map((n) => {
                             const Icon = TYPE_ICONS[n.type] || Info;
                             const color = TYPE_COLORS[n.type] || "text-muted-foreground";
-                            return (_jsx("li", { children: _jsx(Card, { className: cn("transition-colors", !n.isRead && "border-l-4 border-l-primary bg-muted/30"), children: _jsx(CardContent, { className: "p-4", children: _jsxs("div", { className: "flex items-start gap-3", children: [_jsx("div", { className: cn("mt-0.5 shrink-0", color), "aria-hidden": true, children: _jsx(Icon, { className: "h-5 w-5" }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [_jsx("h2", { className: cn("text-sm font-semibold", !n.isRead ? "text-foreground" : "text-muted-foreground"), children: n.title }), !n.isRead && (_jsx(Badge, { className: "shrink-0", variant: "default", children: "New" }))] }), _jsx("p", { className: "mt-0.5 text-sm text-muted-foreground", children: n.message }), _jsxs("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [_jsx("time", { className: "text-xs text-muted-foreground/80", dateTime: n.createdAt, children: new Date(n.createdAt).toLocaleString() }), !n.isRead && (_jsx(Button, { type: "button", variant: "link", size: "sm", className: "h-auto p-0 text-xs", onClick: () => handleMarkRead(n.id), children: "Mark as read" }))] })] })] }) }) }) }, n.id));
+                                    return (_jsx("li", { children: _jsx(Card, { className: cn("transition-colors", !n.isRead && "border-l-4 border-l-primary bg-muted/30"), children: _jsx(CardContent, { className: "p-4", children: _jsxs("div", { className: "flex items-start gap-3", children: [_jsx("div", { className: cn("mt-0.5 shrink-0", color), "aria-hidden": true, children: _jsx(Icon, { className: "h-5 w-5" }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsxs("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [_jsx("h2", { className: cn("text-sm font-semibold", !n.isRead ? "text-foreground" : "text-muted-foreground"), children: n.title }), !n.isRead && (_jsx(Badge, { className: "shrink-0", variant: "default", children: "New" }))] }), _jsx("p", { className: "mt-0.5 text-sm text-muted-foreground", children: n.message }), _jsxs("div", { className: "mt-2 flex flex-wrap items-center gap-2", children: [_jsx("time", { className: "text-xs text-muted-foreground/80", dateTime: n.createdAt, children: new Date(n.createdAt).toLocaleString() }), n.link && (_jsx(Button, { type: "button", size: "sm", variant: "secondary", className: "h-7 px-2 text-xs", onClick: () => openLinkedWorkflow(n), children: "Open related task" })), !n.isRead && (_jsx(Button, { type: "button", variant: "link", size: "sm", className: "h-auto p-0 text-xs", onClick: () => handleMarkRead(n.id), children: "Mark as read" }))] })] })] }) }) }) }, n.id));
                         }) }), _jsx(TablePaginationBar, { id: TABLE_ID, page: safePage, totalPages: totalPages, onPageChange: setPage })] }))] }));
 }

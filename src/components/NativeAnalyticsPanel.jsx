@@ -59,7 +59,10 @@ export function fetchNativeAnalytics(moduleKey) {
       );
     }
     if (!res.ok) {
-      throw new Error(payload?.error || payload?.message || `HTTP ${res.status}`);
+      const err = new Error(payload?.error || payload?.message || `HTTP ${res.status}`);
+      err.status = res.status;
+      err.code = payload?.error || null;
+      throw err;
     }
     return payload;
   });
@@ -373,27 +376,35 @@ export function NativeAnalyticsPanel({
                       {semanticHint(chart) && (
                         <p className="text-xs text-muted-foreground">{semanticHint(chart)}</p>
                       )}
-                      {showActions && Array.isArray(chart.actions) && chart.actions.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {chart.actions.map((action) => (
-                            <QuickActionButton
-                              key={action.id}
-                              moduleKey={moduleKey}
-                              chartId={chart.id}
-                              action={action}
-                              onActionComplete={handleActionComplete}
-                            />
-                          ))}
-                        </div>
-                      )}
                     </CardHeader>
                     <CardContent>
-                      <div tabIndex={0} className="rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                      <div
+                        tabIndex={0}
+                        className="rounded-lg border bg-background/50 p-2 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      >
                         <ChartRenderer chart={chart} onDrill={handleDrill} />
                       </div>
                       <p className="sr-only">
                         {chart.title} chart with {Array.isArray(chart.data) ? chart.data.length : 0} data points.
                       </p>
+                      {showActions && Array.isArray(chart.actions) && chart.actions.length > 0 && (
+                        <div className="mt-3 rounded-lg border bg-muted/20 p-2.5 sm:p-3">
+                          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Recommended actions
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {chart.actions.map((action) => (
+                              <QuickActionButton
+                                key={action.id}
+                                moduleKey={moduleKey}
+                                chartId={chart.id}
+                                action={action}
+                                onActionComplete={handleActionComplete}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {showActions && (
                         <div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
                           {actionMeta[chart.id]

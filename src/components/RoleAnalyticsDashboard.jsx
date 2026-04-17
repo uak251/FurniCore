@@ -9,7 +9,7 @@ const ROLE_MODULE_MAP = {
   manager: ["inventory", "procurement", "production", "hr", "accounting", "notifications"],
   inventory_manager: ["inventory", "procurement", "supplier", "production"],
   accountant: ["accounting", "finance", "procurement", "notifications"],
-  sales_manager: ["customer", "procurement", "notifications"],
+  sales_manager: ["customer", "procurement"],
   hr_manager: ["hr", "payroll", "notifications"],
 };
 
@@ -54,8 +54,11 @@ export function RoleAnalyticsDashboard({ role }) {
     [queries],
   );
   const isAnyLoading = queries.some((q) => q.isLoading);
+  const isForbidden = (err) =>
+    Number(err?.status) === 403 || String(err?.message || "").includes("INSUFFICIENT_PERMISSIONS");
+  const visibleModules = modules.filter((_moduleKey, idx) => !isForbidden(queries[idx]?.error));
   const errors = queries
-    .filter((q) => q.error)
+    .filter((q) => q.error && !isForbidden(q.error))
     .map((q) => q.error?.message)
     .filter(Boolean);
   if (modules.length === 0) return null;
@@ -84,7 +87,17 @@ export function RoleAnalyticsDashboard({ role }) {
             </AlertDescription>
           </Alert>
         )}
-        {modules.map((moduleKey, idx) => (
+        {visibleModules.length === 0 && !isAnyLoading && (
+          <Alert>
+            <AlertTitle>No analytics modules assigned</AlertTitle>
+            <AlertDescription>
+              Your role currently has no accessible analytics widgets configured.
+            </AlertDescription>
+          </Alert>
+        )}
+        {visibleModules.map((moduleKey) => {
+          const idx = modules.indexOf(moduleKey);
+          return (
           <NativeAnalyticsPanel
             key={`${role}-${moduleKey}`}
             moduleKey={moduleKey}
@@ -93,7 +106,8 @@ export function RoleAnalyticsDashboard({ role }) {
             isLoadingOverride={isAnyLoading && !queries[idx]?.data}
             errorOverride={queries[idx]?.error}
           />
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );

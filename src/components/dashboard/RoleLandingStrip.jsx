@@ -57,11 +57,7 @@ export function RoleLandingStrip({ role }) {
     () => Array.from(new Set(modules.map((m) => m.analyticsModule).filter(Boolean))),
     [modules],
   );
-  const includesNotifications = analyticsModules.includes("notifications");
-  const fetchModules = useMemo(
-    () => (includesNotifications ? analyticsModules : [...analyticsModules, "notifications"]),
-    [analyticsModules, includesNotifications],
-  );
+  const fetchModules = analyticsModules;
   const queries = useQueries({
     queries: fetchModules.map((moduleKey) => ({
       queryKey: ["native-analytics", "landing-strip", moduleKey],
@@ -78,7 +74,7 @@ export function RoleLandingStrip({ role }) {
   );
   const isLoading = queries.some((q) => q.isLoading);
   const errorCount = queries.filter((q) => q.error).length;
-  const pendingAlerts = pendingAlertsFromNotifications(byModule.notifications);
+  const pendingAlerts = byModule.notifications ? pendingAlertsFromNotifications(byModule.notifications) : 0;
   const hasCriticalAlerts = pendingAlerts >= 5;
 
   if (!normalizedRole || modules.length === 0) return null;

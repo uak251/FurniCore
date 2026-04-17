@@ -136,9 +136,9 @@ export function AdminCsvTransferPanel() {
       <CardContent className="grid gap-3 md:grid-cols-2">
         {MODULES.map((moduleKey) => (
           <div key={moduleKey} className="rounded-md border p-3">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <span className="text-sm font-medium capitalize">{moduleKey}</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 lg:justify-end">
                 <input
                   ref={(el) => {
                     inputRefs.current[moduleKey] = el;
@@ -151,12 +151,13 @@ export function AdminCsvTransferPanel() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="min-w-[7rem]"
                   onClick={() => inputRefs.current[moduleKey]?.click()}
                   disabled={busyByModule[moduleKey]}
                 >
                   {busyByModule[moduleKey] ? "Uploading..." : "Import CSV"}
                 </Button>
-                <Button size="sm" onClick={() => exportCsv(moduleKey)} disabled={busyByModule[moduleKey]}>
+                <Button size="sm" className="min-w-[7rem]" onClick={() => exportCsv(moduleKey)} disabled={busyByModule[moduleKey]}>
                   {busyByModule[moduleKey] ? "Working..." : "Export CSV"}
                 </Button>
               </div>
