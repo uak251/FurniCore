@@ -7,6 +7,21 @@ import { getFrontendApiUrl } from "@/config/env";
  * so `<img src>` can be absolute `https://.../uploads/...`. If unset in development,
  * returns `""` so assets stay same-origin and use the Vite proxy.
  */
+/**
+ * Build an absolute URL for `/api/...` calls.
+ * Avoids `https://host/api` + `/api/foo` → double `/api` when env is mis-set.
+ */
+export function resolveApiUrl(path) {
+    const raw = getFrontendApiUrl().replace(/\/+$/, "");
+    const p = path.startsWith("/") ? path : `/${path}`;
+    if (!raw)
+        return p;
+    let base = raw;
+    if (base.endsWith("/api") && p.startsWith("/api"))
+        base = base.slice(0, -4);
+    return `${base}${p}`;
+}
+
 export function stripTrailingApiPath(origin) {
     let base = origin.replace(/\/+$/, "");
     if (base.endsWith("/api"))

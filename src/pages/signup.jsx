@@ -1,21 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, MailCheck, RefreshCw } from "lucide-react";
+import { Loader2, MailCheck, RefreshCw, Chrome, Facebook } from "lucide-react";
 import { applyAuthSession } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { apiOriginPrefix } from "@/lib/api-base";
+import { apiOriginPrefix, resolveApiUrl } from "@/lib/api-base";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
 import { DsButton } from "@/components/design-system/DsButton";
 import { DsInput } from "@/components/design-system/DsInput";
 import { DsCard } from "@/components/design-system/DsCard";
+import { useToast } from "@/hooks/use-toast";
 
 const signupSchema = z
   .object({
@@ -34,6 +35,15 @@ const signupSchema = z
   });
 
 const API = apiOriginPrefix();
+
+function oauthStartUrl(provider) {
+  if (typeof window === "undefined")
+    return `/api/auth/oauth/${provider}/start`;
+  if (import.meta.env.DEV)
+    return `${window.location.origin}/api/auth/oauth/${provider}/start`;
+  const base = (API || window.location.origin || "").replace(/\/+$/, "");
+  return `${base}/api/auth/oauth/${provider}/start`;
+}
 
 async function registerUser(data) {
   const res = await fetch(`${API}/api/auth/register`, {
@@ -132,8 +142,25 @@ function VerifyEmailPrompt({ email }) {
 
 export default function Signup() {
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const [verifyEmail, setVerifyEmail] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState({ google: false, facebook: false });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(resolveApiUrl("/api/auth/oauth/providers"))
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled && j && typeof j === "object") {
+          setOauthProviders({ google: Boolean(j.google), facebook: Boolean(j.facebook) });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const form = useForm({
     resolver: zodResolver(signupSchema),
@@ -207,6 +234,55 @@ export default function Signup() {
             <CardContent className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <DsButton
+                      type="button"
+                      intent="social"
+                      variant="outline"
+                      disabled={!oauthProviders.google}
+                      title={
+                        oauthProviders.google
+                          ? "Create or open your account with Google"
+                          : "Google OAuth is not configured on this server."
+                      }
+                      onClick={() => {
+                        if (!oauthProviders.google) {
+                          toast({ title: "Google sign-up unavailable", description: "OAuth is not configured for this deployment." });
+                          return;
+                        }
+                        window.location.href = oauthStartUrl("google");
+                      }}
+                    >
+                      <Chrome className="mr-2 h-4 w-4" aria-hidden />
+                      Google
+                    </DsButton>
+                    <DsButton
+                      type="button"
+                      intent="social"
+                      variant="outline"
+                      disabled={!oauthProviders.facebook}
+                      title={
+                        oauthProviders.facebook
+                          ? "Create or open your account with Facebook"
+                          : "Facebook OAuth is not configured on this server."
+                      }
+                      onClick={() => {
+                        if (!oauthProviders.facebook) {
+                          toast({ title: "Facebook sign-up unavailable", description: "OAuth is not configured for this deployment." });
+                          return;
+                        }
+                        window.location.href = oauthStartUrl("facebook");
+                      }}
+                    >
+                      <Facebook className="mr-2 h-4 w-4" aria-hidden />
+                      Facebook
+                    </DsButton>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="h-px flex-1 bg-border" />
+                    <span>or register with email</span>
+                    <span className="h-px flex-1 bg-border" />
+                  </div>
                   <FormField
                     control={form.control}
                     name="name"

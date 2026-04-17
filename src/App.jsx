@@ -18,6 +18,7 @@ import Signup from "@/pages/signup";
 import VerifyEmailPage from "@/pages/verify-email";
 import VerifyOtpPage from "@/pages/verify-otp";
 import ResetPasswordPage from "@/pages/reset-password";
+import OauthBridge from "@/pages/oauth-bridge";
 import { CustomerShopProvider } from "@/contexts/customer-shop-context";
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const InventoryPage = lazy(() => import("@/pages/inventory"));
@@ -76,6 +77,7 @@ function Router() {
         _jsx(Route, { path: "/verify-email", component: VerifyEmailPage }),
         _jsx(Route, { path: "/verify-otp", component: VerifyOtpPage }),
         _jsx(Route, { path: "/reset-password", component: ResetPasswordPage }),
+        _jsx(Route, { path: "/auth/oauth-bridge", component: OauthBridge }),
         _jsx(Route, { path: "/supplier-portal/preferences", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["supplier"], children: _jsx(SupplierLayout, { children: _jsx(PreferencesPage, {}) }) }) }) }),
         _jsx(Route, { path: "/supplier-portal/profile", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["supplier"], children: _jsx(SupplierLayout, { children: _jsx(ProfilePage, {}) }) }) }) }),
         _jsx(Route, { path: "/worker-portal/preferences", children: _jsx(ProtectedRoute, { children: _jsx(RoleGuard, { allowedRoles: ["worker"], children: _jsx(WorkerLayout, { children: _jsx(PreferencesPage, {}) }) }) }) }),

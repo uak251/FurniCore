@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, CheckCircle, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle, LineChart, Plus } from "lucide-react";
 import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,17 +13,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/lib/currency";
 import { ModulePageHeader } from "@/components/module/ModulePageHeader";
+import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { ModuleTableState } from "@/components/module/ModuleTableState";
 import { usePayrollPageModel } from "@/hooks/modules/usePayrollPageModel";
 
 export default function PayrollPage() {
-  const { toast } = useToast();
-  const qc = useQueryClient();
+    const { toast } = useToast();
+    const qc = useQueryClient();
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const { format } = useCurrency();
   const {
     MONTHS,
     years,
-    search,
+        search,
     setSearch,
     statusFilter,
     setStatusFilter,
@@ -48,9 +51,9 @@ export default function PayrollPage() {
   };
 
   const onApprove = async (id) => {
-    try {
-      await approvePayroll.mutateAsync({ id });
-      toast({ title: "Payroll approved" });
+        try {
+            await approvePayroll.mutateAsync({ id });
+            toast({ title: "Payroll approved" });
       refetchPayroll();
     } catch (err) {
       toast({ title: "Approve failed", description: String(err?.message ?? err), variant: "destructive" });
@@ -78,16 +81,31 @@ export default function PayrollPage() {
         description="Generate and approve monthly payroll with clear status tracking."
         actions={(
           <>
+            <ModuleActionsMenu
+              label="Actions"
+              items={[
+                {
+                  label: "Generate payroll",
+                  icon: Plus,
+                  onSelect: () => setShowGenerateDialog(true),
+                },
+                {
+                  label: "View analytics",
+                  icon: LineChart,
+                  separatorBefore: true,
+                  onSelect: () => setInsightsOpen(true),
+                },
+              ]}
+            />
             <ModuleInsightsDrawer
               moduleName="payroll"
               title="Payroll Analytics"
               reportId="payroll-summary"
               filters={{ status: statusFilter, month: monthFilter, year: yearFilter }}
+              hideTrigger
+              open={insightsOpen}
+              onOpenChange={setInsightsOpen}
             />
-            <Button onClick={() => setShowGenerateDialog(true)}>
-              <Plus className="mr-2 h-4 w-4" aria-hidden />
-              Generate payroll
-            </Button>
           </>
         )}
       />

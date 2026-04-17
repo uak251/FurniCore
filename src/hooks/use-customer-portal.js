@@ -18,7 +18,7 @@ async function apiFetch(path, options) {
         const fromIssues = Array.isArray(json?.issues) && json.issues.length > 0
             ? json.issues.map((i) => i.message).join(" ")
             : "";
-        throw new Error(fromIssues || (typeof json?.error === "string" ? json.error : "") || `HTTP ${res.status}`);
+        throw new Error(fromIssues || json?.message || (typeof json?.error === "string" ? json.error : "") || `HTTP ${res.status}`);
     }
     return json;
 }
@@ -37,6 +37,9 @@ export function useCustomerStorefront(options = {}) {
         queryFn: () => apiFetch("/customer-portal/storefront"),
         ...options,
     });
+}
+export function useCustomerPaymentSettings() {
+    return useQuery({ queryKey: ["customerPaymentSettings"], queryFn: () => apiFetch("/customer-portal/payment-settings") });
 }
 export function useValidateDiscount(code, orderAmount) {
     return useQuery({
@@ -63,5 +66,26 @@ export function usePayInvoice() {
     return useMutation({
         mutationFn: ({ id, ...data }) => apiFetch(`/customer-portal/invoices/${id}/pay`, { method: "POST", body: JSON.stringify(data) }),
         onSuccess: () => { qc.invalidateQueries({ queryKey: ["customerInvoices"] }); qc.invalidateQueries({ queryKey: ["customerOrders"] }); },
+    });
+}
+export function useUploadPaymentProof() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, file }) => {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch(`${API}/api/customer-portal/invoices/${id}/payment-proof`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+                body: form,
+            });
+            const json = await res.json();
+            if (!res.ok)
+                throw new Error(json?.error || `HTTP ${res.status}`);
+            return json;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["customerInvoices"] });
+        },
     });
 }

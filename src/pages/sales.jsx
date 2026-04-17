@@ -1,9 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useForm, Controller } from "react-hook-form";
 import { useListProducts } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { useSalesOverview, useSalesOrders, useCreateSalesOrder, useUpdateSalesOrder, useAddOrderUpdate, useSalesInvoices, useGenerateInvoice, useUpdateInvoice, useSalesDiscounts, useCreateDiscount, useUpdateDiscount, useDeleteDiscount, useSalesReceivables, } from "@/hooks/use-sales-manager";
+import { useSalesOverview, useSalesOrders, useCreateSalesOrder, useUpdateSalesOrder, useAddOrderUpdate, useSalesInvoices, useGenerateInvoice, useUpdateInvoice, useUploadInvoicePdf, useSalesDiscounts, useCreateDiscount, useUpdateDiscount, useDeleteDiscount, useSalesReceivables, } from "@/hooks/use-sales-manager";
 import { CatalogTab } from "./sales-catalog-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ShoppingCart, FileText, Tag, BarChart3, TrendingUp, Plus, Pencil, Trash2, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle, DollarSign, Image, Package, } from "lucide-react";
+import { ShoppingCart, FileText, Tag, BarChart3, TrendingUp, Plus, Pencil, Trash2, CheckCircle2, ChevronDown, ChevronUp, AlertTriangle, DollarSign, Image, Package, Upload, } from "lucide-react";
 import { cn } from "@/lib/utils";
 /* ─── Shared helpers ──────────────────────────────────────────────────────── */
 const fmt = (n) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -166,6 +167,7 @@ function InvoicesTab() {
     const { data: orders = [] } = useSalesOrders();
     const generateInvoice = useGenerateInvoice();
     const updateInvoice = useUpdateInvoice();
+    const uploadInvoicePdf = useUploadInvoicePdf();
     const [statusF, setStatusF] = useState("all");
     const [showGen, setShowGen] = useState(false);
     const { register: greg, handleSubmit: gSubmit, reset: gReset } = useForm({ defaultValues: { orderId: 0, dueDate: "", notes: "", taxRate: 0 } });
@@ -198,10 +200,28 @@ function InvoicesTab() {
             toast({ variant: "destructive", title: "Error", description: e.message });
         }
     };
+    const uploadPdf = async (inv) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "application/pdf";
+        input.onchange = async (ev) => {
+            const file = ev.target.files?.[0];
+            if (!file)
+                return;
+            try {
+                await uploadInvoicePdf.mutateAsync({ id: inv.id, file });
+                toast({ title: "Invoice PDF uploaded" });
+            }
+            catch (e) {
+                toast({ variant: "destructive", title: "Upload failed", description: e.message });
+            }
+        };
+        input.click();
+    };
     return (_jsxs("div", { className: "space-y-4 min-w-0", children: [_jsxs("div", { className: "flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center", children: [_jsxs(Select, { value: statusF, onValueChange: setStatusF, children: [_jsx(SelectTrigger, { className: "w-full sm:w-36", children: _jsx(SelectValue, {}) }), _jsxs(SelectContent, { children: [_jsx(SelectItem, { value: "all", children: "All" }), Object.entries(INVOICE_STATUS_CONFIG).map(([k, v]) => _jsx(SelectItem, { value: k, children: v.label }, k))] })] }), _jsxs(Button, { className: "w-full sm:ml-auto sm:w-auto", onClick: () => setShowGen(true), children: [_jsx(Plus, { className: "mr-1.5 h-4 w-4" }), "Generate invoice"] })] }), isLoading ? _jsx(Skeleton, { className: "h-48 w-full" }) : (_jsx(Card, { children: _jsx(CardContent, { className: "p-0", children: _jsx("div", { className: "overflow-x-auto", children: _jsxs(Table, { children: [_jsx(TableHeader, { children: _jsxs(TableRow, { children: [_jsx(TableHead, { children: "Invoice #" }), _jsx(TableHead, { children: "Customer" }), _jsx(TableHead, { className: "text-right", children: "Amount" }), _jsx(TableHead, { children: "Due Date" }), _jsx(TableHead, { children: "Status" }), _jsx(TableHead, { children: "Actions" })] }) }), _jsx(TableBody, { children: filtered.map(inv => {
                                         const cfg = INVOICE_STATUS_CONFIG[inv.status] ?? { label: inv.status, color: "bg-muted" };
                                         const isOverdue = inv.dueDate && new Date(inv.dueDate) < new Date() && inv.status !== "paid";
-                                        return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "font-mono text-xs", children: inv.invoiceNumber }), _jsxs(TableCell, { children: [_jsx("p", { className: "font-medium", children: inv.customerName }), _jsx("p", { className: "text-xs text-muted-foreground", children: inv.customerEmail })] }), _jsx(TableCell, { className: "text-right font-semibold tabular-nums", children: fmt(inv.totalAmount) }), _jsxs(TableCell, { className: cn("text-sm", isOverdue && "font-semibold text-red-600"), children: [inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—", isOverdue && " (Overdue)"] }), _jsx(TableCell, { children: _jsx(Badge, { className: cn("text-[11px]", cfg.color), children: cfg.label }) }), _jsx(TableCell, { children: _jsxs("div", { className: "flex gap-1", children: [inv.status !== "paid" && inv.status !== "cancelled" && (_jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => markPaid(inv), children: [_jsx(CheckCircle2, { className: "mr-1 h-3.5 w-3.5" }), "Mark paid"] })), inv.status === "draft" && (_jsx(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => updateInvoice.mutateAsync({ id: inv.id, status: "sent" }).then(() => toast({ title: "Invoice sent" })).catch((e) => toast({ variant: "destructive", title: "Error", description: e.message })), children: "Send" }))] }) })] }, inv.id));
+                                    return (_jsxs(TableRow, { children: [_jsx(TableCell, { className: "font-mono text-xs", children: inv.invoiceNumber }), _jsxs(TableCell, { children: [_jsx("p", { className: "font-medium", children: inv.customerName }), _jsx("p", { className: "text-xs text-muted-foreground", children: inv.customerEmail })] }), _jsx(TableCell, { className: "text-right font-semibold tabular-nums", children: fmt(inv.totalAmount) }), _jsxs(TableCell, { className: cn("text-sm", isOverdue && "font-semibold text-red-600"), children: [inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—", isOverdue && " (Overdue)"] }), _jsx(TableCell, { children: _jsx(Badge, { className: cn("text-[11px]", cfg.color), children: cfg.label }) }), _jsx(TableCell, { children: _jsxs("div", { className: "flex flex-wrap gap-1", children: [inv.status !== "paid" && inv.status !== "cancelled" && (_jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => markPaid(inv), children: [_jsx(CheckCircle2, { className: "mr-1 h-3.5 w-3.5" }), "Mark paid"] })), inv.status === "draft" && (_jsx(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => updateInvoice.mutateAsync({ id: inv.id, status: "sent" }).then(() => toast({ title: "Invoice sent" })).catch((e) => toast({ variant: "destructive", title: "Error", description: e.message })), children: "Send" })), _jsxs(Button, { size: "sm", variant: "outline", className: "h-7 text-xs", onClick: () => uploadPdf(inv), children: [_jsx(Upload, { className: "mr-1 h-3.5 w-3.5" }), "Upload PDF"] }), inv.pdfUrl && (_jsx("a", { href: inv.pdfUrl, target: "_blank", rel: "noreferrer", className: "inline-flex h-7 items-center rounded-md border px-2 text-xs hover:bg-muted", children: "Open PDF" }))] }) })] }, inv.id));
                                     }) })] }) }) }) })), _jsx(Dialog, { open: showGen, onOpenChange: setShowGen, children: _jsxs(DialogContent, { children: [_jsx(DialogHeader, { children: _jsx(DialogTitle, { children: "Generate invoice from order" }) }), _jsxs("form", { onSubmit: gSubmit(onGenerate), className: "space-y-4", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Order *" }), _jsxs("select", { className: "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1", ...greg("orderId", { required: true, valueAsNumber: true }), children: [_jsx("option", { value: 0, children: "Select order\u2026" }), orders.filter(o => o.status !== "cancelled").map(o => _jsxs("option", { value: o.id, children: [o.orderNumber, " \u2014 ", o.customerName, " (", fmt(o.totalAmount), ")"] }, o.id))] })] }), _jsxs("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2", children: [_jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Due date" }), _jsx(Input, { type: "datetime-local", ...greg("dueDate") })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Tax rate (%)" }), _jsx(Input, { type: "number", step: "0.01", ...greg("taxRate", { valueAsNumber: true }) })] })] }), _jsxs("div", { className: "space-y-1", children: [_jsx(Label, { children: "Notes" }), _jsx(Textarea, { ...greg("notes") })] }), _jsxs(DialogFooter, { children: [_jsx(Button, { variant: "outline", type: "button", onClick: () => setShowGen(false), children: "Cancel" }), _jsx(Button, { type: "submit", disabled: generateInvoice.isPending, children: "Generate" })] })] })] }) })] }));
 }
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -303,7 +323,16 @@ function ReceivablesTab() {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  MAIN PAGE                                                                  */
 /* ═══════════════════════════════════════════════════════════════════════════ */
+const SALES_TAB_IDS = ["overview", "catalog", "orders", "invoices", "discounts", "receivables"];
 export default function SalesPage() {
+    const [loc] = useLocation();
     const [activeTab, setActiveTab] = useState("overview");
+    useEffect(() => {
+        const search = typeof window !== "undefined" ? window.location.search : "";
+        const q = new URLSearchParams(search);
+        const t = q.get("tab");
+        if (t && SALES_TAB_IDS.includes(t))
+            setActiveTab(t);
+    }, [loc]);
     return (_jsxs("div", { className: "space-y-6 min-w-0", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold tracking-tight sm:text-3xl", children: "Sales Manager" }), _jsx("p", { className: "text-sm text-muted-foreground sm:text-base", children: "Catalog \u00B7 Orders \u00B7 Invoices \u00B7 Discounts \u00B7 Receivables" })] }), _jsxs(Tabs, { value: activeTab, onValueChange: setActiveTab, className: "min-w-0", children: [_jsxs(TabsList, { className: "flex h-auto w-full flex-wrap gap-1 overflow-x-auto sm:w-auto sm:flex-nowrap", children: [_jsxs(TabsTrigger, { value: "overview", className: "gap-1.5", children: [_jsx(BarChart3, { className: "h-4 w-4" }), "Overview"] }), _jsxs(TabsTrigger, { value: "catalog", className: "gap-1.5", children: [_jsx(Package, { className: "h-4 w-4" }), "Catalog"] }), _jsxs(TabsTrigger, { value: "orders", className: "gap-1.5", children: [_jsx(ShoppingCart, { className: "h-4 w-4" }), "Orders"] }), _jsxs(TabsTrigger, { value: "invoices", className: "gap-1.5", children: [_jsx(FileText, { className: "h-4 w-4" }), "Invoices"] }), _jsxs(TabsTrigger, { value: "discounts", className: "gap-1.5", children: [_jsx(Tag, { className: "h-4 w-4" }), "Discounts"] }), _jsxs(TabsTrigger, { value: "receivables", className: "gap-1.5", children: [_jsx(TrendingUp, { className: "h-4 w-4" }), "Receivables"] })] }), _jsx(TabsContent, { value: "overview", className: "mt-4", children: _jsx(OverviewTab, { onTabChange: setActiveTab }) }), _jsx(TabsContent, { value: "catalog", className: "mt-4", children: _jsx(CatalogTab, {}) }), _jsx(TabsContent, { value: "orders", className: "mt-4", children: _jsx(OrdersTab, {}) }), _jsx(TabsContent, { value: "invoices", className: "mt-4", children: _jsx(InvoicesTab, {}) }), _jsx(TabsContent, { value: "discounts", className: "mt-4", children: _jsx(DiscountsTab, {}) }), _jsx(TabsContent, { value: "receivables", className: "mt-4", children: _jsx(ReceivablesTab, {}) })] })] }));
 }

@@ -22,9 +22,9 @@ export function AdminUnifiedAnalyticsDashboard() {
           Cross-module KPIs and quick actions in one global view.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="lg:col-span-2">
+      <CardContent className="space-y-4 px-3 pb-4 sm:px-6 sm:pb-6">
+        <div className="grid gap-3 sm:gap-4 xl:grid-cols-2">
+          <div className="xl:col-span-2">
             <AdminCsvTransferPanel />
           </div>
           {MODULES.map((mod) => (

@@ -6,7 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { LineChart } from "lucide-react";
 import { ModulePageHeader } from "@/components/module/ModulePageHeader";
+import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { ModuleTableState } from "@/components/module/ModuleTableState";
 import { useAccountingPageModel } from "@/hooks/modules/useAccountingPageModel";
 
@@ -20,12 +23,27 @@ export default function AccountingPage() {
         title="Accounting"
         description="Cashbook overview with clean filters and readable financial status."
         actions={(
-          <ModuleInsightsDrawer
-            moduleName="accounting"
-            title="Accounting Analytics"
-            reportId="accounting-overview"
-            filters={{ type, status }}
-          />
+          <>
+            <ModuleActionsMenu
+              label="Actions"
+              items={[
+                {
+                  label: "View analytics",
+                  icon: LineChart,
+                  onSelect: () => setInsightsOpen(true),
+                },
+              ]}
+            />
+            <ModuleInsightsDrawer
+              moduleName="accounting"
+              title="Accounting Analytics"
+              reportId="accounting-overview"
+              filters={{ type, status }}
+              hideTrigger
+              open={insightsOpen}
+              onOpenChange={setInsightsOpen}
+            />
+          </>
         )}
       />
 

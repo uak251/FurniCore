@@ -66,7 +66,7 @@ export default function ProcurementPage() {
     return (_jsxs("div", { className: "space-y-8", children: [
         _jsxs("div", { children: [
             _jsx("h1", { className: "text-2xl font-semibold tracking-tight", children: "Supplier quote management" }),
-            _jsx("p", { className: "text-muted-foreground mt-1 max-w-3xl", children: "Create quotes under Quotes, then submit drafts into the approval workflow. Inventory line items enable rate comparison across suppliers." }),
+            _jsx("p", { className: "text-muted-foreground mt-1 max-w-3xl", children: "Create quotes under Quotes, then submit drafts into the approval workflow. Demands raised from Inventory appear here as draft quotes (workflow) for the linked or default supplier." }),
         ] }),
         _jsxs(Card, { children: [
             _jsxs(CardHeader, { children: [

@@ -5,7 +5,10 @@ export function useInventoryPageModel() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const inventoryQ = useListInventory();
-  const inventory = Array.isArray(inventoryQ.data) ? inventoryQ.data : [];
+  const inventory = useMemo(
+    () => (Array.isArray(inventoryQ.data) ? inventoryQ.data : []),
+    [inventoryQ.data],
+  );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -24,6 +27,8 @@ export function useInventoryPageModel() {
     setQuery,
     typeFilter,
     setTypeFilter,
+    /** Full list from API (unfiltered); use for module gallery entity IDs. */
+    inventory,
     rows,
     isLoading: inventoryQ.isLoading,
     isError: inventoryQ.isError,

@@ -40,9 +40,21 @@ export function ModuleInsightsDrawer({
   filters,
   reportId,
   buttonLabel,
+  /** Hide the default trigger button (e.g. when opening from a parent “Actions” menu). */
+  hideTrigger = false,
+  /** Controlled sheet open state (pair with `onOpenChange`). */
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }) {
   const [, setLocation] = useLocation();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (next) => {
+    onOpenChangeProp?.(next);
+    if (!isControlled)
+      setInternalOpen(next);
+  };
   const prefs = loadAnalyticsPreferences();
   const modulePrefs = prefs?.[moduleName] ?? {
     enabled: true,
@@ -71,16 +83,18 @@ export function ModuleInsightsDrawer({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="outline"
-          className="touch-target focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          aria-label={`${triggerLabel} for ${moduleName}`}
-        >
-          <LineChart className="mr-1.5 h-4 w-4" aria-hidden />
-          {triggerLabel}
-        </Button>
-      </SheetTrigger>
+      {!hideTrigger ? (
+        <SheetTrigger asChild>
+          <Button
+            variant="outline"
+            className="touch-target focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label={`${triggerLabel} for ${moduleName}`}
+          >
+            <LineChart className="mr-1.5 h-4 w-4" aria-hidden />
+            {triggerLabel}
+          </Button>
+        </SheetTrigger>
+      ) : null}
       <SheetContent className="w-full overflow-y-auto sm:max-w-3xl">
         <SheetHeader>
           <SheetTitle>{panelTitle}</SheetTitle>

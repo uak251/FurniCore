@@ -26,6 +26,12 @@ export function useSalesOverview() {
 export function useSalesOrders() {
     return useQuery({ queryKey: ["salesOrders"], queryFn: () => apiFetch("/sales-manager/orders") });
 }
+export function useSalesCustomers() {
+    return useQuery({ queryKey: ["salesCustomers"], queryFn: () => apiFetch("/sales-manager/customers") });
+}
+export function useSalesWorkers() {
+    return useQuery({ queryKey: ["salesWorkers"], queryFn: () => apiFetch("/sales-manager/workers") });
+}
 export function useCreateSalesOrder() {
     const qc = useQueryClient();
     return useMutation({
@@ -63,6 +69,27 @@ export function useUpdateInvoice() {
     return useMutation({
         mutationFn: ({ id, ...data }) => apiFetch(`/sales-manager/invoices/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
         onSuccess: () => { qc.invalidateQueries({ queryKey: ["salesInvoices"] }); qc.invalidateQueries({ queryKey: ["salesReceivables"] }); },
+    });
+}
+export function useUploadInvoicePdf() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ id, file }) => {
+            const form = new FormData();
+            form.append("file", file);
+            const res = await fetch(`${API}/api/sales-manager/invoices/${id}/upload-pdf`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+                body: form,
+            });
+            const json = await res.json();
+            if (!res.ok)
+                throw new Error(json?.error ?? `HTTP ${res.status}`);
+            return json;
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["salesInvoices"] });
+        },
     });
 }
 /* ─── Discounts ──────────────────────────────────────────────────────────── */

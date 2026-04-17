@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { apiOriginPrefix } from "@/lib/api-base";
+import { apiOriginPrefix, resolveApiUrl } from "@/lib/api-base";
 import { BrandLogo } from "@/components/branding/BrandLogo";
 import { AuthBackdrop } from "@/components/branding/AuthBackdrop";
 import { DsButton } from "@/components/design-system/DsButton";
@@ -32,6 +32,16 @@ function decodeJwtPayload(token) {
 }
 
 const API = apiOriginPrefix();
+
+/** Full URL to begin OAuth (must match API callback registration in dev vs prod). */
+function oauthStartUrl(provider) {
+  if (typeof window === "undefined")
+    return `/api/auth/oauth/${provider}/start`;
+  if (import.meta.env.DEV)
+    return `${window.location.origin}/api/auth/oauth/${provider}/start`;
+  const base = (API || window.location.origin || "").replace(/\/+$/, "");
+  return `${base}/api/auth/oauth/${provider}/start`;
+}
 
 async function resendVerification(email) {
   const res = await fetch(`${API}/api/auth/resend-verification`, {
@@ -126,6 +136,7 @@ export default function Login() {
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [rememberDevice, setRememberDevice] = useState(true);
   const [otpInfo, setOtpInfo] = useState("");
+  const [oauthProviders, setOauthProviders] = useState({ google: false, facebook: false });
 
   const shouldCheckDbHealth = (() => {
     try {
@@ -188,6 +199,36 @@ export default function Login() {
       cancelled = true;
     };
   }, [shouldCheckDbHealth]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(resolveApiUrl("/api/auth/oauth/providers"))
+      .then((r) => r.json())
+      .then((j) => {
+        if (!cancelled && j && typeof j === "object") {
+          setOauthProviders({ google: Boolean(j.google), facebook: Boolean(j.facebook) });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("oauth") === "error") {
+      const raw = sp.get("message") || "sign_in_failed";
+      let decoded = raw;
+      try {
+        decoded = decodeURIComponent(raw);
+      } catch {
+        /* ignore */
+      }
+      toast({ variant: "destructive", title: "OAuth sign-in", description: decoded });
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [toast]);
 
   const clearAuthError = () => {
     if (
@@ -336,10 +377,30 @@ export default function Login() {
       }
 
       if (status !== undefined && status >= 500) {
-        form.setError("password", {
-          type: "server",
-          message: "Authentication service is temporarily unavailable. Please try again.",
-        });
+        const bodyMsg =
+          errData && typeof errData === "object" && typeof errData.message === "string"
+            ? errData.message.trim()
+            : "";
+        const combined = `${String(serverError || "")} ${bodyMsg}`.toLowerCase();
+        const looksLikeConfig = /auth_config|misconfig/i.test(combined);
+        const looksLikeSchema = /failed query|column .* does not exist|relation .* does not exist/i.test(combined);
+        const looksLikeDb =
+          status === 503
+          || /auth_db|unavailable|database|connection|econnrefused|terminat/i.test(combined);
+        const genericServerMsg = !bodyMsg || /^something went wrong$/i.test(bodyMsg);
+        let msg500 = genericServerMsg
+          ? "Sign-in failed due to a server error. Confirm the API is running and try again."
+          : bodyMsg.slice(0, 280);
+        if (looksLikeConfig) {
+          msg500 = "Server authentication is misconfigured (database URL or secrets). Check the API .env and restart.";
+        }
+        else if (looksLikeSchema) {
+          msg500 = "Database schema error during sign-in. Run migrations for the API database, then retry.";
+        }
+        else if (looksLikeDb) {
+          msg500 = "Authentication service is temporarily unavailable. Please try again in a moment.";
+        }
+        form.setError("password", { type: "server", message: msg500 });
         return;
       }
       if (status === 429) {
@@ -473,11 +534,45 @@ export default function Login() {
                     Continue with shop
                   </DsButton>
                   <div className="grid grid-cols-2 gap-2">
-                    <DsButton type="button" intent="social" variant="outline" onClick={() => toast({ title: "Google sign-in", description: "Coming soon" })}>
+                    <DsButton
+                      type="button"
+                      intent="social"
+                      variant="outline"
+                      disabled={!oauthProviders.google}
+                      title={
+                        oauthProviders.google
+                          ? "Continue with your Google account"
+                          : "Google sign-in is not configured on this server (GOOGLE_OAUTH_CLIENT_ID / SECRET)."
+                      }
+                      onClick={() => {
+                        if (!oauthProviders.google) {
+                          toast({ title: "Google sign-in unavailable", description: "OAuth is not configured for this deployment." });
+                          return;
+                        }
+                        window.location.href = oauthStartUrl("google");
+                      }}
+                    >
                       <Chrome className="mr-2 h-4 w-4" aria-hidden />
                       Google
                     </DsButton>
-                    <DsButton type="button" intent="social" variant="outline" onClick={() => toast({ title: "Facebook sign-in", description: "Coming soon" })}>
+                    <DsButton
+                      type="button"
+                      intent="social"
+                      variant="outline"
+                      disabled={!oauthProviders.facebook}
+                      title={
+                        oauthProviders.facebook
+                          ? "Continue with Facebook (Meta) login"
+                          : "Facebook sign-in is not configured (FACEBOOK_APP_ID / FACEBOOK_APP_SECRET)."
+                      }
+                      onClick={() => {
+                        if (!oauthProviders.facebook) {
+                          toast({ title: "Facebook sign-in unavailable", description: "OAuth is not configured for this deployment." });
+                          return;
+                        }
+                        window.location.href = oauthStartUrl("facebook");
+                      }}
+                    >
                       <Facebook className="mr-2 h-4 w-4" aria-hidden />
                       Facebook
                     </DsButton>

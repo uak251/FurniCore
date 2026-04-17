@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RecordAvatar, RecordImagePanel, ModuleGallery, useModuleImages, MODULE_GALLERY_DIALOG_BODY_CLASS, MODULE_GALLERY_DIALOG_CONTENT_CLASS, MODULE_GALLERY_DIALOG_HEADER_CLASS, MODULE_GALLERY_DIALOG_TITLE_CLASS, } from "@/components/images";
 import { Plus, Truck, Pencil, Trash2, Star, Images } from "lucide-react";
+import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { useToast } from "@/hooks/use-toast";
 import { useForm, Controller } from "react-hook-form";
 import { TableToolbar } from "@/components/data-table/TableToolbar";
@@ -143,7 +144,10 @@ export default function SuppliersPage() {
     };
     const from = total === 0 ? 0 : (safePage - 1) * pageSize + 1;
     const to = Math.min(safePage * pageSize, total);
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "Suppliers" }), _jsx("p", { className: "text-muted-foreground", children: "Manage your supplier network" })] }), _jsxs("div", { className: "flex flex-wrap gap-2", children: [_jsxs(Button, { variant: "outline", onClick: () => setShowGallery(true), children: [_jsx(Images, { className: "mr-2 h-4 w-4", "aria-hidden": true }), "Gallery"] }), _jsxs(Button, { onClick: openCreate, children: [_jsx(Plus, { className: "mr-2 h-4 w-4", "aria-hidden": true }), "Add supplier"] })] })] }), _jsx(TableToolbar, { id: TABLE_ID, entityLabel: "suppliers", searchValue: search, onSearchChange: setSearch, searchPlaceholder: "Search by name, email, or phone\u2026", filterLabel: "Status", filterValue: statusFilter, onFilterChange: setStatusFilter, filterOptions: [
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-3xl font-bold tracking-tight", children: "Suppliers" }), _jsx("p", { className: "text-muted-foreground", children: "Manage your supplier network" })] }), _jsx(ModuleActionsMenu, { label: "Actions", items: [
+                { label: "Add supplier", icon: Plus, onSelect: () => openCreate() },
+                { label: "Image gallery", icon: Images, separatorBefore: true, onSelect: () => setShowGallery(true) },
+            ] })] }), _jsx(TableToolbar, { id: TABLE_ID, entityLabel: "suppliers", searchValue: search, onSearchChange: setSearch, searchPlaceholder: "Search by name, email, or phone\u2026", filterLabel: "Status", filterValue: statusFilter, onFilterChange: setStatusFilter, filterOptions: [
                     { value: "all", label: "All" },
                     { value: "active", label: "Active" },
                     { value: "inactive", label: "Inactive" },

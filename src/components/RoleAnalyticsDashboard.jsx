@@ -62,7 +62,7 @@ export function RoleAnalyticsDashboard({ role }) {
 
   return (
     <Card className="rounded-2xl border-border/80 shadow-sm">
-      <CardHeader>
+      <CardHeader className="space-y-2">
         <CardTitle className="text-xl">{ROLE_TITLES[role] || "Role Analytics Dashboard"}</CardTitle>
         <CardDescription>
           Role-scoped operational analytics with direct actions, alerts, and module-level visibility.
@@ -75,7 +75,7 @@ export function RoleAnalyticsDashboard({ role }) {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 px-3 pb-4 sm:space-y-6 sm:px-6 sm:pb-6">
         {errors.length > 0 && (
           <Alert variant="destructive">
             <AlertTitle>Operational alerts</AlertTitle>

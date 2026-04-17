@@ -1,6 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useListNotifications, useMarkNotificationRead } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ const TYPE_COLORS = {
 const MAX_PREVIEW = 8;
 export function NotificationBell() {
     const [open, setOpen] = useState(false);
+    const [, setLocation] = useLocation();
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const { data: notifications, isLoading } = useListNotifications();
@@ -69,6 +70,27 @@ export function NotificationBell() {
             /* toast optional */
         }
     };
+    const openLinkedWorkflow = async (e, n) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            if (!n.isRead)
+                await markRead.mutateAsync({ id: n.id });
+            invalidate();
+        }
+        catch {
+            /* ignore */
+        }
+        setOpen(false);
+        const href = String(n.link || "").trim();
+        if (!href)
+            return;
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+            window.open(href, "_blank", "noopener,noreferrer");
+            return;
+        }
+        setLocation(href.startsWith("/") ? href : `/${href}`);
+    };
     const label = unreadCount === 0
         ? "Notifications, no unread messages"
         : `Notifications, ${unreadCount} unread`;
@@ -79,6 +101,6 @@ export function NotificationBell() {
                                         : `${unreadCount} unread` })] }), _jsx(ScrollArea, { className: "h-[min(320px,50vh)]", children: isLoading ? (_jsx("p", { className: "p-4 text-sm text-muted-foreground", children: "Loading notifications\u2026" })) : preview.length === 0 ? (_jsx("p", { className: "p-4 text-sm text-muted-foreground", children: "No notifications yet." })) : (_jsx("ul", { className: "divide-y", role: "list", children: preview.map((n) => {
                                 const Icon = TYPE_ICONS[n.type] || Info;
                                 const color = TYPE_COLORS[n.type] || "text-muted-foreground";
-                                return (_jsx("li", { children: _jsxs("div", { className: cn("flex gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60", !n.isRead && "bg-muted/40"), children: [_jsx("div", { className: cn("mt-0.5 shrink-0", color), "aria-hidden": true, children: _jsx(Icon, { className: "h-4 w-4" }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "font-medium leading-snug line-clamp-2", children: n.title }), _jsx("p", { className: "text-xs text-muted-foreground line-clamp-2 mt-0.5", children: n.message }), _jsxs("div", { className: "mt-1.5 flex flex-wrap items-center gap-2", children: [_jsx("time", { className: "text-[10px] text-muted-foreground", dateTime: n.createdAt, children: new Date(n.createdAt).toLocaleString() }), !n.isRead && (_jsx("button", { type: "button", className: "text-[10px] font-medium text-primary underline-offset-2 hover:underline", onClick: (e) => handleMarkOne(n.id, e), children: "Mark read" }))] })] })] }) }, n.id));
+                                return (_jsx("li", { children: _jsxs("div", { className: cn("flex gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted/60", !n.isRead && "bg-muted/40"), children: [_jsx("div", { className: cn("mt-0.5 shrink-0", color), "aria-hidden": true, children: _jsx(Icon, { className: "h-4 w-4" }) }), _jsxs("div", { className: "min-w-0 flex-1", children: [_jsx("p", { className: "font-medium leading-snug line-clamp-2", children: n.title }), _jsx("p", { className: "text-xs text-muted-foreground line-clamp-2 mt-0.5", children: n.message }), _jsxs("div", { className: "mt-1.5 flex flex-wrap items-center gap-2", children: [_jsx("time", { className: "text-[10px] text-muted-foreground", dateTime: n.createdAt, children: new Date(n.createdAt).toLocaleString() }), n.link && (_jsx(Button, { type: "button", variant: "secondary", size: "sm", className: "h-7 px-2 text-[10px]", onClick: (e) => openLinkedWorkflow(e, n), children: "Open in app" })), !n.isRead && (_jsx("button", { type: "button", className: "text-[10px] font-medium text-primary underline-offset-2 hover:underline", onClick: (e) => handleMarkOne(n.id, e), children: "Mark read" }))] })] })] }) }, n.id));
                             }) })) }), _jsx("div", { className: "border-t p-2", children: _jsx(Button, { variant: "ghost", className: "w-full justify-center text-sm", asChild: true, children: _jsx(Link, { href: "/notifications", onClick: () => setOpen(false), children: "View all notifications" }) }) })] })] }));
 }
