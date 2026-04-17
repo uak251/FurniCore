@@ -5,8 +5,9 @@ export function compareValues(a, b) {
     return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 export function filterAndSortRows(rows, options) {
-    const q = options.search.trim().toLowerCase();
-    const filtered = rows.filter((r) => options.match(r, q));
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const q = String(options?.search ?? "").trim().toLowerCase();
+    const filtered = safeRows.filter((r) => options.match(r, q));
     return [...filtered].sort((a, b) => {
         const va = options.getSortValue(a, options.sortKey);
         const vb = options.getSortValue(b, options.sortKey);

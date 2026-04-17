@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useGetCurrentUser } from "@workspace/api-client-react";
+import { useGetCurrentUser, useListSuppliers } from "@workspace/api-client-react";
 import { Download, FileDown, ImagePlus, Images, LineChart, MoreHorizontal, Plus, Search, Upload } from "lucide-react";
 import { ModuleInsightsDrawer } from "@/components/analytics/ModuleInsightsDrawer";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +40,7 @@ export default function InventoryPage() {
   const { format } = useCurrency();
     const queryClient = useQueryClient();
     const { data: me } = useGetCurrentUser();
+  const { data: suppliers = [] } = useListSuppliers();
   const canManageImages =
     me?.role === "admin"
     || me?.role === "manager"
@@ -51,6 +52,8 @@ export default function InventoryPage() {
   const { data: allImages = [], isLoading: galleryImagesLoading } = useModuleImages("inventory");
   const [selectedIds, setSelectedIds] = useState([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showDemandDialog, setShowDemandDialog] = useState(false);
+  const [demandPlan, setDemandPlan] = useState([]);
     const [showGallery, setShowGallery] = useState(false);
   const [imagePanelItem, setImagePanelItem] = useState(null);
   const [insightsOpen, setInsightsOpen] = useState(false);
@@ -138,13 +141,42 @@ export default function InventoryPage() {
     if (!response.ok) throw new Error(json?.error || `Demand creation failed for ${item.name}`);
   };
 
-  const bulkCreateDemand = async () => {
+  const openBulkDemandDialog = () => {
     if (selectedRows.length === 0) return;
+    setDemandPlan(
+      selectedRows.map((item) => ({
+        inventoryItemId: item.id,
+        itemName: item.name,
+        unit: item.unit,
+        quantityRequested: String(Math.max(1, Number(item.reorderLevel ?? 0) - Number(item.quantity ?? 0))),
+        supplierId: item.supplierId ? String(item.supplierId) : "",
+        notes: "",
+      })),
+    );
+    setShowDemandDialog(true);
+  };
+
+  const bulkCreateDemand = async () => {
+    if (demandPlan.length === 0) return;
     setIsBusy(true);
     try {
-      await Promise.all(selectedRows.map((item) => createDemandFor(item)));
-      toast({ title: "Bulk demand created", description: `${selectedRows.length} items sent to procurement.` });
+      const response = await fetch(`${API_BASE}/api/inventory/procurement-demand/bulk`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: demandPlan.map((row) => ({
+            inventoryItemId: row.inventoryItemId,
+            quantityRequested: Number(row.quantityRequested),
+            supplierId: row.supplierId ? Number(row.supplierId) : undefined,
+            notes: row.notes || undefined,
+          })),
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json?.error || "Bulk demand creation failed.");
+      toast({ title: "Bulk demand created", description: `${json?.created?.length ?? demandPlan.length} items sent to procurement.` });
       clearSelection();
+      setShowDemandDialog(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Bulk demand failed", description: e?.message || "Try again." });
     } finally {
@@ -261,6 +293,66 @@ export default function InventoryPage() {
                     <Button type="submit" disabled={isSaving}>{isSaving ? "Saving..." : "Create item"}</Button>
                   </DialogFooter>
                 </form>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={showDemandDialog} onOpenChange={setShowDemandDialog}>
+              <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Inventory demand plan</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Assign supplier and quantity per item, then create procurement demand in one action.
+                  </p>
+                  <div className="space-y-2">
+                    {demandPlan.map((row, idx) => (
+                      <div key={row.inventoryItemId} className="grid grid-cols-1 gap-2 rounded-md border p-3 md:grid-cols-12">
+                        <div className="md:col-span-4">
+                          <Label className="text-xs">Item</Label>
+                          <p className="text-sm font-medium">{row.itemName}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label className="text-xs">Qty</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={row.quantityRequested}
+                            onChange={(e) => setDemandPlan((prev) => prev.map((r, i) => (i === idx ? { ...r, quantityRequested: e.target.value } : r)))}
+                          />
+                        </div>
+                        <div className="md:col-span-3">
+                          <Label className="text-xs">Unit</Label>
+                          <Input value={row.unit || "—"} disabled />
+                        </div>
+                        <div className="md:col-span-3">
+                          <Label className="text-xs">Supplier</Label>
+                          <Select
+                            value={row.supplierId || "__auto__"}
+                            onValueChange={(value) => setDemandPlan((prev) => prev.map((r, i) => (i === idx ? { ...r, supplierId: value === "__auto__" ? "" : value } : r)))}
+                          >
+                            <SelectTrigger><SelectValue placeholder="Auto assign" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__auto__">Auto assign</SelectItem>
+                              {suppliers.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-12">
+                          <Label className="text-xs">Notes</Label>
+                          <Input
+                            value={row.notes}
+                            onChange={(e) => setDemandPlan((prev) => prev.map((r, i) => (i === idx ? { ...r, notes: e.target.value } : r)))}
+                            placeholder="Alternative / stock note for supplier"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowDemandDialog(false)}>Cancel</Button>
+                  <Button onClick={bulkCreateDemand} disabled={isBusy}>{isBusy ? "Creating..." : "Create inventory demand"}</Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
             <ModuleActionsMenu
@@ -408,8 +500,8 @@ export default function InventoryPage() {
               <span className="text-xs text-muted-foreground">
                 Selected: {selectedRows.length}
               </span>
-              <Button size="sm" variant="secondary" disabled={selectedRows.length === 0 || isBusy} onClick={bulkCreateDemand}>
-                Create demand for selected
+              <Button size="sm" variant="secondary" disabled={selectedRows.length === 0 || isBusy} onClick={openBulkDemandDialog}>
+                Inventory demand
               </Button>
               <Button size="sm" variant="ghost" disabled={selectedRows.length === 0 || isBusy} onClick={clearSelection}>
                 Clear

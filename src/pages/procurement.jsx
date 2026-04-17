@@ -75,7 +75,7 @@ export default function ProcurementPage() {
             ] }),
             _jsx(CardContent, { children: comparisonQ.isLoading ? (_jsx(Skeleton, { className: "h-32 w-full" })) : (_jsx("div", { className: "space-y-6", children: (comparisonQ.data?.groups ?? []).map((g) => (_jsxs("div", { className: "rounded-lg border p-4", children: [
                 _jsx("p", { className: "font-medium", children: g.itemName || `Item #${g.inventoryItemId}` }),
-                _jsxs(Table, { children: [
+                _jsx("div", { className: "overflow-x-auto", children: _jsxs(Table, { children: [
                     _jsx(TableHeader, { children: _jsxs(TableRow, { children: [
                         _jsx(TableHead, { children: "Supplier" }),
                         _jsx(TableHead, { className: "text-right", children: "Unit price" }),
@@ -88,7 +88,7 @@ export default function ProcurementPage() {
                         _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", children: q.workflowStage ?? "legacy" }) }),
                         _jsx(TableCell, { className: "text-muted-foreground text-sm", children: q.status }),
                     ] }, q.id))) }),
-                ] }),
+                ] }) }),
             ] }, g.inventoryItemId))) })) }),
         ] }),
         _jsxs(Card, { children: [
@@ -96,7 +96,15 @@ export default function ProcurementPage() {
                 _jsx(CardTitle, { children: "Workflow queue" }),
                 _jsx(CardDescription, { children: "Draft and in-review supplier quotes (excludes legacy lock/approve flow)." }),
             ] }),
-            _jsx(CardContent, { children: quotesQ.isLoading ? (_jsx(Skeleton, { className: "h-40 w-full" })) : (_jsxs(Table, { children: [
+            _jsx(CardContent, { children: quotesQ.isLoading ? (_jsx(Skeleton, { className: "h-40 w-full" })) : (_jsxs("div", { children: [
+                _jsx("div", { className: "md:hidden space-y-2", children: wfRows.length === 0 ? (_jsx("p", { className: "text-sm text-muted-foreground", children: "No workflow quotes yet — inventory demand or manual draft quotes will appear here." })) : wfRows.map((q) => (_jsxs("div", { className: "rounded-md border p-3 space-y-1", children: [
+                    _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("p", { className: "font-medium", children: q.supplierName }), _jsx(Badge, { variant: "secondary", children: q.source === "inventory_demand" ? "Inventory demand" : "Manual quote" })] }),
+                    _jsxs("p", { className: "text-xs text-muted-foreground", children: ["Quote #", q.id, " • ", q.itemName ?? "—"] }),
+                    _jsxs("p", { className: "text-sm", children: ["Total: ", fmtMoney(Number(q.totalPrice ?? 0))] }),
+                    _jsx(Badge, { variant: q.workflowStage === "rejected" ? "destructive" : "outline", children: WF_LABEL[q.workflowStage] ?? q.workflowStage }),
+                    _jsx("div", { children: q.workflowStage === "draft" && canSubmit ? (_jsx(Button, { size: "sm", disabled: submitM.isPending, onClick: () => submitM.mutate(q.id), children: "Submit" })) : _jsx("span", { className: "text-xs text-muted-foreground", children: "—" }) }),
+                ] }, q.id))) }),
+                _jsx("div", { className: "hidden md:block overflow-x-auto", children: _jsxs(Table, { children: [
                 _jsx(TableHeader, { children: _jsxs(TableRow, { children: [
                     _jsx(TableHead, { children: "ID" }),
                     _jsx(TableHead, { children: "Supplier" }),
@@ -115,6 +123,7 @@ export default function ProcurementPage() {
                     _jsx(TableCell, { children: _jsx(Badge, { variant: "secondary", children: q.source === "inventory_demand" ? "Inventory demand" : "Manual quote" }) }),
                     _jsx(TableCell, { children: q.workflowStage === "draft" && canSubmit ? (_jsx(Button, { size: "sm", disabled: submitM.isPending, onClick: () => submitM.mutate(q.id), children: "Submit" })) : "—" }),
                 ] }, q.id))) }),
+            ] }) }),
             ] })) }),
         ] }),
     ] }));
