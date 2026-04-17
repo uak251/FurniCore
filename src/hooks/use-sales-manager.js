@@ -70,6 +70,32 @@ export function useUploadOrderUpdateImage() {
         },
     });
 }
+export function useAddOrderUpdateWithImages() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ orderId, message, status, progressPercent, visibleToCustomer, files }) => {
+            const form = new FormData();
+            form.append("message", message);
+            if (status)
+                form.append("status", status);
+            if (typeof progressPercent === "number")
+                form.append("progressPercent", String(progressPercent));
+            form.append("visibleToCustomer", visibleToCustomer ? "true" : "false");
+            for (const f of files ?? [])
+                form.append("images", f);
+            const res = await fetch(`${API}/api/sales-manager/orders/${orderId}/updates/with-images`, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${getAuthToken() ?? ""}` },
+                body: form,
+            });
+            const json = await res.json();
+            if (!res.ok)
+                throw new Error(json?.error ?? `HTTP ${res.status}`);
+            return json;
+        },
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["salesOrders"] }),
+    });
+}
 /* ─── Invoices ───────────────────────────────────────────────────────────── */
 export function useSalesInvoices() {
     return useQuery({ queryKey: ["salesInvoices"], queryFn: () => apiFetch("/sales-manager/invoices") });
