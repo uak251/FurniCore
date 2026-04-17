@@ -2996,10 +2996,19 @@ export const listSuppliers = async (
   params?: ListSuppliersParams,
   options?: RequestInit,
 ): Promise<Supplier[]> => {
-  return customFetch<Supplier[]>(getListSuppliersUrl(params), {
-    ...options,
-    method: "GET",
-  });
+  const res = await customFetch<Supplier[] | { data?: Supplier[]; rows?: Supplier[] }>(
+    getListSuppliersUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+  if (Array.isArray(res)) return res;
+  if (res && typeof res === "object") {
+    if (Array.isArray(res.data)) return res.data;
+    if (Array.isArray(res.rows)) return res.rows;
+  }
+  return [];
 };
 
 export const getListSuppliersQueryKey = (params?: ListSuppliersParams) => {

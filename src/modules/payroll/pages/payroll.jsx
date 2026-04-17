@@ -24,7 +24,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { downloadPayrollRowsCsv, parsePayrollBreakdown, printPayrollSlip, savePayrollSlipAsPdf } from "@/modules/payroll/lib/payroll-export";
+import {
+  downloadPayrollRowsCsv,
+  downloadPayrollBreakdownCsv,
+  parsePayrollBreakdown,
+  printPayrollSlip,
+  printPayrollBreakdown,
+  savePayrollSlipAsPdf,
+} from "@/modules/payroll/lib/payroll-export";
+import { PayrollBreakdownPanel } from "@/modules/payroll/components/PayrollBreakdownPanel";
 import { RecordImagePanel } from "@/components/images";
 import { useEntityImages } from "@/components/images/useRecordImages";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
@@ -321,6 +329,24 @@ export default function PayrollPage() {
                                 View calculation breakdown
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                disabled={!breakdown}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => {
+                                    if (!breakdown) return;
+                                    downloadPayrollBreakdownCsv(
+                                      row,
+                                      breakdown,
+                                      `payroll-breakdown-${row.id}-${row.year}-${row.month}.csv`,
+                                    );
+                                    toast({ title: "Breakdown exported", description: "CSV includes nested fields as key paths." });
+                                  }, 0);
+                                }}
+                              >
+                                <Download className="h-4 w-4" aria-hidden />
+                                Download breakdown (CSV)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
                                 onSelect={(e) => {
                                   e.preventDefault();
                                   window.setTimeout(() => setSignatureRow(row), 0);
@@ -358,23 +384,58 @@ export default function PayrollPage() {
       </Card>
 
       <Dialog open={Boolean(breakdownRow)} onOpenChange={(open) => { if (!open) setBreakdownRow(null); }}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Calculation breakdown</DialogTitle>
           </DialogHeader>
-          {breakdownRow ? (
-            <div className="space-y-3 text-sm">
-              <p className="text-muted-foreground">
-                {breakdownRow.employeeName || `Employee #${breakdownRow.employeeId}`} — {MONTHS[(breakdownRow.month ?? 1) - 1]} {breakdownRow.year}
-              </p>
-              <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-3 text-xs">
-                {JSON.stringify(parsePayrollBreakdown(breakdownRow.notes), null, 2)}
-              </pre>
-            </div>
-          ) : null}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBreakdownRow(null)}>Close</Button>
-          </DialogFooter>
+          {breakdownRow ? (() => {
+            const bd = parsePayrollBreakdown(breakdownRow.notes);
+            const periodLabel = `${MONTHS[(breakdownRow.month ?? 1) - 1]} ${breakdownRow.year}`;
+            return (
+              <div className="space-y-4 text-sm">
+                <p className="text-muted-foreground">
+                  {breakdownRow.employeeName || `Employee #${breakdownRow.employeeId}`} — {periodLabel}
+                </p>
+                {bd ? (
+                  <PayrollBreakdownPanel breakdown={bd} formatMoney={format} />
+                ) : (
+                  <p className="text-muted-foreground">No structured breakdown found.</p>
+                )}
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end print:hidden">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!bd) return;
+                      printPayrollBreakdown(breakdownRow, bd, { periodLabel, format });
+                    }}
+                    disabled={!bd}
+                  >
+                    <Printer className="mr-2 h-4 w-4" aria-hidden />
+                    Print breakdown
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!bd) return;
+                      downloadPayrollBreakdownCsv(
+                        breakdownRow,
+                        bd,
+                        `payroll-breakdown-${breakdownRow.id}-${breakdownRow.year}-${breakdownRow.month}.csv`,
+                      );
+                      toast({ title: "CSV downloaded" });
+                    }}
+                    disabled={!bd}
+                  >
+                    <Download className="mr-2 h-4 w-4" aria-hidden />
+                    Download CSV
+                  </Button>
+                  <Button variant="default" onClick={() => setBreakdownRow(null)}>Close</Button>
+                </DialogFooter>
+              </div>
+            );
+          })() : null}
         </DialogContent>
       </Dialog>
       <Dialog open={Boolean(payslipRow)} onOpenChange={(open) => { if (!open) setPayslipRow(null); }}>

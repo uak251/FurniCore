@@ -163,3 +163,103 @@ export function parsePayrollBreakdown(notesRaw) {
     return null;
   }
 }
+
+/**
+ * Flatten nested breakdown JSON into CSV rows (section, key, value).
+ * @param {Record<string, unknown>} breakdown
+ */
+function flattenBreakdownRows(breakdown, prefix = "") {
+  /** @type {Array<{ section: string; key: string; value: string }>} */
+  const out = [];
+  if (breakdown == null || typeof breakdown !== "object") return out;
+
+  const walk = (obj, pfx) => {
+    if (obj == null) return;
+    if (Array.isArray(obj)) {
+      obj.forEach((item, i) => {
+        if (item != null && typeof item === "object") walk(item, `${pfx}[${i}]`);
+        else out.push({ section: "array", key: `${pfx}[${i}]`, value: String(item ?? "") });
+      });
+      return;
+    }
+    for (const [k, v] of Object.entries(obj)) {
+      const key = pfx ? `${pfx}.${k}` : k;
+      if (v != null && typeof v === "object" && !Array.isArray(v)) {
+        walk(v, key);
+      }
+      else if (Array.isArray(v)) {
+        walk(v, key);
+      }
+      else {
+        const sec = key.split(".")[0] || "field";
+        out.push({ section: sec, key, value: String(v ?? "") });
+      }
+    }
+  };
+  walk(breakdown, prefix);
+  return out;
+}
+
+/**
+ * @param {{ employeeName?: string; employeeId?: number; month?: number; year?: number }} row
+ * @param {Record<string, unknown>} breakdown
+ * @param {string} filename
+ */
+export function downloadPayrollBreakdownCsv(row, breakdown, filename) {
+  const meta = [
+    ["meta", "employeeName", String(row?.employeeName ?? "")],
+    ["meta", "employeeId", String(row?.employeeId ?? "")],
+    ["meta", "month", String(row?.month ?? "")],
+    ["meta", "year", String(row?.year ?? "")],
+  ];
+  const flat = flattenBreakdownRows(breakdown);
+  const lines = [["section", "key", "value"].map(escapeCsvCell).join(",")];
+  for (const r of meta) lines.push(r.map(escapeCsvCell).join(","));
+  for (const r of flat) lines.push([r.section, r.key, r.value].map(escapeCsvCell).join(","));
+  const blob = new Blob(["\uFEFF", lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Printable breakdown (same window pattern as pay slip).
+ * @param {{ employeeName?: string; employeeId?: number; month?: number; year?: number }} row
+ * @param {Record<string, unknown>} breakdown
+ * @param {{ periodLabel: string; format: (n: number) => string }} ctx
+ */
+export function printPayrollBreakdown(row, breakdown, ctx) {
+  const name = String(row?.employeeName ?? `Employee #${row?.employeeId ?? ""}`);
+  const period = ctx.periodLabel;
+  const rows = flattenBreakdownRows(breakdown);
+  const body = rows
+    .map(
+      (r) =>
+        `<tr><td>${escapeHtmlTitle(r.key)}</td><td class="num">${escapeHtmlTitle(r.value)}</td></tr>`,
+    )
+    .join("");
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Payroll breakdown — ${escapeHtmlTitle(name)}</title>
+<style>
+body{font-family:Inter,system-ui,sans-serif;padding:24px;max-width:720px;margin:auto;color:#111}
+h1{font-size:1.15rem;margin:0 0 6px}
+.muted{color:#666;font-size:12px;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:6px 0;border-bottom:1px solid #eee}
+.num{text-align:right}
+@media print{body{padding:12px}}
+</style></head><body>
+<h1>Payroll calculation breakdown</h1>
+<p class="muted">${escapeHtmlTitle(name)} · ${escapeHtmlTitle(period)}</p>
+<table><thead><tr><th align="left">Field</th><th class="num">Value</th></tr></thead><tbody>${body}</tbody></table>
+<p class="muted" style="margin-top:18px">Generated from FurniCore payroll.</p>
+<script>window.onload=function(){window.print();}</script>
+</body></html>`;
+  const w = window.open("", "_blank", "noopener,noreferrer,width=720,height=900");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+}
+

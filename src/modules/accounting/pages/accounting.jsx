@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useCurrency } from "@/lib/currency";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Link } from "wouter";
 import { LineChart, Plus } from "lucide-react";
 import { ModulePageHeader } from "@/components/module/ModulePageHeader";
 import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
@@ -98,6 +99,37 @@ export default function AccountingPage() {
           </>
         )}
       />
+
+      <Card className="border-dashed bg-muted/30">
+        <CardHeader>
+          <CardTitle className="text-base">Financial reporting roadmap</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            Today this screen is a <strong className="text-foreground">cashbook</strong> (simple income/expense lines).
+            For full <strong className="text-foreground">accounting principles</strong> (double-entry GL, period close,
+            trial balance, AR/AP aging tied to invoices, bank reconciliation), the usual approach is: native journal
+            APIs you already have under the hood, plus either <strong className="text-foreground">embedded analytics</strong>{" "}
+            (this app&apos;s charts) or <strong className="text-foreground">Power BI / Looker Studio</strong> reading the same
+            database or a read replica.
+          </p>
+          <ul className="list-inside list-disc space-y-1 text-foreground/90">
+            <li>Phase A (recommended first): GL view + trial balance + export from posted journal entries.</li>
+            <li>Phase B: Power BI dataset on invoices, payroll accruals, and inventory COGS (you already have Power BI routes for deck-style reports).</li>
+            <li>Phase C: Bank feed rules and reconciliation workflow.</li>
+          </ul>
+          <p className="pt-1">
+            <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/settings">
+              Configure Power BI (Settings)
+            </Link>
+            {" · "}
+            <Link className="font-medium text-primary underline-offset-4 hover:underline" href="/chart-of-accounts">
+              Chart of accounts
+            </Link>
+          </p>
+          <p className="text-xs">Implementation of Phase A/B can follow once you confirm priority and data source (live DB vs warehouse).</p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="space-y-3">

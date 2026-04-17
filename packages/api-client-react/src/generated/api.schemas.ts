@@ -290,6 +290,12 @@ export interface Supplier {
   rating?: number | null;
   createdAt: string;
   updatedAt: string;
+  /** Present on POST /api/suppliers when a portal user was created or skipped */
+  portalUser?: {
+    created?: boolean;
+    reason?: string;
+    message?: string;
+  };
 }
 
 export interface CreateSupplierBody {
@@ -298,6 +304,12 @@ export interface CreateSupplierBody {
   phone?: string;
   address?: string;
   contactPerson?: string;
+  status?: string;
+  rating?: number;
+  paymentTerms?: string;
+  notes?: string;
+  /** When set with a valid email, creates a `supplier` role user for the supplier portal */
+  portalPassword?: string;
 }
 
 export interface UpdateSupplierBody {
