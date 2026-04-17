@@ -15,6 +15,7 @@ import { useAccountingPageModel } from "@/hooks/modules/useAccountingPageModel";
 
 export default function AccountingPage() {
   const { format } = useCurrency();
+  const [insightsOpen, setInsightsOpen] = useState(false);
   const { query, setQuery, type, setType, status, setStatus, rows, isLoading, isError, error, refetch } = useAccountingPageModel();
 
   return (

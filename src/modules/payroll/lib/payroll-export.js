@@ -64,13 +64,20 @@ export function downloadPayrollRowsCsv(rows, filename) {
 export function printPayrollSlip(row, ctx) {
   const name = String(row.employeeName ?? `Employee #${row.employeeId}`);
   const period = `${ctx.months[(Number(row.month) || 1) - 1]} ${row.year}`;
+  const breakdown = parsePayrollBreakdown(row.notes);
+  const attendance = breakdown?.attendance && typeof breakdown.attendance === "object" ? breakdown.attendance : null;
+  const signatureUrl = row.signatureUrl ? String(row.signatureUrl) : "";
+  const signatureBlock = signatureUrl
+    ? `<div style="margin-top:24px"><div class="muted">Employee Signature</div><img src="${signatureUrl}" alt="Employee signature" style="max-height:80px;max-width:180px;object-fit:contain;border-bottom:1px solid #ddd;padding-bottom:8px" /></div>`
+    : `<div style="margin-top:24px" class="muted">Employee Signature: _____________________</div>`;
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Pay slip — ${name}</title>
-<style>body{font-family:system-ui,sans-serif;padding:24px;max-width:480px;margin:auto}
-h1{font-size:1.1rem}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:6px 0;border-bottom:1px solid #eee}
-.num{text-align:right}.muted{color:#666;font-size:12px}</style></head><body>
-<h1>FurniCore — pay slip</h1>
-<p class="muted">${period}</p>
-<p><strong>${name}</strong></p>
+<style>body{font-family:Inter,system-ui,sans-serif;padding:24px;max-width:680px;margin:auto;color:#111}
+ h1{font-size:1.2rem;margin:0 0 8px} h2{font-size:1rem;margin:22px 0 8px}
+ table{width:100%;border-collapse:collapse;margin-top:8px}td{padding:7px 0;border-bottom:1px solid #eee}
+ .num{text-align:right}.muted{color:#666;font-size:12px}.meta{display:flex;justify-content:space-between;gap:8px}
+ .card{border:1px solid #eee;border-radius:10px;padding:12px 14px;background:#fafafa}</style></head><body>
+<h1>FurniCore Payroll Slip</h1>
+<div class="meta"><p class="muted">Period: ${period}</p><p class="muted">Employee: ${name}</p></div>
 <table>
 <tr><td>Base</td><td class="num">${ctx.format(Number(row.baseSalary ?? 0))}</td></tr>
 <tr><td>Bonus</td><td class="num">${ctx.format(Number(row.bonus ?? 0))}</td></tr>
@@ -78,7 +85,15 @@ h1{font-size:1.1rem}table{width:100%;border-collapse:collapse;margin-top:12px}td
 <tr><td><strong>Net</strong></td><td class="num"><strong>${ctx.format(Number(row.netSalary ?? 0))}</strong></td></tr>
 <tr><td>Status</td><td class="num">${String(row.status ?? "")}</td></tr>
 </table>
-<p class="muted">Generated from FurniCore payroll.</p>
+${attendance ? `<h2>Attendance Breakdown</h2><div class="card"><table>
+<tr><td>Present</td><td class="num">${attendance.present ?? 0}</td></tr>
+<tr><td>Absent</td><td class="num">${attendance.absent ?? 0}</td></tr>
+<tr><td>Late</td><td class="num">${attendance.late ?? 0}</td></tr>
+<tr><td>Half Day</td><td class="num">${attendance.halfDay ?? 0}</td></tr>
+<tr><td>Attendance Penalty</td><td class="num">${ctx.format(Number(attendance.totalAttendancePenalty ?? 0))}</td></tr>
+</table></div>` : ""}
+${signatureBlock}
+<p class="muted" style="margin-top:20px">Generated from FurniCore payroll.</p>
 <script>window.onload=function(){window.print();}</script>
 </body></html>`;
   const w = window.open("", "_blank", "noopener,noreferrer,width=640,height=720");

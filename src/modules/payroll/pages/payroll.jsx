@@ -16,6 +16,7 @@ import { ModulePageHeader } from "@/components/module/ModulePageHeader";
 import { ModuleActionsMenu } from "@/components/module/ModuleActionsMenu";
 import { ModuleTableState } from "@/components/module/ModuleTableState";
 import { usePayrollPageModel } from "@/hooks/modules/usePayrollPageModel";
+import { useGetCurrentUser } from "@workspace/api-client-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,12 +25,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { downloadPayrollRowsCsv, parsePayrollBreakdown, printPayrollSlip } from "@/modules/payroll/lib/payroll-export";
+import { RecordImagePanel } from "@/components/images";
+import { useEntityImages } from "@/components/images/useRecordImages";
+import { resolvePublicAssetUrl } from "@/lib/image-url";
 
 export default function PayrollPage() {
     const { toast } = useToast();
     const qc = useQueryClient();
   const [insightsOpen, setInsightsOpen] = useState(false);
   const [breakdownRow, setBreakdownRow] = useState(null);
+  const [payslipRow, setPayslipRow] = useState(null);
+  const [signatureRow, setSignatureRow] = useState(null);
+  const { data: me } = useGetCurrentUser();
+  const canManagePayrollImages = me?.role === "admin" || me?.role === "manager" || me?.role === "accountant";
+  const { data: signatureImages = [] } = useEntityImages("payroll", signatureRow?.id ?? payslipRow?.id);
   const { format } = useCurrency();
   const {
     MONTHS,
@@ -259,6 +268,10 @@ export default function PayrollPage() {
                                 <Printer className="h-4 w-4" aria-hidden />
                                 Print pay slip
                               </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setPayslipRow(row)}>
+                                <FileText className="h-4 w-4" aria-hidden />
+                                Open detailed pay slip
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={!breakdown}
                                 onSelect={() => {
@@ -267,6 +280,10 @@ export default function PayrollPage() {
                               >
                                 <FileText className="h-4 w-4" aria-hidden />
                                 View calculation breakdown
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setSignatureRow(row)}>
+                                <FileText className="h-4 w-4" aria-hidden />
+                                Attach signed slip image
                               </DropdownMenuItem>
                               {!isApproved ? (
                                 <>
@@ -310,6 +327,79 @@ export default function PayrollPage() {
           ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setBreakdownRow(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(payslipRow)} onOpenChange={(open) => { if (!open) setPayslipRow(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Payroll slip</DialogTitle>
+          </DialogHeader>
+          {payslipRow ? (
+            <div className="space-y-4 text-sm">
+              <div className="rounded-md border p-3">
+                <p className="font-medium">{payslipRow.employeeName || `Employee #${payslipRow.employeeId}`}</p>
+                <p className="text-muted-foreground">{MONTHS[(payslipRow.month ?? 1) - 1]} {payslipRow.year}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
+                <p className="text-muted-foreground">Base Salary</p><p className="text-right font-medium">{format(Number(payslipRow.baseSalary ?? 0))}</p>
+                <p className="text-muted-foreground">Bonus</p><p className="text-right font-medium text-green-600">{format(Number(payslipRow.bonus ?? 0))}</p>
+                <p className="text-muted-foreground">Deductions</p><p className="text-right font-medium text-destructive">{format(Number(payslipRow.deductions ?? 0))}</p>
+                <p className="text-muted-foreground">Net Salary</p><p className="text-right text-base font-semibold">{format(Number(payslipRow.netSalary ?? 0))}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="mb-2 font-medium">Employee Signature</p>
+                {signatureImages.length > 0 ? (
+                  <img
+                    src={resolvePublicAssetUrl((signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0]).url)}
+                    alt="Employee signature"
+                    className="h-20 max-w-[220px] object-contain"
+                  />
+                ) : (
+                  <p className="text-muted-foreground">No signature attached yet.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayslipRow(null)}>Close</Button>
+            <Button
+              onClick={() => {
+                if (!payslipRow) return;
+                const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
+                printPayrollSlip(
+                  { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
+                  { months: MONTHS, format },
+                );
+              }}
+            >
+              <Printer className="mr-1 h-4 w-4" aria-hidden />
+              Print standard slip
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(signatureRow)} onOpenChange={(open) => { if (!open) setSignatureRow(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Attach signed payroll image</DialogTitle>
+          </DialogHeader>
+          {signatureRow ? (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Upload employee signature or signed payroll slip for {signatureRow.employeeName || `Employee #${signatureRow.employeeId}`} ({MONTHS[(signatureRow.month ?? 1) - 1]} {signatureRow.year}).
+              </p>
+              <RecordImagePanel
+                entityType="payroll"
+                entityId={signatureRow.id}
+                canUpload={canManagePayrollImages}
+                canDelete={canManagePayrollImages}
+              />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSignatureRow(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
