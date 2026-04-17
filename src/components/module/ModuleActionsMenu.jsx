@@ -46,8 +46,9 @@ export function ModuleActionsMenu({ label = "Actions", align = "end", triggerCla
               <DropdownMenuItem
                 disabled={it.disabled}
                 className={it.destructive ? "text-destructive focus:text-destructive" : undefined}
-                onSelect={() => {
-                  it.onSelect?.();
+                onSelect={(e) => {
+                  e.preventDefault();
+                  window.setTimeout(() => it.onSelect?.(), 0);
                 }}
               >
                 {Icon ? <Icon className="shrink-0" aria-hidden /> : null}

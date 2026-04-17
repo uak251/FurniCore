@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useSupplierMe, useSupplierQuotes, useSubmitQuote, useSupplierDeliveries, useAddDeliveryUpdate, usePatchDeliveryUpdate, useSupplierLedger, } from "@/hooks/use-supplier-portal";
+import { useGetCurrentUser } from "@workspace/api-client-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,7 @@ function EditDeliveryDialog({ update, onClose, }) {
 }
 /* ─── Main portal page ───────────────────────────────────────────────────────── */
 export default function SupplierPortalPage() {
+    const { data: authUser } = useGetCurrentUser();
     const { data: profile, isLoading: profileLoading, error: profileError } = useSupplierMe();
     const { data: quotes = [], isLoading: quotesLoading } = useSupplierQuotes();
     const { data: deliveries = [], isLoading: deliveriesLoading } = useSupplierDeliveries();
@@ -163,8 +165,15 @@ export default function SupplierPortalPage() {
     if (profileLoading) {
         return (_jsxs("div", { className: "space-y-4", children: [_jsx(Skeleton, { className: "h-32 w-full" }), _jsx("div", { className: "grid grid-cols-2 gap-4 sm:grid-cols-4", children: [1, 2, 3, 4].map((i) => _jsx(Skeleton, { className: "h-24 w-full" }, i)) })] }));
     }
+    if (profileError) {
+        const errText = String(profileError.message ?? "");
+        const notLinked = errText.includes("No supplier record") || errText.includes("Supplier profile not found");
+        if (!notLinked) {
+            return (_jsxs("div", { className: "flex flex-col items-center justify-center gap-4 px-4 py-24 text-center", children: [_jsx(AlertTriangle, { className: "h-12 w-12 text-destructive", "aria-hidden": true }), _jsxs("div", { className: "max-w-lg", children: [_jsx("p", { className: "text-xl font-semibold", children: "Cannot reach supplier API" }), _jsxs("p", { className: "mt-2 text-sm text-muted-foreground", children: ["Requests to ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "/api/supplier-portal/*" }), " failed before the server could answer. In local development: start the API server (default ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "PORT=3000" }), "), keep the Vite dev server on a different port (e.g. ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "5173" }), "), and set ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "VITE_DEV_API_ORIGIN" }), " in ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "frontend/furnicore/.env" }), " if the API is not at ", _jsx("code", { className: "rounded bg-muted px-1 font-mono text-xs", children: "http://127.0.0.1:3000" }), "."] }), _jsx("p", { className: "mt-2 break-all font-mono text-xs text-muted-foreground", children: errText.slice(0, 240) })] }), _jsxs(Alert, { className: "max-w-lg text-left", children: [_jsx(Info, { className: "h-4 w-4" }), _jsx(AlertDescription, { className: "text-xs", children: "After changing .env, restart the Vite dev server so the /api proxy picks up the new API origin." })] })] }));
+        }
+    }
     if (profileError || !profile) {
-        return (_jsxs("div", { className: "flex flex-col items-center justify-center gap-4 py-24 text-center", children: [_jsx(AlertTriangle, { className: "h-12 w-12 text-amber-500", "aria-hidden": true }), _jsxs("div", { children: [_jsx("p", { className: "text-xl font-semibold", children: "Supplier profile not linked" }), _jsxs("p", { className: "mt-2 max-w-sm text-sm text-muted-foreground", children: ["Your account is not yet linked to a supplier record. Please ask your FurniCore administrator to create a supplier entry with your email address (", _jsx("span", { className: "font-mono text-xs" }), ")."] })] }), _jsxs(Alert, { className: "max-w-md text-left", children: [_jsx(Info, { className: "h-4 w-4" }), _jsxs(AlertDescription, { children: ["Admin steps: Go to ", _jsx("strong", { children: "Suppliers" }), " module \u2192 create or edit a supplier \u2192 set the ", _jsx("strong", { children: "Email" }), " field to match your login email \u2192 save. Then refresh this page."] })] })] }));
+        return (_jsxs("div", { className: "flex flex-col items-center justify-center gap-4 py-24 text-center", children: [_jsx(AlertTriangle, { className: "h-12 w-12 text-amber-500", "aria-hidden": true }), _jsxs("div", { children: [_jsx("p", { className: "text-xl font-semibold", children: "Supplier profile not linked" }), _jsxs("p", { className: "mt-2 max-w-sm text-sm text-muted-foreground", children: ["Your account is not yet linked to a supplier record. Please ask your FurniCore administrator to create a supplier entry with your email address (", _jsx("span", { className: "font-mono text-xs", children: authUser?.email || "unknown" }), ")."] })] }), _jsxs(Alert, { className: "max-w-md text-left", children: [_jsx(Info, { className: "h-4 w-4" }), _jsxs(AlertDescription, { children: ["Admin steps: Go to ", _jsx("strong", { children: "Suppliers" }), " module \u2192 create or edit a supplier \u2192 set the ", _jsx("strong", { children: "Email" }), " field to match your login email \u2192 save. Then refresh this page."] })] })] }));
     }
     /* ── Summary cards ─────────────────────────────────────────────── */
     const summary = ledger?.summary;

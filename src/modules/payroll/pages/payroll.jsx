@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { downloadPayrollRowsCsv, parsePayrollBreakdown, printPayrollSlip } from "@/modules/payroll/lib/payroll-export";
+import { downloadPayrollRowsCsv, parsePayrollBreakdown, printPayrollSlip, savePayrollSlipAsPdf } from "@/modules/payroll/lib/payroll-export";
 import { RecordImagePanel } from "@/components/images";
 import { useEntityImages } from "@/components/images/useRecordImages";
 import { resolvePublicAssetUrl } from "@/lib/image-url";
@@ -145,6 +145,16 @@ export default function PayrollPage() {
         )}
       />
 
+      <Card className="border-dashed bg-muted/20">
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-sm font-medium">Where approved payroll goes today</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Approving a row only updates its status to approved and records a <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">paidAt</code> timestamp in payroll.
+            It does <strong>not</strong> yet post salary journal entries to Accounting (general ledger, trial balance, profit and loss). Your next operational step is to pay staff from the bank or cash book and, if you use the GL module, enter a matching journal or cash transaction there, or export CSV for finance.
+          </p>
+        </CardHeader>
+      </Card>
+
       {pendingTotal > 0 ? (
         <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/10">
           <CardContent className="flex items-center justify-between p-4">
@@ -252,48 +262,70 @@ export default function PayrollPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-52">
                               <DropdownMenuItem
-                                onSelect={() => {
-                                  downloadPayrollRowsCsv([row], `payroll-${row.id}-${row.year}-${row.month}.csv`);
-                                  toast({ title: "Row exported" });
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => {
+                                    downloadPayrollRowsCsv([row], `payroll-${row.id}-${row.year}-${row.month}.csv`);
+                                    toast({ title: "Row exported" });
+                                  }, 0);
                                 }}
                               >
                                 <Download className="h-4 w-4" aria-hidden />
                                 Export row (CSV)
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onSelect={() => {
-                                  printPayrollSlip(row, { months: MONTHS, format });
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => {
+                                    printPayrollSlip(row, { months: MONTHS, format });
+                                  }, 0);
                                 }}
                               >
                                 <Printer className="h-4 w-4" aria-hidden />
                                 Print pay slip
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                onSelect={() => {
-                                  savePayrollSlipAsPdf(row, { months: MONTHS, format });
-                                  toast({
-                                    title: "Save as PDF",
-                                    description: "In the print dialog, choose Save as PDF as the printer destination.",
-                                  });
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => {
+                                    savePayrollSlipAsPdf(row, { months: MONTHS, format });
+                                    toast({
+                                      title: "Save as PDF",
+                                      description: "In the print dialog, choose Save as PDF as the printer destination.",
+                                    });
+                                  }, 0);
                                 }}
                               >
                                 <Download className="h-4 w-4" aria-hidden />
                                 Save pay slip as PDF…
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setPayslipRow(row)}>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => setPayslipRow(row), 0);
+                                }}
+                              >
                                 <FileText className="h-4 w-4" aria-hidden />
                                 Open detailed pay slip
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={!breakdown}
-                                onSelect={() => {
-                                  if (breakdown) setBreakdownRow(row);
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => {
+                                    if (breakdown) setBreakdownRow(row);
+                                  }, 0);
                                 }}
                               >
                                 <FileText className="h-4 w-4" aria-hidden />
                                 View calculation breakdown
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setSignatureRow(row)}>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  window.setTimeout(() => setSignatureRow(row), 0);
+                                }}
+                              >
                                 <FileText className="h-4 w-4" aria-hidden />
                                 Attach signed slip image
                               </DropdownMenuItem>
@@ -301,7 +333,10 @@ export default function PayrollPage() {
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onSelect={() => onApprove(row.id)}
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      window.setTimeout(() => void onApprove(row.id), 0);
+                                    }}
                                     disabled={approvePayroll.isPending}
                                   >
                                     <CheckCircle className="h-4 w-4" aria-hidden />
@@ -375,7 +410,7 @@ export default function PayrollPage() {
           ) : null}
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={() => setPayslipRow(null)}>Close</Button>
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button>
                   <Printer className="mr-1 h-4 w-4" aria-hidden />
@@ -385,30 +420,36 @@ export default function PayrollPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem
-                  onSelect={() => {
-                    if (!payslipRow) return;
-                    const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
-                    printPayrollSlip(
-                      { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
-                      { months: MONTHS, format },
-                    );
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    window.setTimeout(() => {
+                      if (!payslipRow) return;
+                      const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
+                      printPayrollSlip(
+                        { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
+                        { months: MONTHS, format },
+                      );
+                    }, 0);
                   }}
                 >
                   <Printer className="h-4 w-4" aria-hidden />
                   Print standard slip
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onSelect={() => {
-                    if (!payslipRow) return;
-                    const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
-                    savePayrollSlipAsPdf(
-                      { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
-                      { months: MONTHS, format },
-                    );
-                    toast({
-                      title: "Save as PDF",
-                      description: "In the print dialog, choose Save as PDF as the printer destination.",
-                    });
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    window.setTimeout(() => {
+                      if (!payslipRow) return;
+                      const primarySig = signatureImages.find((img) => img.sortOrder === 0) ?? signatureImages[0];
+                      savePayrollSlipAsPdf(
+                        { ...payslipRow, signatureUrl: primarySig ? resolvePublicAssetUrl(primarySig.url) : "" },
+                        { months: MONTHS, format },
+                      );
+                      toast({
+                        title: "Save as PDF",
+                        description: "In the print dialog, choose Save as PDF as the printer destination.",
+                      });
+                    }, 0);
                   }}
                 >
                   <Download className="h-4 w-4" aria-hidden />
