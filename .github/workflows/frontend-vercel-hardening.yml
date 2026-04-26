@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: frontend/furnicore/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
