@@ -5,17 +5,21 @@ on:
     branches: [main]
     paths:
       - "frontend/furnicore/**"
+      - "frontend/furnicore/packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/frontend-vercel-hardening.yml"
   pull_request:
     paths:
       - "frontend/furnicore/**"
+      - "frontend/furnicore/packages/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/frontend-vercel-hardening.yml"
 
 jobs:
   frontend-ci:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend/furnicore
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,20 +43,19 @@ jobs:
         env:
           NODE_ENV: production
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-        run: pnpm run check:deploy-env
+        run: pnpm --filter @workspace/furnicore run check:deploy-env
 
       - name: Build
         env:
           NODE_ENV: production
-        run: pnpm run build
+        run: pnpm --filter @workspace/furnicore run build
 
       - name: Test
         env:
           NODE_ENV: test
-        run: pnpm run test
+        run: pnpm --filter @workspace/furnicore run test
 
       - name: Integration test analytics CSV workflows
-        working-directory: .
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           LOGIN_TEST_EMAIL: ${{ secrets.RAILWAY_ADMIN_EMAIL }}
@@ -63,4 +66,4 @@ jobs:
             echo "Required: VITE_API_URL, RAILWAY_ADMIN_EMAIL, RAILWAY_ADMIN_PASSWORD"
             exit 1
           fi
-          pnpm -C frontend/furnicore run test:integration:analytics-csv
+          pnpm --filter @workspace/furnicore run test:integration:analytics-csv

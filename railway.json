@@ -1,7 +1,11 @@
 {
   "build": {
     "builder": "nixpacks",
-    "watchPatterns": ["backend/api-server/**"]
+    "watchPatterns": [
+      "backend/api-server/**",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml"
+    ]
   },
   "deploy": {
     "restartPolicyType": "on_failure",

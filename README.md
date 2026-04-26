@@ -12,3 +12,5 @@ Monorepo layout (ERP app + API):
 Optional: **`frontend/mockup-sandbox`** — separate prototyping canvas, not part of the ERP UI.
 
 **Local setup:** [docs/LOCAL_DEV.md](docs/LOCAL_DEV.md) — `pnpm run setup:env`, Postgres via Docker (`pnpm run db:up`), `pnpm run dev:stack`. If port **3000** is busy: `pnpm run ports:free` or change **`PORT`** in `.env`.
+
+**Vercel / Railway:** Use **Root Directory `.`** (repository root) for both the frontend (Vite) and API services. Build and start commands are defined in root [`vercel.json`](vercel.json) and [`railway.toml`](railway.toml), matching `pnpm --filter @workspace/furnicore` / `@workspace/api-server` from local development.

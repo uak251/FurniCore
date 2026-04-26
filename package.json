@@ -1,6 +1,8 @@
 {
   "name": "workspace",
   "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
   "license": "MIT",
   "scripts": {
     "preinstall": "node ./preinstall.cjs",
@@ -26,7 +28,6 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./backend/**\" --filter \"./frontend/**\" --if-present run typecheck",
     "lint": "eslint backend/api-server/src frontend/furnicore/src"
   },
-  "private": true,
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.39.4",
