@@ -3,15 +3,22 @@ import { eq, and } from "drizzle-orm";
 import { db, notificationsTable } from "@workspace/db";
 import { ListNotificationsQueryParams, MarkNotificationReadParams } from "@workspace/api-zod";
 import { authenticate } from "../middlewares/authenticate";
+import { logger } from "../lib/logger";
 const router = Router();
 router.get("/notifications", authenticate, async (req, res) => {
-    const params = ListNotificationsQueryParams.safeParse(req.query);
-    let query = db.select().from(notificationsTable).where(eq(notificationsTable.userId, req.user.id)).$dynamic();
-    if (params.success && params.data.unread === true) {
-        query = query.where(and(eq(notificationsTable.userId, req.user.id), eq(notificationsTable.isRead, false)));
+    try {
+        const params = ListNotificationsQueryParams.safeParse(req.query);
+        let query = db.select().from(notificationsTable).where(eq(notificationsTable.userId, req.user.id)).$dynamic();
+        if (params.success && params.data.unread === true) {
+            query = query.where(and(eq(notificationsTable.userId, req.user.id), eq(notificationsTable.isRead, false)));
+        }
+        const notifications = await query;
+        res.json(notifications);
     }
-    const notifications = await query;
-    res.json(notifications);
+    catch (err) {
+        logger.warn({ err: err?.message }, "notifications_list_skipped");
+        res.json([]);
+    }
 });
 router.post("/notifications/:id/read", authenticate, async (req, res) => {
     const params = MarkNotificationReadParams.safeParse(req.params);

@@ -18,12 +18,29 @@
  *   DELETE /material-usage/:id           delete entry     (admin | manager)
  */
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { db, productionOrdersTable, qcRemarksTable, materialUsageTable, manufacturingTasksTable, productsTable, usersTable, } from "@workspace/db";
+import { db, productionOrdersTable, qcRemarksTable, materialUsageTable, manufacturingTasksTable, productsTable, usersTable, inventoryTable, customerOrdersTable, orderUpdatesTable, transactionsTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
-import { logActivity } from "../lib/activityLogger";
+import { createNotification, logActivity } from "../lib/activityLogger";
 const router = Router();
+/** Align live DB with API expectations (older installs missing columns). */
+let manufacturingAuxReady;
+async function ensureManufacturingAuxTables() {
+    if (!manufacturingAuxReady) {
+        manufacturingAuxReady = (async () => {
+            await db.execute(sql `ALTER TABLE qc_remarks ADD COLUMN IF NOT EXISTS result TEXT;`);
+            await db.execute(sql `ALTER TABLE qc_remarks ADD COLUMN IF NOT EXISTS visible_to_customer BOOLEAN NOT NULL DEFAULT false;`);
+            await db.execute(sql `ALTER TABLE material_usage ADD COLUMN IF NOT EXISTS material_name TEXT;`);
+            await db.execute(sql `ALTER TABLE material_usage ADD COLUMN IF NOT EXISTS unit TEXT;`);
+            await db.execute(sql `ALTER TABLE material_usage ADD COLUMN IF NOT EXISTS notes TEXT;`);
+        })().catch((err) => {
+            manufacturingAuxReady = undefined;
+            throw err;
+        });
+    }
+    await manufacturingAuxReady;
+}
 // ─── Order-number generator ───────────────────────────────────────────────────
 function genOrderNumber() {
     const d = new Date();
@@ -60,6 +77,7 @@ async function enrichQcRemark(r) {
     ]);
     return {
         ...r,
+        remarks: r.remark ?? "",
         taskTitle: task?.title ?? null,
         inspectorName: inspector?.name ?? null,
     };
@@ -76,15 +94,18 @@ async function enrichMaterial(m) {
         taskTitle: task?.title ?? null,
         loggedByName: logger?.name ?? null,
         quantityUsed: Number(m.quantityUsed),
+        materialName: m.materialName ?? "",
+        unit: m.unit ?? "",
+        notes: m.notes ?? null,
     };
 }
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
 const OrderStatuses = ["planned", "in_production", "quality_check", "completed", "cancelled"];
 const CreateOrderBody = z.object({
     productId: z.number().int().positive(),
-    taskId: z.number().int().positive().optional(),
+    taskId: z.preprocess((v) => (v === null || v === "" ? undefined : v), z.number().int().positive().optional()),
     quantity: z.number().int().positive().default(1),
-    targetDate: z.string().optional(),
+    targetDate: z.preprocess((v) => (v === null || v === "" ? undefined : v), z.string().optional()),
     status: z.enum(OrderStatuses).default("planned"),
     notes: z.string().optional(),
 });
@@ -220,6 +241,7 @@ router.delete("/production-orders/:id", authenticate, requireRole("admin"), asyn
 // ─── QC Remarks ───────────────────────────────────────────────────────────────
 // Admin/Manager — see all remarks; optional ?taskId filter
 router.get("/qc-remarks", authenticate, requireRole("admin", "manager"), async (req, res) => {
+    await ensureManufacturingAuxTables();
     const taskId = req.query.taskId ? Number(req.query.taskId) : null;
     const rows = taskId
         ? await db
@@ -237,6 +259,7 @@ router.get("/qc-remarks", authenticate, requireRole("admin", "manager"), async (
  * Optionally filter by ?taskId=
  */
 router.get("/qc-remarks/public", async (req, res) => {
+    await ensureManufacturingAuxTables();
     const taskId = req.query.taskId ? Number(req.query.taskId) : null;
     const rows = taskId
         ? await db
@@ -252,6 +275,7 @@ router.get("/qc-remarks/public", async (req, res) => {
     res.json(await Promise.all(rows.map(enrichQcRemark)));
 });
 router.post("/qc-remarks", authenticate, requireRole("admin", "manager"), async (req, res) => {
+    await ensureManufacturingAuxTables();
     const parsed = CreateQcBody.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ error: parsed.error.message });
@@ -259,9 +283,48 @@ router.post("/qc-remarks", authenticate, requireRole("admin", "manager"), async 
     }
     const [remark] = await db
         .insert(qcRemarksTable)
-        .values({ ...parsed.data, inspectorId: req.user?.id ?? null })
+        .values({
+        taskId: parsed.data.taskId,
+        result: parsed.data.result,
+        remark: parsed.data.remarks,
+        visibleToCustomer: parsed.data.visibleToCustomer,
+        inspectorId: req.user?.id ?? null,
+    })
         .returning();
     const enriched = await enrichQcRemark(remark);
+    if (parsed.data.visibleToCustomer) {
+        const orders = await db.select().from(customerOrdersTable).where(eq(customerOrdersTable.taskId, parsed.data.taskId));
+        if (orders.length > 0) {
+            await db.insert(orderUpdatesTable).values(orders.map((order) => ({
+                orderId: order.id,
+                status: "quality_check",
+                message: `QC ${parsed.data.result.toUpperCase()}: ${parsed.data.remarks}`,
+                visibleToCustomer: true,
+                createdBy: req.user?.id ?? null,
+            })));
+            const customerIds = orders.map((o) => o.customerId).filter((id) => Number.isFinite(id));
+            if (customerIds.length > 0) {
+                await Promise.all(customerIds.map((userId) => createNotification({
+                    userId,
+                    title: "Quality update",
+                    message: `New QC remark shared for your order: ${parsed.data.result.toUpperCase()}.`,
+                    type: "info",
+                    link: "/customer-portal?tab=orders",
+                })));
+            }
+        }
+        const staff = await db
+            .select({ id: usersTable.id })
+            .from(usersTable)
+            .where(and(eq(usersTable.isActive, true), inArray(usersTable.role, ["admin", "manager", "sales_manager"])));
+        await Promise.all(staff.map((u) => createNotification({
+            userId: u.id,
+            title: "Customer-visible QC remark",
+            message: `Task #${parsed.data.taskId} marked ${parsed.data.result.toUpperCase()} and shared with customer.`,
+            type: "info",
+            link: "/manufacturing",
+        })));
+    }
     await logActivity({
         userId: req.user?.id,
         action: "CREATE",
@@ -272,6 +335,7 @@ router.post("/qc-remarks", authenticate, requireRole("admin", "manager"), async 
     res.status(201).json(enriched);
 });
 router.patch("/qc-remarks/:id", authenticate, requireRole("admin", "manager"), async (req, res) => {
+    await ensureManufacturingAuxTables();
     const id = Number(req.params.id);
     if (isNaN(id)) {
         res.status(400).json({ error: "Invalid id" });
@@ -282,9 +346,16 @@ router.patch("/qc-remarks/:id", authenticate, requireRole("admin", "manager"), a
         res.status(400).json({ error: parsed.error.message });
         return;
     }
+    const updates = {};
+    if (parsed.data.result !== undefined)
+        updates.result = parsed.data.result;
+    if (parsed.data.remarks !== undefined)
+        updates.remark = parsed.data.remarks;
+    if (parsed.data.visibleToCustomer !== undefined)
+        updates.visibleToCustomer = parsed.data.visibleToCustomer;
     const [remark] = await db
         .update(qcRemarksTable)
-        .set(parsed.data)
+        .set(updates)
         .where(eq(qcRemarksTable.id, id))
         .returning();
     if (!remark) {
@@ -311,6 +382,7 @@ router.delete("/qc-remarks/:id", authenticate, requireRole("admin"), async (req,
 });
 // ─── Material Usage ───────────────────────────────────────────────────────────
 router.get("/material-usage", authenticate, async (req, res) => {
+    await ensureManufacturingAuxTables();
     const taskId = req.query.taskId ? Number(req.query.taskId) : null;
     const rows = taskId
         ? await db
@@ -325,10 +397,37 @@ router.get("/material-usage", authenticate, async (req, res) => {
     res.json(await Promise.all(rows.map(enrichMaterial)));
 });
 router.post("/material-usage", authenticate, async (req, res) => {
+    await ensureManufacturingAuxTables();
     const parsed = CreateMaterialBody.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ error: parsed.error.message });
         return;
+    }
+    let inventoryAfter = null;
+    let inventoryCost = 0;
+    if (parsed.data.inventoryItemId) {
+        const [item] = await db
+            .select()
+            .from(inventoryTable)
+            .where(eq(inventoryTable.id, parsed.data.inventoryItemId));
+        if (!item) {
+            res.status(404).json({ error: "Inventory item not found" });
+            return;
+        }
+        const beforeQty = Number(item.quantity ?? 0);
+        const usedQty = Number(parsed.data.quantityUsed);
+        if (!Number.isFinite(beforeQty) || beforeQty < usedQty) {
+            res.status(400).json({ error: "INSUFFICIENT_INVENTORY", message: `Insufficient stock for ${item.name}.` });
+            return;
+        }
+        const afterQty = +(beforeQty - usedQty).toFixed(3);
+        inventoryCost = +(usedQty * Number(item.unitCost ?? 0)).toFixed(2);
+        const [updatedItem] = await db
+            .update(inventoryTable)
+            .set({ quantity: String(afterQty) })
+            .where(eq(inventoryTable.id, item.id))
+            .returning();
+        inventoryAfter = updatedItem;
     }
     const [usage] = await db
         .insert(materialUsageTable)
@@ -341,6 +440,15 @@ router.post("/material-usage", authenticate, async (req, res) => {
     })
         .returning();
     const enriched = await enrichMaterial(usage);
+    if (inventoryCost > 0) {
+        await db.insert(transactionsTable).values({
+            type: "expense",
+            description: `Material usage for task #${parsed.data.taskId}: ${parsed.data.materialName}`,
+            amount: String(inventoryCost),
+            transactionDate: new Date(),
+            reference: `material_usage:${usage.id}`,
+        });
+    }
     await logActivity({
         userId: req.user?.id,
         action: "CREATE",
@@ -348,7 +456,13 @@ router.post("/material-usage", authenticate, async (req, res) => {
         description: `Material logged: ${parsed.data.materialName} ×${parsed.data.quantityUsed} ${parsed.data.unit} (task #${parsed.data.taskId})`,
         newData: enriched,
     });
-    res.status(201).json(enriched);
+    res.status(201).json({
+        ...enriched,
+        inventoryAdjusted: inventoryAfter
+            ? { itemId: inventoryAfter.id, quantity: Number(inventoryAfter.quantity) }
+            : null,
+        allocatedCost: inventoryCost,
+    });
 });
 router.delete("/material-usage/:id", authenticate, requireRole("admin", "manager"), async (req, res) => {
     const id = Number(req.params.id);

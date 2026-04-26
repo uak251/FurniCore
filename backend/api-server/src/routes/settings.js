@@ -36,7 +36,13 @@ const POWERBI_KEYS = [
     "POWERBI_REPORT_SALES_OVERVIEW",
 ];
 /** Non-PowerBI setting keys that can also be read/written through this API. */
-const EXTRA_KEYS = ["INVENTORY_VALUATION_METHOD", "SESSION_DURATION"];
+const EXTRA_KEYS = [
+    "INVENTORY_VALUATION_METHOD",
+    "SESSION_DURATION",
+    "JAZZCASH_ACCOUNT_TITLE",
+    "JAZZCASH_ACCOUNT_NUMBER",
+    "JAZZCASH_INSTRUCTIONS",
+];
 const ALLOWED_KEYS = new Set([...POWERBI_KEYS, ...EXTRA_KEYS]);
 function maskValue(key, value) {
     if (!value)

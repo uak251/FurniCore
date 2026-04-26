@@ -17,13 +17,63 @@
  * GET  /sales-manager/receivables           — outstanding invoices with aging buckets
  */
 import { Router } from "express";
-import { eq, and, desc, sql, asc } from "drizzle-orm";
+import { eq, and, desc, sql, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, productCategoriesTable, } from "@workspace/db";
+import multer from "multer";
+import { mkdir } from "fs/promises";
+import path from "path";
+import { db, customerOrdersTable, orderItemsTable, invoicesTable, discountsTable, orderUpdatesTable, productsTable, productCategoriesTable, usersTable, recordImagesTable, productionOrdersTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
 import { insertInvoiceForOrderIfAbsent } from "../lib/invoiceHelpers.js";
 const router = Router();
 const salesAuth = [authenticate, requireRole("admin", "manager", "sales_manager")];
+const financeAuth = [authenticate, requireRole("admin", "manager", "sales_manager", "accountant")];
+const INVOICE_UPLOAD_DIR = path.resolve(process.cwd(), "../../uploads/invoices");
+const ORDER_UPDATE_UPLOAD_DIR = path.resolve(process.cwd(), "../../uploads/order-updates");
+const invoicePdfUpload = multer({
+    storage: multer.diskStorage({
+        destination: async (_req, _file, cb) => {
+            try {
+                await mkdir(INVOICE_UPLOAD_DIR, { recursive: true });
+                cb(null, INVOICE_UPLOAD_DIR);
+            }
+            catch (err) {
+                cb(err, INVOICE_UPLOAD_DIR);
+            }
+        },
+        filename: (_req, file, cb) => {
+            const safe = (file.originalname || "invoice.pdf").replace(/[^\w.-]/g, "_");
+            cb(null, `${Date.now()}-${safe}`);
+        },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        cb(file.mimetype === "application/pdf" ? null : new Error("Only PDF files are allowed"), file.mimetype === "application/pdf");
+    },
+});
+const orderUpdateImageUpload = multer({
+    storage: multer.diskStorage({
+        destination: async (_req, _file, cb) => {
+            try {
+                await mkdir(ORDER_UPDATE_UPLOAD_DIR, { recursive: true });
+                cb(null, ORDER_UPDATE_UPLOAD_DIR);
+            }
+            catch (err) {
+                cb(err, ORDER_UPDATE_UPLOAD_DIR);
+            }
+        },
+        filename: (_req, file, cb) => {
+            const safe = (file.originalname || "update-image").replace(/[^\w.-]/g, "_");
+            cb(null, `${Date.now()}-${safe}`);
+        },
+    }),
+    limits: { fileSize: 8 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const ok = /^image\/(png|jpe?g|webp|gif)$/i.test(file.mimetype);
+        cb(ok ? null : new Error("Only image files are allowed"), ok);
+    },
+});
+const orderUpdateImagesUpload = orderUpdateImageUpload.array("images", 10);
 
 router.get("/sales-manager/product-categories", ...salesAuth, async (_req, res) => {
     const rows = await db
@@ -41,6 +91,7 @@ function dateSuffix() {
 }
 function pad(n) { return String(n).padStart(2, "0"); }
 function rand4() { return String(Math.floor(Math.random() * 9000) + 1000); }
+function genProductionOrderNumber() { return `PO-${dateSuffix()}-${rand4()}`; }
 async function enrichOrder(order) {
     const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
     const updates = await db.select().from(orderUpdatesTable).where(eq(orderUpdatesTable.orderId, order.id)).orderBy(desc(orderUpdatesTable.createdAt));
@@ -98,6 +149,39 @@ router.get("/sales-manager/orders", ...salesAuth, async (_req, res) => {
     const orders = await db.select().from(customerOrdersTable).orderBy(desc(customerOrdersTable.createdAt));
     const enriched = await Promise.all(orders.map(enrichOrder));
     res.json(enriched);
+});
+router.get("/sales-manager/customers", ...salesAuth, async (_req, res) => {
+    const rows = await db
+        .select({
+        id: customerOrdersTable.customerId,
+        customerName: customerOrdersTable.customerName,
+        customerEmail: customerOrdersTable.customerEmail,
+        latestOrderAt: sql `max(${customerOrdersTable.createdAt})`,
+        ordersCount: sql `count(*)::int`,
+        totalSpent: sql `coalesce(sum(${customerOrdersTable.totalAmount}), 0)::numeric`,
+    })
+        .from(customerOrdersTable)
+        .groupBy(customerOrdersTable.customerId, customerOrdersTable.customerName, customerOrdersTable.customerEmail)
+        .orderBy(desc(sql `max(${customerOrdersTable.createdAt})`));
+    res.json(rows.map((r) => ({
+        ...r,
+        totalSpent: Number(r.totalSpent ?? 0),
+        latestOrderAt: r.latestOrderAt ? new Date(r.latestOrderAt).toISOString() : null,
+    })));
+});
+router.get("/sales-manager/workers", ...salesAuth, async (_req, res) => {
+    const workers = await db
+        .select({
+        id: usersTable.id,
+        name: usersTable.name,
+        email: usersTable.email,
+        phone: usersTable.phone,
+        role: usersTable.role,
+    })
+        .from(usersTable)
+        .where(and(eq(usersTable.isActive, true), inArray(usersTable.role, ["worker", "manager", "sales_manager", "carpenter", "polisher", "upholsterer"])))
+        .orderBy(asc(usersTable.name));
+    res.json(workers);
 });
 router.get("/sales-manager/orders/:id", ...salesAuth, async (req, res) => {
     const id = parseInt(req.params.id, 10);
@@ -230,6 +314,29 @@ router.patch("/sales-manager/orders/:id", ...salesAuth, async (req, res) => {
         res.status(404).json({ error: "Order not found" });
         return;
     }
+    if (d.status === "in_production") {
+        const [existingProductionOrder] = await db
+            .select({ id: productionOrdersTable.id })
+            .from(productionOrdersTable)
+            .where(sql `${productionOrdersTable.notes} ilike ${`SO:${id}%`}`)
+            .limit(1);
+        if (!existingProductionOrder) {
+            const lineItems = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+            const firstItem = lineItems[0];
+            if (firstItem?.productId) {
+                await db.insert(productionOrdersTable).values({
+                    orderNumber: genProductionOrderNumber(),
+                    productId: firstItem.productId,
+                    taskId: d.taskId ?? order.taskId ?? null,
+                    quantity: lineItems.reduce((s, it) => s + Number(it.quantity ?? 0), 0) || 1,
+                    targetDate: order.estimatedDelivery ?? null,
+                    status: "in_production",
+                    notes: `SO:${id} ${order.orderNumber} auto-intake from sales`,
+                    createdBy: req.user?.id ?? null,
+                });
+            }
+        }
+    }
     res.json(await enrichOrder(order));
 });
 router.post("/sales-manager/orders/:id/updates", ...salesAuth, async (req, res) => {
@@ -241,7 +348,7 @@ router.post("/sales-manager/orders/:id/updates", ...salesAuth, async (req, res) 
     const body = z.object({
         message: z.string().min(1),
         status: z.string().optional(),
-        imageUrl: z.string().url().optional().or(z.literal("")),
+        progressPercent: z.number().int().min(0).max(100).optional(),
         visibleToCustomer: z.boolean().optional(),
     }).safeParse(req.body);
     if (!body.success) {
@@ -257,15 +364,88 @@ router.post("/sales-manager/orders/:id/updates", ...salesAuth, async (req, res) 
     if (body.data.status) {
         await db.update(customerOrdersTable).set({ status: body.data.status }).where(eq(customerOrdersTable.id, id));
     }
+    const progressPrefix = typeof body.data.progressPercent === "number"
+        ? `[Progress:${body.data.progressPercent}%] `
+        : "";
     const [update] = await db.insert(orderUpdatesTable).values({
         orderId: id,
-        message: body.data.message,
+        message: `${progressPrefix}${body.data.message}`,
         status: body.data.status ?? null,
-        imageUrl: body.data.imageUrl || null,
+        imageUrl: null,
         visibleToCustomer: body.data.visibleToCustomer ?? true,
         createdBy: req.user?.id ?? null,
     }).returning();
     res.status(201).json(update);
+});
+router.post("/sales-manager/orders/:id/updates/upload-image", ...salesAuth, orderUpdateImageUpload.single("file"), async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+    }
+    if (!req.file) {
+        res.status(400).json({ error: "No image file uploaded" });
+        return;
+    }
+    const [order] = await db.select({ id: customerOrdersTable.id }).from(customerOrdersTable).where(eq(customerOrdersTable.id, id));
+    if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+    }
+    res.json({ imageUrl: `/uploads/order-updates/${req.file.filename}` });
+});
+router.post("/sales-manager/orders/:id/updates/with-images", ...salesAuth, orderUpdateImagesUpload, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+    }
+    const body = z.object({
+        message: z.string().min(1),
+        status: z.string().optional(),
+        progressPercent: z.preprocess((v) => (v === "" || v == null ? undefined : Number(v)), z.number().int().min(0).max(100).optional()),
+        visibleToCustomer: z.preprocess((v) => v === "false" ? false : Boolean(v), z.boolean().optional()),
+    }).safeParse(req.body);
+    if (!body.success) {
+        res.status(400).json({ error: body.error.message });
+        return;
+    }
+    const [order] = await db.select().from(customerOrdersTable).where(eq(customerOrdersTable.id, id));
+    if (!order) {
+        res.status(404).json({ error: "Order not found" });
+        return;
+    }
+    if (body.data.status) {
+        await db.update(customerOrdersTable).set({ status: body.data.status }).where(eq(customerOrdersTable.id, id));
+    }
+    const files = req.files ?? [];
+    const imageUrls = files.map((f) => `/uploads/order-updates/${f.filename}`);
+    if (files.length > 0) {
+        await db.insert(recordImagesTable).values(files.map((f, idx) => ({
+            entityType: "order",
+            entityId: id,
+            filename: f.filename,
+            originalName: f.originalname,
+            mimeType: f.mimetype,
+            sizeBytes: f.size,
+            url: `/uploads/order-updates/${f.filename}`,
+            sortOrder: idx,
+            altText: body.data.message.slice(0, 200),
+            uploadedBy: req.user?.id ?? null,
+        })));
+    }
+    const progressPrefix = typeof body.data.progressPercent === "number"
+        ? `[Progress:${body.data.progressPercent}%] `
+        : "";
+    const [update] = await db.insert(orderUpdatesTable).values({
+        orderId: id,
+        message: `${progressPrefix}${body.data.message}`,
+        status: body.data.status ?? null,
+        imageUrl: imageUrls[0] ?? null,
+        visibleToCustomer: body.data.visibleToCustomer ?? true,
+        createdBy: req.user?.id ?? null,
+    }).returning();
+    res.status(201).json({ ...update, imageUrls });
 });
 /* ═════════════════════════════════════════════════════════════════════════ */
 /*  INVOICES                                                                 */
@@ -283,11 +463,11 @@ function serializeInvoice(inv) {
         updatedAt: inv.updatedAt.toISOString(),
     };
 }
-router.get("/sales-manager/invoices", ...salesAuth, async (_req, res) => {
+router.get("/sales-manager/invoices", ...financeAuth, async (_req, res) => {
     const invoices = await db.select().from(invoicesTable).orderBy(desc(invoicesTable.createdAt));
     res.json(invoices.map(serializeInvoice));
 });
-router.post("/sales-manager/invoices", ...salesAuth, async (req, res) => {
+router.post("/sales-manager/invoices", ...financeAuth, async (req, res) => {
     const body = z.object({
         orderId: z.number().int(),
         dueDate: z.string().datetime().optional(),
@@ -314,13 +494,13 @@ router.post("/sales-manager/invoices", ...salesAuth, async (req, res) => {
     res.status(201).json(serializeInvoice(inv));
 });
 const PatchInvoiceBody = z.object({
-    status: z.enum(["draft", "sent", "paid", "overdue", "cancelled"]).optional(),
+    status: z.enum(["draft", "sent", "pending_verification", "sales_verified", "paid", "overdue", "cancelled"]).optional(),
     dueDate: z.string().datetime().optional().nullable(),
     paymentMethod: z.string().optional(),
     paymentReference: z.string().optional(),
     notes: z.string().optional(),
 });
-router.patch("/sales-manager/invoices/:id", ...salesAuth, async (req, res) => {
+router.patch("/sales-manager/invoices/:id", ...financeAuth, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
         res.status(400).json({ error: "Invalid id" });
@@ -331,8 +511,26 @@ router.patch("/sales-manager/invoices/:id", ...salesAuth, async (req, res) => {
         res.status(400).json({ error: parsed.error.message });
         return;
     }
+    const [existingInv] = await db.select().from(invoicesTable).where(eq(invoicesTable.id, id));
+    if (!existingInv) {
+        res.status(404).json({ error: "Invoice not found" });
+        return;
+    }
     const patch = {};
     const d = parsed.data;
+    const role = req.user?.role ?? "";
+    if (d.status === "sales_verified" && !["admin", "manager", "sales_manager"].includes(role)) {
+        res.status(403).json({ error: "Only Sales/Admin/Manager can mark sales verification." });
+        return;
+    }
+    if (d.status === "paid" && !["admin", "accountant"].includes(role)) {
+        res.status(403).json({ error: "Only Accounts/Admin can mark invoice paid." });
+        return;
+    }
+    if (d.status === "paid" && existingInv.status !== "sales_verified" && role !== "admin") {
+        res.status(400).json({ error: "Invoice must be sales-verified before marking paid." });
+        return;
+    }
     if (d.status !== undefined)
         patch.status = d.status;
     if (d.dueDate !== undefined)
@@ -345,7 +543,25 @@ router.patch("/sales-manager/invoices/:id", ...salesAuth, async (req, res) => {
         patch.notes = d.notes;
     if (d.status === "paid")
         patch.paidAt = new Date();
+    if (d.status === "pending_verification" || d.status === "sales_verified")
+        patch.paidAt = null;
     const [inv] = await db.update(invoicesTable).set(patch).where(eq(invoicesTable.id, id)).returning();
+    if (d.status === "paid" && inv.orderId) {
+        await db.update(customerOrdersTable).set({ status: "delivered" }).where(eq(customerOrdersTable.id, inv.orderId));
+    }
+    res.json(serializeInvoice(inv));
+});
+router.post("/sales-manager/invoices/:id/upload-pdf", ...financeAuth, invoicePdfUpload.single("file"), async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+        res.status(400).json({ error: "Invalid id" });
+        return;
+    }
+    if (!req.file) {
+        res.status(400).json({ error: "No PDF file uploaded" });
+        return;
+    }
+    const [inv] = await db.update(invoicesTable).set({ pdfUrl: `/uploads/invoices/${req.file.filename}` }).where(eq(invoicesTable.id, id)).returning();
     if (!inv) {
         res.status(404).json({ error: "Invoice not found" });
         return;
@@ -480,7 +696,7 @@ router.delete("/sales-manager/discounts/:id", ...salesAuth, async (req, res) => 
 /* ═════════════════════════════════════════════════════════════════════════ */
 /*  RECEIVABLES (accounts receivable aging)                                  */
 /* ═════════════════════════════════════════════════════════════════════════ */
-router.get("/sales-manager/receivables", ...salesAuth, async (_req, res) => {
+router.get("/sales-manager/receivables", ...financeAuth, async (_req, res) => {
     const now = new Date();
     const invoices = await db.select().from(invoicesTable)
         .where(sql `status NOT IN ('paid', 'cancelled')`)

@@ -1,0 +1,66 @@
+name: Frontend Vercel Hardening
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/furnicore/**"
+      - ".github/workflows/frontend-vercel-hardening.yml"
+  pull_request:
+    paths:
+      - "frontend/furnicore/**"
+
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/furnicore
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/furnicore/pnpm-lock.yaml
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate env + backend reachability
+        env:
+          NODE_ENV: production
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: pnpm run check:deploy-env
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: pnpm run build
+
+      - name: Test
+        env:
+          NODE_ENV: test
+        run: pnpm run test
+
+      - name: Integration test analytics CSV workflows
+        working-directory: .
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          LOGIN_TEST_EMAIL: ${{ secrets.RAILWAY_ADMIN_EMAIL }}
+          LOGIN_TEST_PASSWORD: ${{ secrets.RAILWAY_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$VITE_API_URL" ] || [ -z "$LOGIN_TEST_EMAIL" ] || [ -z "$LOGIN_TEST_PASSWORD" ]; then
+            echo "Missing required secrets for analytics CSV integration test."
+            echo "Required: VITE_API_URL, RAILWAY_ADMIN_EMAIL, RAILWAY_ADMIN_PASSWORD"
+            exit 1
+          fi
+          pnpm -C frontend/furnicore run test:integration:analytics-csv

@@ -1,7 +1,8 @@
 /**
  * Images API — polymorphic image upload, listing, and deletion
  *
- * Supported entityType values: product | inventory | employee | payroll | supplier
+ * Supported entityType values: product | inventory | employee | payroll | supplier | order | transaction
+ * Aliases (normalized before validation): cashbook, cash_evidence, journal_entry, gl_entry, ledger_line → transaction
  *
  * UPLOAD:
  *   POST /images/:entityType/:entityId          — single image  (multipart/form-data, field "image")
@@ -37,7 +38,25 @@ import { authenticate, requireRole } from "../middlewares/authenticate";
 import { uploadSingle, uploadMulti, UPLOADS_ROOT } from "../middlewares/upload";
 import { logActivity } from "../lib/activityLogger";
 const router = Router();
-const VALID_ENTITY_TYPES = new Set(["product", "inventory", "employee", "payroll", "supplier"]);
+const VALID_ENTITY_TYPES = new Set(["product", "inventory", "employee", "payroll", "supplier", "order", "transaction"]);
+/** Legacy / UI aliases → canonical `record_images.entity_type` (Multer folder + DB). */
+const ENTITY_TYPE_ALIASES = {
+    cashbook: "transaction",
+    cash_evidence: "transaction",
+    cashbook_entry: "transaction",
+    ledger_line: "transaction",
+    gl_entry: "transaction",
+    journal_entry: "transaction",
+};
+function normalizeEntityTypeParam(req) {
+    const raw = req.params.entityType;
+    if (typeof raw !== "string")
+        return;
+    const key = raw.toLowerCase().replace(/-/g, "_");
+    const mapped = ENTITY_TYPE_ALIASES[key];
+    if (mapped)
+        req.params.entityType = mapped;
+}
 /** Who may upload / delete / reorder images (view is any authenticated user). */
 const IMAGE_EDIT_ROLES = ["admin", "manager", "accountant", "sales_manager", "inventory_manager"];
 /** Wraps a Multer middleware so that MulterError and fileFilter rejections return 400 JSON instead of 500. */
@@ -57,6 +76,7 @@ function runUpload(mw) {
     };
 }
 function validateEntityType(req, res) {
+    normalizeEntityTypeParam(req);
     const { entityType } = req.params;
     if (!VALID_ENTITY_TYPES.has(entityType)) {
         res.status(400).json({ error: "INVALID_ENTITY_TYPE", message: `entityType must be one of: ${[...VALID_ENTITY_TYPES].join(", ")}` });

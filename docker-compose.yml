@@ -1,10 +1,18 @@
 # Local PostgreSQL for FurniCore. From repo root: pnpm run db:up
 # DATABASE_URL in .env should match (see .env.example).
+#
+# Run SQL migrations inside Docker (Node + pnpm), using repo-root .env:
+#   pnpm run db:migrate:docker
+#   docker compose --profile migrate run --rm migrate
+#
+# For the local Postgres service above, point DATABASE_URL at the Docker hostname, e.g.:
+#   postgresql://furnicore:furnicore_dev@postgres:5432/furnicore
+# Supabase URLs from the host work as-is (public DB host is reachable from the container).
 
 services:
-  postgres:
+  supabase-db:
     image: postgres:16-alpine
-    container_name: furnicore-postgres
+    container_name: furnicore-supabase-db
     ports:
       - "5432:5432"
     environment:
@@ -18,6 +26,93 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  migrate:
+    image: node:24-bookworm-slim
+    container_name: furnicore-migrate
+    profiles:
+      - migrate
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      CI: "true"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        corepack enable
+        corepack prepare pnpm@10.33.0 --activate
+        cd /workspace
+        pnpm install --no-frozen-lockfile
+        pnpm run db:migrate
+
+  # Full repo is mounted at /workspace, so /api/analytics/native/* routes and RBAC contract
+  # resolve the same as local dev. Ensure DATABASE_URL in .env points at supabase-db when using Docker Postgres.
+  api-server:
+    image: node:24-bookworm-slim
+    container_name: furnicore-api-server
+    working_dir: /workspace/backend/api-server
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    env_file:
+      - .env
+      - backend/.env
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-to-a-long-random-secret}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret}
+      APP_URL: http://localhost:5173
+      CORS_ORIGIN: http://localhost:5173
+      CI: "true"
+    volumes:
+      - .:/workspace
+      - ./csv-data/imports:/workspace/csv-data/imports
+      - ./csv-data/exports:/workspace/csv-data/exports
+    ports:
+      - "3000:3000"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        corepack enable
+        corepack prepare pnpm@10.33.0 --activate
+        cd /workspace
+        pnpm install --no-frozen-lockfile
+        pnpm -C backend/api-server run start:dist
+
+  frontend:
+    image: node:24-bookworm-slim
+    container_name: furnicore-frontend
+    working_dir: /workspace/frontend/furnicore
+    depends_on:
+      - api-server
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://api-server:3000/api
+      CI: "true"
+    volumes:
+      - .:/workspace
+      - ./csv-data/exports:/workspace/csv-data/exports
+    ports:
+      - "5173:5173"
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        corepack enable
+        corepack prepare pnpm@10.33.0 --activate
+        cd /workspace
+        pnpm install --no-frozen-lockfile
+        pnpm -C frontend/furnicore run dev -- --host 0.0.0.0
 
 volumes:
   furnicore_pgdata:

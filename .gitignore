@@ -10,6 +10,9 @@ out-tsc
 
 # dependencies
 node_modules
+# Local pnpm store when store-dir is set inside the repo (default store is global).
+**/.pnpm-store
+pnpm-debug.log*
 
 # IDEs and editors
 /.idea

@@ -42,6 +42,23 @@ function fileFilter(_req, file, cb) {
 }
 export const uploadSingle = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES } }).single("image");
 export const uploadMulti = multer({ storage, fileFilter, limits: { fileSize: MAX_SIZE_BYTES, files: 10 } }).array("images", 10);
+/** Shipment / packing photos from supplier portal — always stored under uploads/supplier_quote/ */
+const supplierQuoteStorage = multer.diskStorage({
+    destination(_req, _file, cb) {
+        const dir = join(UPLOADS_ROOT, "supplier_quote");
+        mkdirSync(dir, { recursive: true });
+        cb(null, dir);
+    },
+    filename(_req, file, cb) {
+        const ext = extname(file.originalname).toLowerCase() || ".jpg";
+        cb(null, `${uuidv4()}${ext}`);
+    },
+});
+export const uploadSupplierQuoteImages = multer({
+    storage: supplierQuoteStorage,
+    fileFilter,
+    limits: { fileSize: MAX_SIZE_BYTES, files: 10 },
+}).array("images", 10);
 /** Profile avatars: fixed folder `uploads/profile/`, filename includes user id (after authenticate). Max 2 MB. */
 const profileStorage = multer.diskStorage({
     destination(_req, _file, cb) {

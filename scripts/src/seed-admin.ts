@@ -18,7 +18,12 @@
 
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, pool, usersTable } from "@workspace/db";
+
+if (process.env.DATABASE_PUBLIC_URL?.trim()) {
+  process.env.DATABASE_URL = process.env.DATABASE_PUBLIC_URL.trim();
+}
+
+const { db, pool, usersTable } = await import("@workspace/db");
 
 const {
   ADMIN_NAME  = "Master Admin",

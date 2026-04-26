@@ -1,0 +1,8 @@
+{
+  "name": "furnicore-frontend",
+  "private": true,
+  "engines": {
+    "node": ">=20 <25"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

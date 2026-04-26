@@ -2,8 +2,8 @@ import { Router } from "express";
 import { eq, ilike } from "drizzle-orm";
 import { db, employeesTable, attendanceTable } from "@workspace/db";
 import { CreateEmployeeBody, UpdateEmployeeBody, GetEmployeeParams, UpdateEmployeeParams, DeleteEmployeeParams, ListEmployeesQueryParams, GetEmployeeAttendanceParams, RecordAttendanceBody } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
-import { logActivity } from "../lib/activityLogger";
+import { authenticate } from "../../../middlewares/authenticate";
+import { logActivity } from "../../../lib/activityLogger";
 const router = Router();
 function toEmployee(e) {
     return { ...e, baseSalary: Number(e.baseSalary), hireDate: e.hireDate.toISOString() };

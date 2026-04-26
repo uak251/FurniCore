@@ -2,9 +2,9 @@ import { Router } from "express";
 import { eq, ilike } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { CreateUserBody, UpdateUserBody, GetUserParams, UpdateUserParams, DeleteUserParams, ListUsersQueryParams } from "@workspace/api-zod";
-import { authenticate, requireRole } from "../middlewares/authenticate";
-import { hashPassword } from "../lib/auth";
-import { logActivity } from "../lib/activityLogger";
+import { authenticate, requireRole } from "../../../middlewares/authenticate";
+import { hashPassword } from "../../../lib/auth";
+import { logActivity } from "../../../lib/activityLogger";
 const router = Router();
 function sanitizeUser(user) {
     return { id: user.id, name: user.name, email: user.email, role: user.role, isActive: user.isActive, createdAt: user.createdAt, updatedAt: user.updatedAt };

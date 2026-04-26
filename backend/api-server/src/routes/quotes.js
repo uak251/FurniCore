@@ -36,52 +36,109 @@ async function toQuote(q) {
     };
 }
 router.get("/quotes", authenticate, internalOnly, async (req, res) => {
-    const params = ListQuotesQueryParams.safeParse(req.query);
-    const wf = z.enum(["all", "draft", "pending_pm", "pending_finance", "approved", "rejected", "legacy"]).optional().safeParse(req.query.workflow);
-    const cond = [];
-    if (params.success && params.data.status)
-        cond.push(eq(supplierQuotesTable.status, params.data.status));
-    if (wf.success && wf.data && wf.data !== "all")
-        cond.push(eq(supplierQuotesTable.workflowStage, wf.data));
-    let query = db.select().from(supplierQuotesTable).$dynamic();
-    if (cond.length === 1)
-        query = query.where(cond[0]);
-    else if (cond.length > 1)
-        query = query.where(and(...cond));
-    const quotes = await query;
-    const enriched = await Promise.all(quotes.map(toQuote));
-    res.json(enriched);
+    try {
+        const params = ListQuotesQueryParams.safeParse(req.query);
+        const wf = z.enum(["all", "draft", "pending_pm", "pending_finance", "approved", "rejected", "legacy"]).optional().safeParse(req.query.workflow);
+        const cond = [];
+        if (params.success && params.data.status)
+            cond.push(eq(supplierQuotesTable.status, params.data.status));
+        if (wf.success && wf.data && wf.data !== "all")
+            cond.push(eq(supplierQuotesTable.workflowStage, wf.data));
+        let query = db.select().from(supplierQuotesTable).$dynamic();
+        if (cond.length === 1)
+            query = query.where(cond[0]);
+        else if (cond.length > 1)
+            query = query.where(and(...cond));
+        const quotes = await query;
+        const enriched = await Promise.all(quotes.map(toQuote));
+        res.json({ success: true, data: enriched, message: "Quotes fetched", rows: enriched });
+    }
+    catch (err) {
+        res.status(500).json({
+            success: false,
+            data: [],
+            message: "Failed to fetch quotes",
+            error: "QUOTES_FETCH_FAILED",
+            details: String(err?.message ?? ""),
+        });
+    }
+});
+/**
+ * Procurement workflow queue with explicit operational context.
+ * Includes all non-legacy quotes (draft -> approved/rejected) newest first.
+ */
+router.get("/quotes/workflow-queue", authenticate, internalOnly, async (_req, res) => {
+    try {
+        const rows = await db
+            .select()
+            .from(supplierQuotesTable)
+            .orderBy(desc(supplierQuotesTable.createdAt));
+        const enriched = await Promise.all(rows.map(toQuote));
+        const queue = enriched
+            .filter((q) => q.workflowStage && q.workflowStage !== "legacy")
+            .map((q) => ({
+            ...q,
+            source: String(q.description ?? "").startsWith("[Inventory demand]") ? "inventory_demand" : "manual_quote",
+        }));
+        res.json({ success: true, rows: queue, data: queue, message: "Workflow queue fetched" });
+    }
+    catch (err) {
+        res.status(500).json({
+            success: false,
+            rows: [],
+            data: [],
+            error: "WORKFLOW_QUEUE_FETCH_FAILED",
+            message: "Failed to fetch workflow queue",
+            details: String(err?.message ?? ""),
+        });
+    }
 });
 
 /** Compare supplier unit rates per inventory item (bidding / analytics) */
 router.get("/quotes/rate-comparison", authenticate, internalOnly, async (req, res) => {
-    const quotes = await db.select().from(supplierQuotesTable);
-    const enriched = await Promise.all(quotes.map(toQuote));
-    const groups = new Map();
-    for (const q of enriched) {
-        if (q.inventoryItemId == null)
-            continue;
-        const key = q.inventoryItemId;
-        if (!groups.has(key)) {
-            groups.set(key, {
-                inventoryItemId: q.inventoryItemId,
-                itemName: q.itemName ?? "",
-                quotes: [],
+    try {
+        const quotes = await db.select().from(supplierQuotesTable);
+        const enriched = await Promise.all(quotes.map(toQuote));
+        const groups = new Map();
+        for (const q of enriched) {
+            if (q.inventoryItemId == null)
+                continue;
+            const key = q.inventoryItemId;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    inventoryItemId: q.inventoryItemId,
+                    itemName: q.itemName ?? "",
+                    quotes: [],
+                });
+            }
+            groups.get(key).quotes.push({
+                id: q.id,
+                supplierId: q.supplierId,
+                supplierName: q.supplierName,
+                unitPrice: Number(q.unitPrice ?? 0),
+                quantity: Number(q.quantity ?? 0),
+                totalPrice: Number(q.totalPrice ?? 0),
+                status: q.status ?? "UNKNOWN",
+                workflowStage: q.workflowStage ?? "legacy",
+                description: q.description ?? "",
             });
         }
-        groups.get(key).quotes.push({
-            id: q.id,
-            supplierId: q.supplierId,
-            supplierName: q.supplierName,
-            unitPrice: q.unitPrice,
-            quantity: q.quantity,
-            totalPrice: q.totalPrice,
-            status: q.status,
-            workflowStage: q.workflowStage,
-            description: q.description,
+        res.json({
+            success: true,
+            data: { groups: [...groups.values()] },
+            message: "Rate comparison fetched",
+            groups: [...groups.values()],
         });
     }
-    res.json({ groups: [...groups.values()] });
+    catch (err) {
+        res.status(500).json({
+            success: false,
+            data: { groups: [] },
+            message: "Failed to compare supplier rates",
+            error: "RATE_COMPARISON_FAILED",
+            details: String(err?.message ?? ""),
+        });
+    }
 });
 
 /** Approved official supplier unit rates (workflow-completed snapshots) */

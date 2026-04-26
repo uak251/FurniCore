@@ -12,14 +12,41 @@
  *   POST /supplier-portal/deliveries          — add a delivery update to a quote
  *   PATCH /supplier-portal/deliveries/:id     — edit an existing delivery update
  *   GET  /supplier-portal/ledger              — ledger data scoped to this supplier
+ *   GET  /supplier-portal/quotes/:quoteId/shipment-images — packing / delivery photos for a quote
+ *   POST /supplier-portal/quotes/:quoteId/shipment-images — multipart field "images" (up to 10)
+ *   DELETE /supplier-portal/shipment-images/:imageId — remove a photo uploaded for your quote
  */
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod";
-import { db, suppliersTable, supplierQuotesTable, deliveryUpdatesTable, } from "@workspace/db";
+import multer from "multer";
+import { unlink } from "fs/promises";
+import { join } from "path";
+import { db, suppliersTable, supplierQuotesTable, deliveryUpdatesTable, recordImagesTable, } from "@workspace/db";
 import { authenticate, requireRole } from "../middlewares/authenticate";
+import { uploadSupplierQuoteImages, UPLOADS_ROOT } from "../middlewares/upload";
+import { logActivity } from "../lib/activityLogger";
 const router = Router();
 const guard = [authenticate, requireRole("supplier")];
+const SHIPMENT_IMAGE_ENTITY = "supplier_quote";
+function runUpload(mw) {
+    return (req, res, next) => {
+        mw(req, res, (err) => {
+            if (!err)
+                return next();
+            if (err instanceof multer.MulterError) {
+                return res.status(400).json({ error: "MULTER_ERROR", code: err.code, message: err.message });
+            }
+            if (err instanceof Error) {
+                return res.status(400).json({ error: "UPLOAD_ERROR", message: err.message });
+            }
+            next(err);
+        });
+    };
+}
+function shipmentImagePublicUrl(filename) {
+    return `/uploads/${SHIPMENT_IMAGE_ENTITY}/${filename}`;
+}
 /* ─── helpers ──────────────────────────────────────────────────── */
 async function resolveSupplier(email) {
     const [supplier] = await db
@@ -289,5 +316,132 @@ router.get("/supplier-portal/ledger", ...guard, async (req, res) => {
             .reduce((s, r) => s + r.totalPrice, 0),
     };
     res.json({ supplier: { id: supplier.id, name: supplier.name }, summary, ledger: rows });
+});
+/* ─── Quote shipment images (supplier-owned packing / POD photos) ─────────── */
+async function assertSupplierOwnsQuote(supplierId, quoteId) {
+    const [quote] = await db
+        .select()
+        .from(supplierQuotesTable)
+        .where(and(eq(supplierQuotesTable.id, quoteId), eq(supplierQuotesTable.supplierId, supplierId)));
+    return quote ?? null;
+}
+router.get("/supplier-portal/quotes/:quoteId/shipment-images", ...guard, async (req, res, next) => {
+    const quoteId = parseInt(req.params.quoteId, 10);
+    if (isNaN(quoteId)) {
+        res.status(400).json({ error: "Invalid quote id." });
+        return;
+    }
+    const supplier = await resolveSupplier(req.user.email);
+    if (!supplier) {
+        res.status(404).json({ error: "Supplier profile not found." });
+        return;
+    }
+    const quote = await assertSupplierOwnsQuote(supplier.id, quoteId);
+    if (!quote) {
+        res.status(404).json({ error: "Quote not found or does not belong to you." });
+        return;
+    }
+    try {
+        const rows = await db
+            .select()
+            .from(recordImagesTable)
+            .where(and(eq(recordImagesTable.entityType, SHIPMENT_IMAGE_ENTITY), eq(recordImagesTable.entityId, quoteId)))
+            .orderBy(asc(recordImagesTable.sortOrder), asc(recordImagesTable.createdAt));
+        res.json(rows);
+    }
+    catch (err) {
+        next(err);
+    }
+});
+router.post("/supplier-portal/quotes/:quoteId/shipment-images", ...guard, runUpload(uploadSupplierQuoteImages), async (req, res, next) => {
+    const quoteId = parseInt(req.params.quoteId, 10);
+    if (isNaN(quoteId)) {
+        res.status(400).json({ error: "Invalid quote id." });
+        return;
+    }
+    const supplier = await resolveSupplier(req.user.email);
+    if (!supplier) {
+        res.status(404).json({ error: "Supplier profile not found." });
+        return;
+    }
+    const quote = await assertSupplierOwnsQuote(supplier.id, quoteId);
+    if (!quote) {
+        res.status(404).json({ error: "Quote not found or does not belong to you." });
+        return;
+    }
+    const files = req.files ?? [];
+    if (!files.length) {
+        res.status(400).json({ error: "NO_FILES", message: "No image files received." });
+        return;
+    }
+    try {
+        const inserted = await db.insert(recordImagesTable).values(files.map((f, idx) => ({
+            entityType: SHIPMENT_IMAGE_ENTITY,
+            entityId: quoteId,
+            filename: f.filename,
+            originalName: f.originalname,
+            mimeType: f.mimetype,
+            sizeBytes: f.size,
+            url: shipmentImagePublicUrl(f.filename),
+            sortOrder: idx,
+            uploadedBy: req.user?.id,
+        }))).returning();
+        await logActivity({
+            userId: req.user?.id,
+            action: "CREATE",
+            module: "supplier_portal",
+            description: `Uploaded ${inserted.length} shipment image(s) for quote #${quoteId}`,
+        });
+        res.status(201).json(inserted);
+    }
+    catch (err) {
+        next(err);
+    }
+});
+router.delete("/supplier-portal/shipment-images/:imageId", ...guard, async (req, res, next) => {
+    const imageId = parseInt(req.params.imageId, 10);
+    if (isNaN(imageId)) {
+        res.status(400).json({ error: "Invalid image id." });
+        return;
+    }
+    const supplier = await resolveSupplier(req.user.email);
+    if (!supplier) {
+        res.status(404).json({ error: "Supplier profile not found." });
+        return;
+    }
+    try {
+        const [row] = await db.select().from(recordImagesTable).where(eq(recordImagesTable.id, imageId));
+        if (!row || row.entityType !== SHIPMENT_IMAGE_ENTITY) {
+            res.status(404).json({ error: "Image not found." });
+            return;
+        }
+        const quote = await assertSupplierOwnsQuote(supplier.id, row.entityId);
+        if (!quote) {
+            res.status(403).json({ error: "Access denied." });
+            return;
+        }
+        const [deleted] = await db.delete(recordImagesTable).where(eq(recordImagesTable.id, imageId)).returning();
+        if (!deleted) {
+            res.status(404).json({ error: "Image not found." });
+            return;
+        }
+        try {
+            const filePath = join(UPLOADS_ROOT, deleted.entityType, deleted.filename);
+            await unlink(filePath);
+        }
+        catch {
+            /* file missing — ok */
+        }
+        await logActivity({
+            userId: req.user?.id,
+            action: "DELETE",
+            module: "supplier_portal",
+            description: `Deleted shipment image #${imageId} for quote #${deleted.entityId}`,
+        });
+        res.json({ deleted: true, id: deleted.id });
+    }
+    catch (err) {
+        next(err);
+    }
 });
 export default router;

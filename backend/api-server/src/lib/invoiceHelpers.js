@@ -43,6 +43,7 @@ export async function insertInvoiceForOrderIfAbsent(order, opts = {}) {
         customerEmail: order.customerEmail,
         subtotal: String(subtotal.toFixed(2)),
         discountAmount: String(discountAmount.toFixed(2)),
+        taxRate: String(taxRate.toFixed(4)),
         taxAmount: String(taxAmount.toFixed(2)),
         totalAmount: String(totalAmount.toFixed(2)),
         dueDate,

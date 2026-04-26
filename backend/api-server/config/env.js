@@ -48,16 +48,6 @@ function hasMinLen(value, minLen) {
   return typeof value === "string" && value.trim().length >= minLen;
 }
 
-function composeDatabaseUrlFromSplitVars() {
-  const host = env("DB_HOST");
-  const user = env("DB_USER");
-  const pass = env("DB_PASS");
-  const dbName = env("DB_NAME");
-  const port = env("DB_PORT") || "5432";
-  if (!host || !user || !pass || !dbName) return "";
-  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}/${dbName}`;
-}
-
 const AUTH_SECRET_MIN_LEN = 16;
 const jwtSecretInitial = env("JWT_SECRET");
 const sessionSecretInitial = env("SESSION_SECRET");
@@ -72,10 +62,6 @@ if (!env("SESSION_SECRET") && env("JWT_SECRET")) {
 }
 if (!env("JWT_SECRET") && env("SESSION_SECRET")) {
   process.env.JWT_SECRET = env("SESSION_SECRET");
-}
-if (!env("DATABASE_URL")) {
-  const fallbackUrl = composeDatabaseUrlFromSplitVars();
-  if (fallbackUrl) process.env.DATABASE_URL = fallbackUrl;
 }
 
 function parseBool(value) {
@@ -114,14 +100,6 @@ const raw = {
   CORS_ORIGIN: env("CORS_ORIGIN"),
 
   DATABASE_URL: env("DATABASE_URL"),
-  DB_HOST: env("DB_HOST"),
-  DB_PORT: env("DB_PORT"),
-  DB_NAME: env("DB_NAME"),
-  DB_USER: env("DB_USER"),
-  DB_PASS: env("DB_PASS"),
-  DATABASE_PUBLIC_URL: env("DATABASE_PUBLIC_URL"),
-  RAILWAY_PUBLIC_DATABASE_URL: env("RAILWAY_PUBLIC_DATABASE_URL"),
-  PGHOSTADDR: env("PGHOSTADDR"),
   DATABASE_SSL_REJECT_UNAUTHORIZED: parseBool(env("DATABASE_SSL_REJECT_UNAUTHORIZED")),
 
   JWT_SECRET: requireMinLen("JWT_SECRET", 16),
@@ -174,14 +152,14 @@ export const envConfig = Object.freeze({
 
   db: {
     url: raw.DATABASE_URL,
-    host: raw.DB_HOST || "",
-    port: raw.DB_PORT || "5432",
-    name: raw.DB_NAME || "",
-    user: raw.DB_USER || "",
-    pass: raw.DB_PASS || "",
+    host: "",
+    port: "5432",
+    name: "",
+    user: "",
+    pass: "",
     sslRejectUnauthorized: raw.DATABASE_SSL_REJECT_UNAUTHORIZED,
-    publicUrl: raw.DATABASE_PUBLIC_URL || raw.RAILWAY_PUBLIC_DATABASE_URL || "",
-    hostAddr: raw.PGHOSTADDR || "",
+    publicUrl: "",
+    hostAddr: "",
   },
 
   auth: {

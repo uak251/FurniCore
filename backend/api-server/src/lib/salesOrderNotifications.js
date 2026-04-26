@@ -20,7 +20,7 @@ export async function notifySalesStakeholdersOfPaymentPlanRequest(order, custome
         const seen = new Set();
         const title = "Payment plan requested";
         const message = `${order.orderNumber} — ${order.customerName} asked for a payment plan (advance + installments).${noteLine}`;
-        const link = "/sales";
+        const link = "/sales?tab=invoices";
         await Promise.all(recipients
             .filter((u) => {
             if (seen.has(u.id))
@@ -58,7 +58,7 @@ export async function notifySalesStakeholdersOfCustomerOrder(order) {
         const seen = new Set();
         const title = "New customer order";
         const message = `${order.orderNumber} — ${order.customerName} · ${total.toLocaleString("en-US", { style: "currency", currency: "USD" })}`;
-        const link = "/sales";
+        const link = "/sales?tab=orders";
         await Promise.all(recipients
             .filter((u) => {
             if (seen.has(u.id))

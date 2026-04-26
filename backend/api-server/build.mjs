@@ -3,12 +3,33 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
+
+/** Ship RBAC JSON next to dist so production images (cwd=/app, only dist/) still resolve analytics routes. */
+async function copyRbacContractToDist(distDir, apiServerRoot) {
+  const destDir = path.join(distDir, "contracts");
+  const dest = path.join(destDir, "analytics-rbac.v1.json");
+  const sources = [
+    path.resolve(apiServerRoot, "../../contracts/analytics-rbac.v1.json"),
+    path.resolve(apiServerRoot, "contracts/analytics-rbac.v1.json"),
+  ];
+  for (const src of sources) {
+    if (!existsSync(src)) continue;
+    await mkdir(destDir, { recursive: true });
+    await copyFile(src, dest);
+    console.log("[build] Copied RBAC contract to", dest);
+    return;
+  }
+  console.warn(
+    "[build] RBAC contract not found under repo/contracts or api-server/contracts; native analytics may return 503 in slim deploys.",
+  );
+}
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
@@ -120,6 +141,8 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  await copyRbacContractToDist(distDir, artifactDir);
 }
 
 buildAll().catch((err) => {

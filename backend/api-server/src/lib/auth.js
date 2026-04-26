@@ -16,8 +16,16 @@ export const EMAIL_VERIFY_EXPIRY_MS = 15 * 60 * 1000;
 export function hashPassword(password) {
     return bcrypt.hash(password, 12);
 }
+/**
+ * Compare password to stored bcrypt hash. Never throws: invalid args or
+ * malformed hashes yield `false` (treat as wrong password) instead of 500s.
+ */
 export function comparePassword(password, hash) {
-    return bcrypt.compare(password, hash);
+    const pwd = typeof password === "string" ? password : String(password ?? "");
+    if (typeof hash !== "string" || hash.length === 0) {
+        return Promise.resolve(false);
+    }
+    return bcrypt.compare(pwd, hash).catch(() => false);
 }
 export function generateAccessToken(payload) {
     return jwt.sign(payload, ACCESS_SECRET, { expiresIn: getAccessExpiresIn() });

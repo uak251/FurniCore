@@ -1,0 +1,8 @@
+# Faster builds if you add image targets later; bind-mounted dev uses host tree anyway.
+.git
+**/node_modules
+**/.pnpm-store
+**/dist
+**/.env
+**/.env.*
+!**/.env.example

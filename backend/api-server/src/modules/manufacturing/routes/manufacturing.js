@@ -2,8 +2,8 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db, manufacturingTasksTable, productsTable, usersTable } from "@workspace/db";
 import { CreateManufacturingTaskBody, UpdateManufacturingTaskBody, GetManufacturingTaskParams, UpdateManufacturingTaskParams, DeleteManufacturingTaskParams, ListManufacturingTasksQueryParams } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
-import { logActivity } from "../lib/activityLogger";
+import { authenticate } from "../../../middlewares/authenticate";
+import { logActivity } from "../../../lib/activityLogger";
 const router = Router();
 async function toTask(t) {
     let productName = null;

@@ -12,7 +12,8 @@ import { logger } from "./logger";
 let io;
 export function initSocket(httpServer) {
     io = new Server(httpServer, {
-        cors: { origin: "*", credentials: true },
+        // Reflect request origin (valid with credentials); "*" is not allowed with credentials: true
+        cors: { origin: true, credentials: true },
         path: "/socket.io",
     });
     io.use((socket, next) => {

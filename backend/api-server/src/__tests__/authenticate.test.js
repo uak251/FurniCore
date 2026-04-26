@@ -36,37 +36,37 @@ beforeEach(() => {
 /*  authenticate middleware                                                     */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 describe("authenticate middleware", () => {
-    it("returns 401 NO_TOKEN when Authorization header is missing", async () => {
+    it("returns 401 Unauthorized when Authorization header is missing", async () => {
         const req = mockReq();
         const res = mockRes();
         await authenticate(req, res, next);
         expect(res.status).toHaveBeenCalledWith(401);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "NO_TOKEN" }));
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unauthorized" }));
         expect(next).not.toHaveBeenCalled();
     });
-    it("returns 401 NO_TOKEN when header does not start with 'Bearer '", async () => {
+    it("returns 401 Unauthorized when header does not start with 'Bearer '", async () => {
         const req = mockReq("Basic abc123");
         const res = mockRes();
         await authenticate(req, res, next);
         expect(res.status).toHaveBeenCalledWith(401);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "NO_TOKEN" }));
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unauthorized" }));
         expect(next).not.toHaveBeenCalled();
     });
-    it("returns 401 INVALID_TOKEN for a malformed JWT token", async () => {
+    it("returns 401 Unauthorized for a malformed JWT token", async () => {
         const req = mockReq("Bearer this.is.not.a.valid.jwt");
         const res = mockRes();
         await authenticate(req, res, next);
         expect(res.status).toHaveBeenCalledWith(401);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "INVALID_TOKEN" }));
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unauthorized" }));
         expect(next).not.toHaveBeenCalled();
     });
-    it("returns 401 INVALID_TOKEN for a JWT signed with the wrong secret", async () => {
+    it("returns 401 Unauthorized for a JWT signed with the wrong secret", async () => {
         const badToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ4QHguY29tIiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjk5OTk5OTk5OTl9.badSignature";
         const req = mockReq(`Bearer ${badToken}`);
         const res = mockRes();
         await authenticate(req, res, next);
         expect(res.status).toHaveBeenCalledWith(401);
-        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "INVALID_TOKEN" }));
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unauthorized" }));
         expect(next).not.toHaveBeenCalled();
     });
     it.each(["admin", "manager", "worker", "supplier", "customer"])("accepts a valid %s token and populates req.user", async (role) => {

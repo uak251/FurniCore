@@ -2,28 +2,61 @@ import { Router } from "express";
 import { eq, count, sql, desc } from "drizzle-orm";
 import { db, productsTable, inventoryTable, suppliersTable, supplierQuotesTable, employeesTable, manufacturingTasksTable, notificationsTable, activityLogsTable, transactionsTable, payrollTable, usersTable } from "@workspace/db";
 import { authenticate } from "../middlewares/authenticate";
+import { logger } from "../lib/logger";
+
+/** Avoid 500 when a table is missing (migrations not applied); log once and use safe defaults. */
+async function safeCount(fn, label) {
+    try {
+        const [row] = await fn();
+        return Number(row?.count ?? 0);
+    }
+    catch (err) {
+        logger.warn({ err: err?.message, label }, "dashboard_count_skipped");
+        return 0;
+    }
+}
+async function safeRows(fn, label) {
+    try {
+        return await fn();
+    }
+    catch (err) {
+        logger.warn({ err: err?.message, label }, "dashboard_query_skipped");
+        return [];
+    }
+}
+async function safeSum(fn, label) {
+    try {
+        const rows = await fn();
+        return Number(rows[0]?.total ?? 0);
+    }
+    catch (err) {
+        logger.warn({ err: err?.message, label }, "dashboard_sum_skipped");
+        return 0;
+    }
+}
+
 const router = Router();
 router.get("/dashboard/summary", authenticate, async (req, res) => {
-    const [productCount] = await db.select({ count: count() }).from(productsTable);
-    const [inventoryCount] = await db.select({ count: count() }).from(inventoryTable);
-    const [supplierCount] = await db.select({ count: count() }).from(suppliersTable);
-    const [activeSupplierCount] = await db.select({ count: count() }).from(suppliersTable).where(eq(suppliersTable.status, "active"));
-    const [pendingQuoteCount] = await db.select({ count: count() }).from(supplierQuotesTable).where(eq(supplierQuotesTable.status, "PENDING"));
-    const [employeeCount] = await db.select({ count: count() }).from(employeesTable).where(eq(employeesTable.isActive, true));
-    const [activeTaskCount] = await db.select({ count: count() }).from(manufacturingTasksTable).where(eq(manufacturingTasksTable.status, "in_progress"));
-    const inventoryItems = await db.select().from(inventoryTable);
+    const totalProducts = await safeCount(() => db.select({ count: count() }).from(productsTable), "products");
+    const totalInventoryItems = await safeCount(() => db.select({ count: count() }).from(inventoryTable), "inventory");
+    const totalSuppliers = await safeCount(() => db.select({ count: count() }).from(suppliersTable), "suppliers");
+    const activeSuppliers = await safeCount(() => db.select({ count: count() }).from(suppliersTable).where(eq(suppliersTable.status, "active")), "suppliers_active");
+    const pendingQuotes = await safeCount(() => db.select({ count: count() }).from(supplierQuotesTable).where(eq(supplierQuotesTable.status, "PENDING")), "quotes_pending");
+    const totalEmployees = await safeCount(() => db.select({ count: count() }).from(employeesTable).where(eq(employeesTable.isActive, true)), "employees");
+    const activeManufacturingTasks = await safeCount(() => db.select({ count: count() }).from(manufacturingTasksTable).where(eq(manufacturingTasksTable.status, "in_progress")), "mfg_tasks");
+    const inventoryItems = await safeRows(() => db.select().from(inventoryTable), "inventory_rows");
     const lowStockCount = inventoryItems.filter(i => Number(i.quantity) <= Number(i.reorderLevel)).length;
-    const [unreadNotifCount] = await db.select({ count: count() }).from(notificationsTable)
-        .where(eq(notificationsTable.userId, req.user.id));
+    const unreadNotifications = await safeCount(() => db.select({ count: count() }).from(notificationsTable)
+        .where(eq(notificationsTable.userId, req.user.id)), "notifications_unread");
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const revenueResult = await db.select({ total: sql `COALESCE(SUM(amount), 0)` })
+    const monthlyRevenue = await safeSum(() => db.select({ total: sql `COALESCE(SUM(amount), 0)` })
         .from(transactionsTable)
-        .where(sql `type = 'income' AND transaction_date >= ${startOfMonth}`);
-    const expenseResult = await db.select({ total: sql `COALESCE(SUM(amount), 0)` })
+        .where(sql `type = 'income' AND transaction_date >= ${startOfMonth}`), "revenue_month");
+    const monthlyExpenses = await safeSum(() => db.select({ total: sql `COALESCE(SUM(amount), 0)` })
         .from(transactionsTable)
-        .where(sql `type = 'expense' AND transaction_date >= ${startOfMonth}`);
-    const recentActivity = await db.select({
+        .where(sql `type = 'expense' AND transaction_date >= ${startOfMonth}`), "expense_month");
+    const recentActivity = await safeRows(() => db.select({
         id: activityLogsTable.id,
         userId: activityLogsTable.userId,
         action: activityLogsTable.action,
@@ -37,19 +70,19 @@ router.get("/dashboard/summary", authenticate, async (req, res) => {
         .from(activityLogsTable)
         .leftJoin(usersTable, eq(activityLogsTable.userId, usersTable.id))
         .orderBy(desc(activityLogsTable.createdAt))
-        .limit(10);
+        .limit(10), "activity_logs");
     res.json({
-        totalProducts: productCount.count,
-        totalInventoryItems: inventoryCount.count,
+        totalProducts,
+        totalInventoryItems,
         lowStockCount,
-        totalSuppliers: supplierCount.count,
-        activeSuppliers: activeSupplierCount.count,
-        pendingQuotes: pendingQuoteCount.count,
-        totalEmployees: employeeCount.count,
-        activeManufacturingTasks: activeTaskCount.count,
-        monthlyRevenue: Number(revenueResult[0]?.total ?? 0),
-        monthlyExpenses: Number(expenseResult[0]?.total ?? 0),
-        unreadNotifications: unreadNotifCount.count,
+        totalSuppliers,
+        activeSuppliers,
+        pendingQuotes,
+        totalEmployees,
+        activeManufacturingTasks,
+        monthlyRevenue,
+        monthlyExpenses,
+        unreadNotifications,
         recentActivity,
     });
 });

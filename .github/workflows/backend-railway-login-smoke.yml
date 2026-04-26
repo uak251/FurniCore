@@ -1,0 +1,75 @@
+name: backend-railway-login-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/api-server/**"
+      - ".github/workflows/backend-railway-login-smoke.yml"
+
+jobs:
+  railway-login-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate DB connectivity (IPv4 fallback aware)
+        env:
+          DATABASE_URL: ${{ secrets.RAILWAY_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Missing required secret RAILWAY_DATABASE_URL."
+            exit 1
+          fi
+          pnpm -C backend/api-server run check:db
+
+      - name: Validate CSV import/export integration
+        run: pnpm -C backend/api-server test -- --run src/__tests__/csv-transfer-route.test.js
+
+      - name: Validate native analytics routes (no 404 / JSON errors)
+        run: pnpm -C backend/api-server test -- --run src/__tests__/native-analytics-route.test.js
+
+      - name: Validate dashboard/themes/health routes are mounted
+        run: pnpm -C backend/api-server test -- --run src/__tests__/api-surface-route.test.js
+
+      - name: Validate Railway login health
+        env:
+          RAILWAY_API_URL: ${{ secrets.RAILWAY_API_URL }}
+          RAILWAY_ADMIN_EMAIL: ${{ secrets.RAILWAY_ADMIN_EMAIL }}
+          RAILWAY_ADMIN_PASSWORD: ${{ secrets.RAILWAY_ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$RAILWAY_API_URL" ] || [ -z "$RAILWAY_ADMIN_EMAIL" ] || [ -z "$RAILWAY_ADMIN_PASSWORD" ]; then
+            echo "Missing required secrets (RAILWAY_API_URL/RAILWAY_ADMIN_EMAIL/RAILWAY_ADMIN_PASSWORD)."
+            echo "Configure secrets to enable smoke test."
+            exit 1
+          fi
+          pnpm -C backend/api-server run test:login:railway
+
+      - name: Validate Railway dashboard + analytics health
+        env:
+          RAILWAY_API_URL: ${{ secrets.RAILWAY_API_URL }}
+          RAILWAY_ADMIN_EMAIL: ${{ secrets.RAILWAY_ADMIN_EMAIL }}
+          RAILWAY_ADMIN_PASSWORD: ${{ secrets.RAILWAY_ADMIN_PASSWORD }}
+        run: pnpm -C backend/api-server run test:dashboard:railway
+
+      - name: Validate unified CRUD + analytics + CSV integration
+        env:
+          VITE_API_URL: ${{ secrets.RAILWAY_API_URL }}
+          LOGIN_TEST_EMAIL: ${{ secrets.RAILWAY_ADMIN_EMAIL }}
+          LOGIN_TEST_PASSWORD: ${{ secrets.RAILWAY_ADMIN_PASSWORD }}
+        run: pnpm run test:integration:analytics-csv

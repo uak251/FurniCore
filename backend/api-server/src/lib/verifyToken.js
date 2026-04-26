@@ -33,7 +33,12 @@ export function verifyToken(token) {
         if (!isPayload(decoded)) {
             throw new TokenVerificationError("Invalid access token payload", "INVALID_TOKEN");
         }
-        return { id: decoded.id, email: decoded.email, role: decoded.role };
+        return {
+            id: decoded.id,
+            email: decoded.email,
+            role: decoded.role,
+            sid: typeof decoded.sid === "string" ? decoded.sid : undefined,
+        };
     }
     catch (e) {
         if (e instanceof TokenVerificationError)

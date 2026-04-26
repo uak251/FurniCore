@@ -2,9 +2,9 @@ import { Router } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { db, payrollTable, employeesTable, attendanceTable, payrollAdjustmentsTable } from "@workspace/db";
 import { GeneratePayrollBody, ListPayrollQueryParams, GetPayrollRecordParams, UpdatePayrollRecordParams, UpdatePayrollRecordBody, ApprovePayrollParams } from "@workspace/api-zod";
-import { authenticate } from "../middlewares/authenticate";
-import { logActivity } from "../lib/activityLogger";
-import { penaltiesFromAttendance, WORKING_DAYS } from "./hr-portal";
+import { authenticate } from "../../../middlewares/authenticate";
+import { logActivity } from "../../../lib/activityLogger";
+import { penaltiesFromAttendance, WORKING_DAYS } from "../../../routes/hr-portal";
 const router = Router();
 async function toPayroll(p) {
     const [employee] = await db.select().from(employeesTable).where(eq(employeesTable.id, p.employeeId));

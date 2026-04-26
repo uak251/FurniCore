@@ -216,6 +216,44 @@ router.post("/powerbi/embed-token", authenticate, async (req, res) => {
         res.status(500).json({ error: msg });
     }
 });
+
+router.get("/powerbi/embed-token", authenticate, async (req, res) => {
+    if (!req.user) {
+        res.status(401).json({ error: "Unauthenticated" });
+        return;
+    }
+    const reportId = String(req.query.reportId || "").trim();
+    if (!reportId || !REPORT_IDS.includes(reportId)) {
+        res.status(400).json({ error: `Unknown reportId. Valid: ${REPORT_IDS.join(", ")}` });
+        return;
+    }
+    const meta = REPORT_META[reportId];
+    const [dbUser] = await db
+        .select({ permissions: usersTable.permissions })
+        .from(usersTable)
+        .where(eq(usersTable.id, req.user.id));
+    if (!canAccess({ role: req.user.role, permissions: dbUser?.permissions }, meta)) {
+        res.status(403).json({ error: "You do not have access to this report." });
+        return;
+    }
+    const env = await getReportEnv(reportId);
+    if (!env) {
+        res.status(503).json({
+            error: `This report is not configured. Add ${meta.envKey} and POWERBI_WORKSPACE_ID to your .env file (or save them in Settings → Power BI).`,
+            reportId,
+            configured: false,
+        });
+        return;
+    }
+    try {
+        const result = await generateEmbedToken(env.workspaceId, env.reportId);
+        res.json(result);
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        res.status(500).json({ error: msg });
+    }
+});
 /* ════════════════════════════════════════════════════════════════════════════════
    Analytics data endpoints — PostgreSQL feeds for native charts (no Azure needed)
    Accessible by role OR extra permissions. 5-minute cache per endpoint.

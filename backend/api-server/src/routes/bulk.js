@@ -33,6 +33,12 @@ const invRole = [
 const hrRole = [authenticate, requireRole("admin", "manager")];
 const payRole = [authenticate, requireRole("admin", "accountant", "manager")];
 /* ─── CSV parser ──────────────────────────────────────────────────────────── */
+function normalizeHeaderKey(value) {
+    return String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+}
 function parseRow(line) {
     const fields = [];
     let current = "";
@@ -66,12 +72,28 @@ function parseCsv(text) {
         .filter((l) => l.trim() !== "");
     if (lines.length === 0)
         return { headers: [], rows: [] };
-    const headers = parseRow(lines[0]).map((h) => h.toLowerCase().trim());
+    const headers = parseRow(lines[0]).map((h) => normalizeHeaderKey(h));
     const rows = lines.slice(1).map((line) => {
         const values = parseRow(line);
         return Object.fromEntries(headers.map((h, i) => [h, values[i]?.trim() ?? ""]));
     });
     return { headers, rows };
+}
+function toNumberLike(input) {
+    if (typeof input === "number")
+        return input;
+    const cleaned = String(input ?? "").replace(/[^0-9.-]/g, "");
+    if (!cleaned)
+        return Number.NaN;
+    return Number(cleaned);
+}
+function toBooleanLike(input) {
+    const normalized = String(input ?? "").trim().toLowerCase();
+    if (["false", "0", "no", "n", "off", "inactive"].includes(normalized))
+        return false;
+    if (["true", "1", "yes", "y", "on", "active"].includes(normalized))
+        return true;
+    return Boolean(normalized);
 }
 /* ─── CSV builder for export ──────────────────────────────────────────────── */
 function buildCsvLine(values) {
@@ -100,15 +122,20 @@ const InventoryRowSchema = z.object({
     name: z.string().min(1, "Name is required"),
     type: z.string().default("raw_material"),
     unit: z.string().min(1, "Unit is required"),
-    quantity: z.coerce.number().min(0, "Quantity must be ≥ 0"),
-    reorderlevel: z.coerce.number().min(0, "Reorder level must be ≥ 0"),
-    unitcost: z.coerce.number().min(0, "Unit cost must be ≥ 0"),
+    quantity: z.preprocess(toNumberLike, z.number().min(0, "Quantity must be ≥ 0")),
+    reorderlevel: z.preprocess(toNumberLike, z.number().min(0, "Reorder level must be ≥ 0")),
+    unitcost: z.preprocess(toNumberLike, z.number().min(0, "Unit cost must be ≥ 0")),
 });
 /* POST /bulk/inventory/import */
 router.post("/bulk/inventory/import", ...invRole, csvBody, async (req, res, next) => {
     try {
         const { rows } = parseCsv(req.body);
         const result = emptyResult();
+        const names = Array.from(new Set(rows.map((r) => r.name).filter(Boolean)));
+        const existingRows = names.length > 0
+            ? await db.select({ id: inventoryTable.id, name: inventoryTable.name, quantity: inventoryTable.quantity }).from(inventoryTable)
+            : [];
+        const existingByName = new Map(existingRows.map((r) => [r.name, r]));
         for (let i = 0; i < rows.length; i++) {
             const rowNum = i + 1;
             const raw = rows[i];
@@ -121,10 +148,7 @@ router.post("/bulk/inventory/import", ...invRole, csvBody, async (req, res, next
             }
             const d = parsed.data;
             /* Upsert by name — quantity is incremental (adds to existing stock) */
-            const [existing] = await db
-                .select({ id: inventoryTable.id, quantity: inventoryTable.quantity })
-                .from(inventoryTable)
-                .where(eq(inventoryTable.name, d.name));
+            const existing = existingByName.get(d.name);
             if (existing) {
                 const accumulated = Number(existing.quantity) + d.quantity;
                 await db.update(inventoryTable).set({
@@ -135,6 +159,7 @@ router.post("/bulk/inventory/import", ...invRole, csvBody, async (req, res, next
                     unitCost: String(d.unitcost),
                 }).where(eq(inventoryTable.id, existing.id));
                 result.updated++;
+                existingByName.set(d.name, { ...existing, quantity: String(accumulated) });
             }
             else {
                 await db.insert(inventoryTable).values({
@@ -182,17 +207,22 @@ const ProductRowSchema = z.object({
     name: z.string().min(1, "Name is required"),
     sku: z.string().min(1, "SKU is required"),
     category: z.string().min(1, "Category is required"),
-    sellingprice: z.coerce.number().min(0, "Selling price must be ≥ 0"),
-    costprice: z.coerce.number().min(0, "Cost price must be ≥ 0"),
-    stockquantity: z.coerce.number().int().min(0).default(0),
+    sellingprice: z.preprocess(toNumberLike, z.number().min(0, "Selling price must be ≥ 0")),
+    costprice: z.preprocess(toNumberLike, z.number().min(0, "Cost price must be ≥ 0")),
+    stockquantity: z.preprocess(toNumberLike, z.number().int().min(0).default(0)),
     description: z.string().optional(),
-    isactive: z.string().optional().transform((v) => v?.toLowerCase() !== "false" && v !== "0"),
+    isactive: z.preprocess(toBooleanLike, z.boolean().default(true)),
 });
 /* POST /bulk/products/import */
 router.post("/bulk/products/import", ...invRole, csvBody, async (req, res, next) => {
     try {
         const { rows } = parseCsv(req.body);
         const result = emptyResult();
+        const skus = Array.from(new Set(rows.map((r) => r.sku).filter(Boolean)));
+        const existingRows = skus.length > 0
+            ? await db.select({ id: productsTable.id, sku: productsTable.sku }).from(productsTable)
+            : [];
+        const existingBySku = new Map(existingRows.map((r) => [r.sku, r]));
         for (let i = 0; i < rows.length; i++) {
             const rowNum = i + 1;
             const parsed = ProductRowSchema.safeParse(rows[i]);
@@ -204,10 +234,7 @@ router.post("/bulk/products/import", ...invRole, csvBody, async (req, res, next)
             }
             const d = parsed.data;
             /* Upsert by SKU */
-            const [existing] = await db
-                .select({ id: productsTable.id })
-                .from(productsTable)
-                .where(eq(productsTable.sku, d.sku));
+            const existing = existingBySku.get(d.sku);
             if (existing) {
                 await db.update(productsTable).set({
                     name: d.name,
@@ -273,15 +300,20 @@ const EmployeeRowSchema = z.object({
     phone: z.string().optional(),
     department: z.string().min(1, "Department is required"),
     position: z.string().min(1, "Position is required"),
-    basesalary: z.coerce.number().min(0, "Base salary must be ≥ 0"),
+    basesalary: z.preprocess(toNumberLike, z.number().min(0, "Base salary must be ≥ 0")),
     hiredate: z.string().min(1, "Hire date is required").refine((v) => !isNaN(Date.parse(v)), "Invalid date — use YYYY-MM-DD"),
-    isactive: z.string().optional().transform((v) => v?.toLowerCase() !== "false" && v !== "0"),
+    isactive: z.preprocess(toBooleanLike, z.boolean().default(true)),
 });
 /* POST /bulk/employees/import */
 router.post("/bulk/employees/import", ...hrRole, csvBody, async (req, res, next) => {
     try {
         const { rows } = parseCsv(req.body);
         const result = emptyResult();
+        const emails = Array.from(new Set(rows.map((r) => r.email).filter(Boolean)));
+        const existingRows = emails.length > 0
+            ? await db.select({ id: employeesTable.id, email: employeesTable.email }).from(employeesTable)
+            : [];
+        const existingByEmail = new Map(existingRows.map((r) => [r.email, r]));
         for (let i = 0; i < rows.length; i++) {
             const rowNum = i + 1;
             const parsed = EmployeeRowSchema.safeParse(rows[i]);
@@ -293,10 +325,7 @@ router.post("/bulk/employees/import", ...hrRole, csvBody, async (req, res, next)
             }
             const d = parsed.data;
             /* Upsert by email */
-            const [existing] = await db
-                .select({ id: employeesTable.id })
-                .from(employeesTable)
-                .where(eq(employeesTable.email, d.email));
+            const existing = existingByEmail.get(d.email);
             if (existing) {
                 await db.update(employeesTable).set({
                     name: d.name,
@@ -358,12 +387,12 @@ router.get("/bulk/employees/export", ...hrRole, async (_req, res, next) => {
 /* ════════════════════════════════════════════════════════════════════════════ */
 const PayrollRowSchema = z.object({
     employeeemail: z.string().email("Invalid employee email"),
-    month: z.coerce.number().int().min(1).max(12),
-    year: z.coerce.number().int().min(2000),
-    basesalary: z.coerce.number().min(0),
-    bonus: z.coerce.number().min(0).default(0),
-    deductions: z.coerce.number().min(0).default(0),
-    netsalary: z.coerce.number().min(0).optional(),
+    month: z.preprocess(toNumberLike, z.number().int().min(1).max(12)),
+    year: z.preprocess(toNumberLike, z.number().int().min(2000)),
+    basesalary: z.preprocess(toNumberLike, z.number().min(0)),
+    bonus: z.preprocess(toNumberLike, z.number().min(0).default(0)),
+    deductions: z.preprocess(toNumberLike, z.number().min(0).default(0)),
+    netsalary: z.preprocess((v) => (v === undefined || v === null || v === "" ? undefined : toNumberLike(v)), z.number().min(0)).optional(),
     status: z.enum(["draft", "approved"]).default("draft"),
     notes: z.string().optional(),
 });
