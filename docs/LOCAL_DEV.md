@@ -22,6 +22,8 @@ Default URL (matches `docker-compose.yml`):
 
 `postgresql://furnicore:furnicore_dev@localhost:5432/furnicore`
 
+If **`pnpm run db:up`** fails with **port 5432 already allocated**, another Postgres (or container) is using that port. Set **`POSTGRES_HOST_PORT=5433`** (or any free port) in repo-root **`.env`**, set **`DATABASE_URL`** to use **`localhost:5433`** (same port), then run **`pnpm run db:up`** again. On Windows you can see what owns 5432: `netstat -ano | findstr :5432`.
+
 ### Option B — Supabase (hosted Postgres)
 
 In the Supabase dashboard: **Project Settings → Database → Connection string** (URI). Use the **direct** connection (host like `db.<project-ref>.supabase.co`). Put the full URI in root **`.env`** as **`DATABASE_URL`**. If your password contains `@`, `#`, etc., URL-encode it. The **`@workspace/db`** pool enables TLS automatically when the host contains **`supabase.co`**.

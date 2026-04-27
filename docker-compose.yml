@@ -13,8 +13,10 @@ services:
   supabase-db:
     image: postgres:16-alpine
     container_name: furnicore-supabase-db
+    # Host port: default 5432. If "Bind for 0.0.0.0:5432 failed: port is already allocated",
+    # set POSTGRES_HOST_PORT=5433 (or any free port) in repo-root .env and use that port in DATABASE_URL for host-side apps.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: furnicore
       POSTGRES_PASSWORD: furnicore_dev
