@@ -36,6 +36,7 @@ import currencyRouter from "./currency";
 import customerProfileRouter from "./customer-profile";
 import nativeAnalyticsRouter from "./native-analytics";
 import csvTransferRouter from "./csv-transfer";
+import firebaseAuthRouter from "./firebase-auth";
 
 const router = Router();
 router.use(healthRouter);
@@ -44,6 +45,7 @@ router.use(authRouter);
 router.use(oauthRouter);
 router.use(currencyRouter);
 router.use(customerProfileRouter);
+router.use(firebaseAuthRouter);
 // Keep analytics/csv routes before module routers with dynamic :id paths.
 router.use(nativeAnalyticsRouter);
 router.use(csvTransferRouter);
